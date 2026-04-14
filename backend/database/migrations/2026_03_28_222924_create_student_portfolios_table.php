@@ -20,7 +20,8 @@ return new class extends Migration
 
             $table->foreignId('training_assignment_id')
                 ->constrained()
-                ->onDelete('cascade');
+                ->onDelete('cascade')
+                ->nullabel();
 
             $table->timestamps();
 

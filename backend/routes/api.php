@@ -29,52 +29,39 @@ use App\Http\Controllers\Api\{
     NotificationController,
     NoteController,
     WeeklyScheduleController,
-    FeatureFlagController
+    FeatureFlagController,
+    PortfolioEntryController,
+    TaskSubmissionController
 };
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-*/
-
-// Routes publiques (authentification)
+// Routes publiques
 Route::post('/login', [UserController::class, 'login'])->name('login');
 
-// Routes protégées par authentification Sanctum
+// Routes protégées
 Route::middleware(['auth:sanctum'])->group(function () {
 
-    // Logout (doit être authentifié)
     Route::post('/logout', [UserController::class, 'logout']);
-
-    // Dashboard
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
-
-    // Current user
     Route::get('/user', [UserController::class, 'currentUser']);
 
-    // Users
+    // Utilisateurs, rôles, départements
     Route::apiResource('users', UserController::class);
     Route::patch('users/{user}/status', [UserController::class, 'changeStatus']);
-
-    // Roles & Permissions
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('permissions', PermissionController::class);
-
-    // Departments
     Route::apiResource('departments', DepartmentController::class);
 
-    // Courses & Sections
+    // Cours, sections, inscriptions
     Route::apiResource('courses', CourseController::class);
     Route::apiResource('sections', SectionController::class);
     Route::apiResource('enrollments', EnrollmentController::class);
 
-    // Training Sites & Periods
+    // Sites et périodes de stage
     Route::apiResource('training-sites', TrainingSiteController::class);
     Route::apiResource('training-periods', TrainingPeriodController::class);
     Route::patch('training-periods/{training_period}/set-active', [TrainingPeriodController::class, 'setActive']);
 
-    // Training Requests (Core workflow)
+    // Demandes de stage
     Route::apiResource('training-requests', TrainingRequestController::class);
     Route::post('training-requests/{training_request}/send-to-directorate', [TrainingRequestController::class, 'sendToDirectorate']);
     Route::post('training-requests/{training_request}/directorate-approve', [TrainingRequestController::class, 'directorateApprove']);
@@ -82,52 +69,52 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('training-requests/{training_request}/school-approve', [TrainingRequestController::class, 'schoolApprove']);
     Route::post('training-requests/{training_request}/reject', [TrainingRequestController::class, 'reject']);
 
-    // Training Assignments
+    // Affectations
     Route::apiResource('training-assignments', TrainingAssignmentController::class);
 
-    // Attendance
+    // Présences
     Route::apiResource('attendances', AttendanceController::class);
     Route::patch('attendances/{attendance}/approve', [AttendanceController::class, 'approve']);
     Route::get('attendance-summary', [AttendanceController::class, 'summary']);
 
-    // Training Logs
+    // Journal de stage
     Route::apiResource('training-logs', TrainingLogController::class);
     Route::post('training-logs/{training_log}/submit', [TrainingLogController::class, 'submit']);
     Route::post('training-logs/{training_log}/review', [TrainingLogController::class, 'review']);
 
-    // Tasks
+    // Tâches
     Route::apiResource('tasks', TaskController::class);
     Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
     Route::post('task-submissions/{submission}/grade', [TaskController::class, 'grade']);
 
-    // Evaluations
+    // Évaluations
     Route::apiResource('evaluations', EvaluationController::class);
     Route::apiResource('evaluation-templates', EvaluationTemplateController::class);
     Route::post('evaluation-templates/{evaluation_template}/items', [EvaluationTemplateController::class, 'addItem']);
     Route::put('evaluation-items/{item}', [EvaluationTemplateController::class, 'updateItem']);
     Route::delete('evaluation-items/{item}', [EvaluationTemplateController::class, 'deleteItem']);
 
-    // Student Portfolio
+    // Portfolios
     Route::apiResource('student-portfolios', StudentPortfolioController::class);
     Route::post('student-portfolios/{student_portfolio}/entries', [StudentPortfolioController::class, 'addEntry']);
     Route::put('portfolio-entries/{entry}', [StudentPortfolioController::class, 'updateEntry']);
     Route::delete('portfolio-entries/{entry}', [StudentPortfolioController::class, 'deleteEntry']);
 
-    // Supervisor Visits
+    // Visites superviseur
     Route::apiResource('supervisor-visits', SupervisorVisitController::class);
     Route::post('supervisor-visits/{supervisor_visit}/complete', [SupervisorVisitController::class, 'complete']);
 
-    // Official Letters
+    // Lettres officielles
     Route::apiResource('official-letters', OfficialLetterController::class);
     Route::post('official-letters/{official_letter}/send', [OfficialLetterController::class, 'send']);
     Route::post('official-letters/{official_letter}/receive', [OfficialLetterController::class, 'receive']);
     Route::post('official-letters/{official_letter}/approve', [OfficialLetterController::class, 'approve']);
 
-    // Conversations & Messages
+    // Messages
     Route::apiResource('conversations', ConversationController::class);
     Route::post('conversations/{conversation}/messages', [ConversationController::class, 'sendMessage']);
 
-    // Announcements
+    // Annonces
     Route::apiResource('announcements', AnnouncementController::class);
 
     // Notifications
@@ -140,18 +127,49 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Notes
     Route::apiResource('notes', NoteController::class);
 
-    // Weekly Schedules
+    // Planning hebdomadaire
     Route::apiResource('weekly-schedules', WeeklyScheduleController::class);
 
-    // Feature Flags (dynamic features)
+    // Feature flags
     Route::get('feature-flags', [FeatureFlagController::class, 'index']);
     Route::patch('feature-flags/{feature_flag}', [FeatureFlagController::class, 'update']);
     Route::get('feature-flags/check/{name}', [FeatureFlagController::class, 'check']);
 
-    // Backups
+    // Sauvegardes
     Route::apiResource('backups', BackupController::class);
     Route::post('backups/{backup}/restore', [BackupController::class, 'restore']);
 
-    // Activity Logs
+    // Logs d'activité
     Route::apiResource('activity-logs', ActivityLogController::class);
+
+    // ========== ROUTES ÉTUDIANTS ==========
+    Route::prefix('student')->group(function () {
+        Route::get('/training-requests', [TrainingRequestController::class, 'studentIndex']);
+        Route::post('/training-requests', [TrainingRequestController::class, 'studentStore']);
+        Route::get('/schedule', [WeeklyScheduleController::class, 'studentSchedule']);
+        
+        // Training logs
+        Route::get('/training-logs', [TrainingLogController::class, 'getTrainingLogs']);
+        Route::post('/training-logs', [TrainingLogController::class, 'store']);
+        Route::put('/training-logs/{training_log}', [TrainingLogController::class, 'update']);
+        Route::post('/training-logs/{training_log}/submit', [TrainingLogController::class, 'submit']);
+        
+        // Portfolio
+        Route::get('/portfolio', [StudentPortfolioController::class, 'show']);
+        Route::post('/portfolio/entries', [PortfolioEntryController::class, 'store']);
+        Route::put('/portfolio/entries/{entry}', [PortfolioEntryController::class, 'update']);
+        Route::delete('/portfolio/entries/{entry}', [PortfolioEntryController::class, 'destroy']);
+        
+        // Tâches étudiant
+        Route::get('/tasks', [TaskController::class, 'studentIndex']);
+        Route::post('/tasks/{task}/submit', [TaskSubmissionController::class, 'store']);
+        
+        // Notifications étudiant
+        
+Route::get('/notifications', [NotificationController::class, 'index']);
+Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+    });
+
+    // Portfolio personnel
+    Route::get('/my-portfolio', [StudentPortfolioController::class, 'getMyPortfolio']);
 });

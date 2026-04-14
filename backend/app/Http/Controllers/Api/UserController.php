@@ -115,4 +115,5 @@ class UserController extends Controller
             'message' => 'تم تسجيل الخروج بنجاح'
         ]);
     }
+    
 }

@@ -19,61 +19,115 @@ class StudentPortfolioController extends Controller
         $this->authorizeResource(StudentPortfolio::class, 'student_portfolio');
     }
 
+    /**
+     * Get current user's portfolio (SAFE VERSION)
+     * Route: /api/my-portfolio
+     */
+public function getMyPortfolio(Request $request)
+{
+    $user = $request->user();
+
+    $portfolio = StudentPortfolio::with('entries')
+        ->firstOrCreate(
+            ['user_id' => $user->id],
+            ['training_assignment_id' => null]
+        );
+
+    return new StudentPortfolioResource($portfolio->load('entries'));
+}
+
+    /**
+     * List portfolios (admin/general use)
+     */
     public function index(Request $request)
     {
         $query = StudentPortfolio::with(['user', 'trainingAssignment']);
-        if ($request->has('user_id')) $query->where('user_id', $request->user_id);
-        $portfolios = $query->paginate($request->per_page ?? 15);
-        return StudentPortfolioResource::collection($portfolios);
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        return StudentPortfolioResource::collection(
+            $query->paginate($request->per_page ?? 15)
+        );
     }
 
+    /**
+     * Show single portfolio
+     */
+    public function show(StudentPortfolio $studentPortfolio)
+    {
+        return new StudentPortfolioResource(
+            $studentPortfolio->load(['user', 'trainingAssignment', 'entries'])
+        );
+    }
+
+    /**
+     * Store portfolio
+     */
     public function store(StoreStudentPortfolioRequest $request)
     {
         $portfolio = StudentPortfolio::create($request->validated());
+
         return new StudentPortfolioResource($portfolio);
     }
 
-    public function show(StudentPortfolio $studentPortfolio)
-    {
-        return new StudentPortfolioResource($studentPortfolio->load(['user', 'trainingAssignment', 'entries']));
-    }
-
+    /**
+     * Update portfolio (no direct fields)
+     */
     public function update(UpdateStudentPortfolioRequest $request, StudentPortfolio $studentPortfolio)
     {
-        // لا توجد حقول للتحديث المباشر (يتم عبر entries)
         return new StudentPortfolioResource($studentPortfolio);
     }
 
+    /**
+     * Delete portfolio
+     */
     public function destroy(StudentPortfolio $studentPortfolio)
     {
         $studentPortfolio->delete();
-        return response()->json(['message' => 'تم حذف ملف الإنجاز']);
+
+        return response()->json([
+            'message' => 'تم حذف ملف الإنجاز'
+        ]);
     }
 
-    // إدارة الـ Entries
+    // ================= Entries =================
+
     public function addEntry(StorePortfolioEntryRequest $request, StudentPortfolio $studentPortfolio)
     {
         $data = $request->validated();
+
         if ($request->hasFile('file')) {
             $data['file_path'] = $request->file('file')->store('portfolio', 'public');
         }
+
         $data['student_portfolio_id'] = $studentPortfolio->id;
+
         $entry = PortfolioEntry::create($data);
+
         return response()->json($entry, 201);
     }
 
     public function updateEntry(UpdatePortfolioEntryRequest $request, PortfolioEntry $entry)
     {
+        $data = $request->validated();
+
         if ($request->hasFile('file')) {
-            $request['file_path'] = $request->file('file')->store('portfolio', 'public');
+            $data['file_path'] = $request->file('file')->store('portfolio', 'public');
         }
-        $entry->update($request->validated());
+
+        $entry->update($data);
+
         return response()->json($entry);
     }
 
     public function deleteEntry(PortfolioEntry $entry)
     {
         $entry->delete();
-        return response()->json(['message' => 'تم حذف الإدخال']);
+
+        return response()->json([
+            'message' => 'تم حذف الإدخال'
+        ]);
     }
 }

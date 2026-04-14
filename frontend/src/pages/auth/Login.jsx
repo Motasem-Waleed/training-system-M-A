@@ -95,21 +95,27 @@ console.log(user?.role?.name);
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group-custom">
-              <label className="form-label-custom">البريد الإلكتروني</label>
+              <label className="form-label-custom"  htmlFor="email">البريد الإلكتروني</label>
               <input
                 type="email"
+                name="email"
+                id="email"
                 className="form-input-custom"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="example@hebron.edu"
+                  autoComplete="email"
+
               />
             </div>
 
             <div className="form-group-custom">
-              <label className="form-label-custom">كلمة المرور</label>
+              <label className="form-label-custom" htmlFor="password">كلمة المرور</label>
               <input
                 type="password"
+                id="password"
+                name="password"
                 className="form-input-custom"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

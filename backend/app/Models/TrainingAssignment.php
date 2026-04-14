@@ -65,10 +65,10 @@ class TrainingAssignment extends Model
         return $this->hasMany(Attendance::class);
     }
 
-    public function trainingLogs()
-    {
-        return $this->hasMany(TrainingLog::class);
-    }
+ public function trainingLogs()
+{
+    return $this->hasMany(TrainingLog::class);
+}
 
     public function tasks()
     {

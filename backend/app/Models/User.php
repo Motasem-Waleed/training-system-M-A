@@ -130,4 +130,9 @@ class User extends Authenticatable
 {
     return $this->hasMany(WeeklySchedule::class, 'submitted_by');
 }
+
+public function enrollments()
+{
+    return $this->hasMany(Enrollment::class);
+}
 }

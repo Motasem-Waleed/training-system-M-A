@@ -20,8 +20,7 @@ class TrainingLogResource extends JsonResource
             'student_reflection' => $this->student_reflection,
             'status' => $this->status,
             'status_label' => TrainingLogStatus::tryFrom($this->status)?->label() ?? $this->status,
-            'training_assignment' => new TrainingAssignmentResource($this->whenLoaded('trainingAssignment')),
-            'created_at' => $this->created_at?->toDateTimeString(),
+             'training_assignment' => $this->whenLoaded('trainingAssignment'),            'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
     }

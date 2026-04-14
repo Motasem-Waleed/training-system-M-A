@@ -13,7 +13,9 @@ class TrainingAssignmentResource extends JsonResource
         return [
             'id' => $this->id,
             'status' => $this->status,
-            'status_label' => TrainingAssignmentStatus::tryFrom($this->status)?->label() ?? $this->status,
+'status_label' => optional(
+    TrainingAssignmentStatus::tryFrom($this->status)
+)->label() ?? $this->status,
             'start_date' => $this->start_date?->toDateString(),
             'end_date' => $this->end_date?->toDateString(),
             'enrollment' => new EnrollmentResource($this->whenLoaded('enrollment')),

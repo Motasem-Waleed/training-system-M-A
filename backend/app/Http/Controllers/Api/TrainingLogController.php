@@ -19,25 +19,62 @@ class TrainingLogController extends Controller
     {
         $this->trainingLogService = $trainingLogService;
     }
+// داخل TrainingLogController
 
-    public function index(Request $request)
-    {
-        $query = TrainingLog::with(['trainingAssignment.enrollment.user']);
-        
-        if ($request->has('training_assignment_id')) {
-            $query->where('training_assignment_id', $request->training_assignment_id);
-        }
-        if ($request->user()->role?->name === 'student') {
-            $query->whereHas('trainingAssignment.enrollment', fn($q) => $q->where('user_id', $request->user()->id));
-        }
-        
-        $logs = $query->latest('log_date')->paginate($request->per_page ?? 15);
-        return TrainingLogResource::collection($logs);
+public function getTrainingLogs(Request $request)
+{
+    $user = auth()->user();
+    if (!$user) {
+        return response()->json(['message' => 'Unauthenticated'], 401);
     }
 
+    // استعلام مباشر باستخدام JOIN
+    $logs = TrainingLog::join('training_assignments', 'training_logs.training_assignment_id', '=', 'training_assignments.id')
+        ->join('enrollments', 'training_assignments.enrollment_id', '=', 'enrollments.id')
+        ->where('enrollments.user_id', $user->id)
+        ->select('training_logs.*')  // نأخذ فقط أعمدة training_logs
+        ->orderBy('training_logs.log_date', 'desc')
+        ->get();
+
+    return response()->json($logs);
+}
+
+public function index(Request $request)
+{
+    $user = $request->user();
+
+    $query = TrainingLog::query();
+
+    if ($user->role?->name === 'student') {
+        // نفس الـ JOIN لتحديد الـ training assignments الخاصة بهذا الطالب
+        $query->join('training_assignments', 'training_logs.training_assignment_id', '=', 'training_assignments.id')
+              ->join('enrollments', 'training_assignments.enrollment_id', '=', 'enrollments.id')
+              ->where('enrollments.user_id', $user->id)
+              ->select('training_logs.*'); // تجنب تضارب الأعمدة
+    }
+
+    $logs = $query->latest('log_date')->paginate($request->per_page ?? 15);
+
+    return TrainingLogResource::collection($logs);
+}
     public function store(StoreTrainingLogRequest $request)
     {
-        $log = $this->trainingLogService->createLog($request->validated(), $request->user()->id);
+        $user = $request->user();
+
+        $assignment = optional($user->enrollment)->trainingAssignment;
+
+        // ✅ منع الإنشاء بدون تدريب
+        if (!$assignment) {
+            return response()->json([
+                'message' => 'لا يمكنك إضافة سجل بدون تدريب'
+            ], 400);
+        }
+
+        $data = $request->validated();
+        $data['training_assignment_id'] = $assignment->id;
+
+        $log = $this->trainingLogService->createLog($data, $user->id);
+
         return new TrainingLogResource($log);
     }
 
@@ -60,7 +97,12 @@ class TrainingLogController extends Controller
 
     public function review(ReviewTrainingLogRequest $request, TrainingLog $trainingLog)
     {
-        $log = $this->trainingLogService->reviewLog($trainingLog, $request->status, $request->supervisor_notes);
+        $log = $this->trainingLogService->reviewLog(
+            $trainingLog,
+            $request->status,
+            $request->supervisor_notes
+        );
+
         return new TrainingLogResource($log);
     }
 

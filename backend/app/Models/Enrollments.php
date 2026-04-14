@@ -18,8 +18,9 @@ class Enrollment extends Model
         return $this->belongsTo(Section::class);
     }
 
-    public function trainingAssignment()
-    {
-        return $this->hasOne(TrainingAssignment::class);
-    }
+ public function trainingAssignment()
+{
+    return $this->hasMany(TrainingAssignment::class); // أو hasMany حسب العلاقة
+}
+    
 }

@@ -14,7 +14,9 @@ class PortfolioEntryResource extends JsonResource
             'title' => $this->title,
             'content' => $this->content,
             'file_path' => $this->file_path,
-            'student_portfolio' => new StudentPortfolioResource($this->whenLoaded('studentPortfolio')),
+            'student_portfolio' => $this->whenLoaded('studentPortfolio')
+    ? new StudentPortfolioResource($this->studentPortfolio)
+    : null,
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

@@ -228,3 +228,79 @@ export const getEvaluationTemplate = async (id) => {
     const response = await apiClient.get(`/evaluation-templates/${id}`);
     return response.data;
 };
+
+// ==================== Student specific ====================
+export const getStudentTrainingRequests = async () => {
+    const response = await apiClient.get('/user');
+    return response.data;
+};
+
+export const createStudentTrainingRequest = async (data) => {
+    const response = await apiClient.post('/student/training-requests', data);
+    return response.data;
+};
+
+export const getStudentSchedule = async () => {
+    const response = await apiClient.get('/student/schedule');
+    return response.data;
+};
+
+export const getStudentTrainingLogs = async () => {
+    const response = await apiClient.get('/student/training-logs');
+    return response.data;
+};
+
+export const createStudentTrainingLog = async (data) => {
+    const response = await apiClient.post('/student/training-logs', data);
+    return response.data;
+};
+
+export const updateStudentTrainingLog = async (id, data) => {
+    const response = await apiClient.put(`/student/training-logs/${id}`, data);
+    return response.data;
+};
+
+export const submitStudentTrainingLog = async (id) => {
+    const response = await apiClient.post(`/student/training-logs/${id}/submit`);
+    return response.data;
+};
+
+export const getStudentPortfolio = async () => {
+    const response = await apiClient.get('/my-portfolio');
+    return response.data;
+};
+
+export const addPortfolioEntry = async (data) => {
+    const response = await apiClient.post('/student/portfolio/entries', data);
+    return response.data;
+};
+
+export const updatePortfolioEntry = async (id, data) => {
+    const response = await apiClient.put(`/student/portfolio/entries/${id}`, data);
+    return response.data;
+};
+
+export const deletePortfolioEntry = async (id) => {
+    const response = await apiClient.delete(`/student/portfolio/entries/${id}`);
+    return response.data;
+};
+
+export const getStudentTasks = async () => {
+    const response = await apiClient.get('/student/tasks');
+    return response.data;
+};
+
+export const submitStudentTask = async (taskId, data) => {
+    const response = await apiClient.post(`/student/tasks/${taskId}/submit`, data);
+    return response.data;
+};
+
+export const getStudentNotifications = async () => {
+    const response = await apiClient.get('/student/notifications');
+    return response.data;
+};
+
+export const markNotificationAsRead = async (id) => {
+    const response = await apiClient.patch(`/student/notifications/${id}/read`);
+    return response.data;
+};

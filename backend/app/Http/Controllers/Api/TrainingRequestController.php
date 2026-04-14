@@ -14,6 +14,7 @@ use App\Http\Resources\TrainingRequestResource;
 use App\Models\TrainingRequest;
 use App\Services\TrainingRequestService;
 use Illuminate\Http\Request;
+use App\Models\TrainingRequestStudent;
 
 class TrainingRequestController extends Controller
 {
@@ -116,4 +117,38 @@ class TrainingRequestController extends Controller
         $this->trainingRequestService->reject($trainingRequest, $request->rejection_reason, $request->user()->id);
         return response()->json(['message' => 'تم رفض الكتاب']);
     }
+    // في TrainingRequestController.php
+public function studentIndex()
+{
+    $user = auth()->user();
+    $requests = TrainingRequestStudent::where('user_id', $user->id)->with('trainingRequest.trainingSite')->get();
+    return response()->json(['data' => $requests]);
+}
+
+public function studentStore(Request $request)
+{
+    $data = $request->validate([
+        'training_site_id' => 'required|exists:training_sites,id',
+        'notes' => 'nullable|string',
+        'start_date' => 'required|date',
+        'end_date' => 'required|date|after:start_date',
+    ]);
+    // إنشاء طلب جديد (بدون كتاب رسمي، حالة pending)
+    $trainingRequest = TrainingRequest::create([
+        'training_site_id' => $data['training_site_id'],
+        'status' => 'pending',
+        'book_status' => 'draft', // أو أي قيمة مناسبة
+        'requested_at' => now(),
+    ]);
+    $studentRequest = TrainingRequestStudent::create([
+        'training_request_id' => $trainingRequest->id,
+        'user_id' => auth()->id(),
+         'course_id' => $request->course_id,
+        'start_date' => $data['start_date'],
+        'end_date' => $data['end_date'],
+        'notes' => $data['notes'],
+        'status' => 'pending',
+    ]);
+    return response()->json(['data' => $studentRequest], 201);
+}
 }

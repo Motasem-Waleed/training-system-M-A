@@ -79,7 +79,7 @@ const menus = {
     { name: "الإحصائيات", path: "/coordinator/statistics" },
   ],
 
-  principal: [
+  school_manager: [
     { name: "الرئيسية", path: "/principal/dashboard" },
     { name: "الملف الشخصي", path: "/principal/profile" },
     { name: "تعيين المعلم المرشد", path: "/principal/mentor-assignment" },
