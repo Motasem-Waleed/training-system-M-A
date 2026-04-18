@@ -8,7 +8,7 @@ class UpdateTrainingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role?->name === 'coordinator';
+        return in_array($this->user()->role?->name, ['coordinator', 'training_coordinator']);
     }
 
     public function rules(): array

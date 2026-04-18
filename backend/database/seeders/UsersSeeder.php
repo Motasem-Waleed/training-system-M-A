@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
+use App\Models\TrainingSite;
 use App\Models\User;
 use App\Models\Role;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class UsersSeeder extends Seeder
@@ -76,9 +77,10 @@ class UsersSeeder extends Seeder
             ]
         );
 
-        // 6. مدير مدرسة
+        // 6. مدير مدرسة (يرتبط بأول موقع تدريب لاستلام الطلبات المرسلة للمدرسة)
         $schoolManagerRole = Role::where('name', 'school_manager')->first();
-        User::firstOrCreate(
+        $defaultSchoolSiteId = TrainingSite::query()->orderBy('id')->value('id');
+        $sm = User::firstOrCreate(
             ['email' => 'schoolmanager@hebron.edu'],
             [
                 'name' => 'خالد مدير المدرسة',
@@ -87,6 +89,9 @@ class UsersSeeder extends Seeder
                 'status' => 'active',
             ]
         );
+        if ($defaultSchoolSiteId && ! $sm->training_site_id) {
+            $sm->update(['training_site_id' => $defaultSchoolSiteId]);
+        }
 
         // 7. أخصائي نفسي
         $psychologistRole = Role::where('name', 'psychologist')->first();
@@ -94,6 +99,7 @@ class UsersSeeder extends Seeder
             ['email' => 'psychologist@hebron.edu'],
             [
                 'name' => 'سعاد الأخصائية',
+                'university_id' => 'PSY001',
                 'password' => Hash::make('password'),
                 'role_id' => $psychologistRole->id,
                 'status' => 'active',

@@ -7,6 +7,8 @@ use App\Models\TrainingAssignment;
 use App\Models\User;
 use App\Models\TrainingSite;
 use App\Models\Evaluation;
+use App\Models\TrainingRequest;
+use App\Models\TrainingRequestBatch;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -30,8 +32,16 @@ class DashboardController extends Controller
         } elseif ($request->user()->role?->name === 'student') {
             $stats['my_training'] = TrainingAssignment::whereHas('enrollment', fn($q) => $q->where('user_id', $request->user()->id))
                 ->first();
+        } elseif (in_array($request->user()->role?->name, ['training_coordinator', 'coordinator'], true)) {
+            $stats['coordinator_pending_review'] = TrainingRequest::whereIn('book_status', [
+                'sent_to_coordinator',
+                'coordinator_under_review',
+                'needs_edit',
+            ])->count();
+            $stats['coordinator_prelim_approved'] = TrainingRequest::where('book_status', 'prelim_approved')->count();
+            $stats['coordinator_open_batches'] = TrainingRequestBatch::where('status', 'draft')->count();
         }
-        
+
         return response()->json($stats);
     }
 }

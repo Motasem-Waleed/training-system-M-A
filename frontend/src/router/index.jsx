@@ -56,14 +56,26 @@ import Sections from "../pages/supervisor/Sections";
 import Evaluations from "../pages/supervisor/Evaluations";
 import SupervisorReports from "../pages/supervisor/Reports";
 import Submissions from "../pages/supervisor/Submissions";
-import TrainingLogs from "../pages/supervisor/TrainingLogs";
 
-// Mentor
+
+// Mentor (المعلم المرشد — دور teacher)
 import MentorDashboard from "../pages/dashboard/MentorDashboard";
-import Attendance from "../pages/mentor/Attendance";
+import MentorAttendance from "../pages/mentor/Attendance";
+import MentorStudents from "../pages/mentor/MentorStudents";
+import MentorTasks from "../pages/mentor/MentorTasks";
+import MentorEvaluations from "../pages/mentor/MentorEvaluations";
+import MentorSchedule from "../pages/mentor/MentorSchedule";
+
+// Psychologist
+import PsychologistDashboard from "../pages/dashboard/PsychologistDashboard";
+import PsychologistStudents from "../pages/psychologist/Students";
+import PsychologistGuidance from "../pages/psychologist/Guidance";
 
 // Coordinator
 import CoordinatorDashboard from "../pages/dashboard/CoordinatorDashboard";
+import CoordinatorStudents from "../pages/coordinator/Students";
+import CoordinatorDistribution from "../pages/coordinator/Distribution";
+import CoordinatorStatistics from "../pages/coordinator/Statistics";
 
 // Principal
 import PrincipalDashboard from "../pages/dashboard/PrincipalDashboard";
@@ -74,6 +86,7 @@ import PrincipalOfficialLetters from "../pages/principal/OfficialLetters";
 
 // Health Directorate
 import HealthDirectorateDashboard from "../pages/dashboard/HealthDirectorateDashboard";
+import HealthTrainingSites from "../pages/healthDirectorate/HealthTrainingSites";
 
 // Education Directorate
 import EducationDirectorateDashboard from "../pages/dashboard/EducationDirectorateDashboard";
@@ -120,6 +133,7 @@ export default function AppRouter() {
 
           <Route path="/admin/enrollments" element={<EnrollmentsList />} />
           <Route path="/admin/enrollments/create" element={<EnrollmentForm />} />
+          <Route path="/admin/enrollments/edit/:id" element={<EnrollmentForm />} />
 
           <Route path="/admin/training-sites" element={<TrainingSitesList />} />
           <Route path="/admin/training-sites/create" element={<TrainingSiteForm />} />
@@ -161,14 +175,26 @@ export default function AppRouter() {
           <Route path="/supervisor/evaluations" element={<Evaluations />} />
           <Route path="/supervisor/reports" element={<SupervisorReports />} />
           <Route path="/supervisor/submissions" element={<Submissions />} />
-          <Route path="/supervisor/training-logs" element={<TrainingLogs />} />
+          
 
-          {/* Mentor */}
+          {/* Mentor / المعلم المرشد */}
           <Route path="/mentor/dashboard" element={<MentorDashboard />} />
-          <Route path="/mentor/attendance" element={<Attendance />} />
+          <Route path="/mentor/students" element={<MentorStudents />} />
+          <Route path="/mentor/tasks" element={<MentorTasks />} />
+          <Route path="/mentor/attendance" element={<MentorAttendance />} />
+          <Route path="/mentor/evaluations" element={<MentorEvaluations />} />
+          <Route path="/mentor/schedule" element={<MentorSchedule />} />
+
+          {/* الأخصائي النفسي */}
+          <Route path="/psychologist/dashboard" element={<PsychologistDashboard />} />
+          <Route path="/psychologist/students" element={<PsychologistStudents />} />
+          <Route path="/psychologist/guidance" element={<PsychologistGuidance />} />
 
           {/* Coordinator */}
           <Route path="/coordinator/dashboard" element={<CoordinatorDashboard />} />
+          <Route path="/coordinator/students" element={<CoordinatorStudents />} />
+          <Route path="/coordinator/distribution" element={<CoordinatorDistribution />} />
+          <Route path="/coordinator/statistics" element={<CoordinatorStatistics />} />
 
           {/* Principal */}
           <Route path="/principal/dashboard" element={<PrincipalDashboard />} />
@@ -179,6 +205,7 @@ export default function AppRouter() {
 
           {/* Health */}
           <Route path="/health/dashboard" element={<HealthDirectorateDashboard />} />
+          <Route path="/health/training-sites" element={<HealthTrainingSites />} />
 
           {/* Education */}
           <Route path="/education/dashboard" element={<EducationDirectorateDashboard />} />

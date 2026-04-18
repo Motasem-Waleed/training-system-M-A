@@ -84,7 +84,13 @@ class RolePermissionSeeder extends Seeder
             $schoolManager->permissions()->sync($managerPerms);
         }
 
-        // الأدوار الأخرى (مرشد، أخصائي نفسي، رئيس قسم، مديريات) يمكن إعطاؤهم صلاحيات محددة حسب الحاجة
-        // إذا لم تكن هناك صلاحيات خاصة، نتركها فارغة
+        // 7. الأخصائي النفسي: إطلاع على التقارير وإرسال إشعارات عند التوسعة
+        if ($psychologist) {
+            $psychologistPerms = Permission::whereIn('name', [
+                'view_reports',
+                'send_notifications',
+            ])->get();
+            $psychologist->permissions()->sync($psychologistPerms);
+        }
     }
 }

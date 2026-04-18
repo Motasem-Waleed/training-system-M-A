@@ -28,9 +28,11 @@ class EvaluationController extends Controller
             $query->where('training_assignment_id', $request->training_assignment_id);
         }
         if ($request->user()->role?->name === 'student') {
-            $query->whereHas('trainingAssignment.enrollment', fn($q) => $q->where('user_id', $request->user()->id));
+            $query->whereHas('trainingAssignment.enrollment', fn ($q) => $q->where('user_id', $request->user()->id));
         } elseif ($request->user()->role?->name === 'teacher') {
             $query->where('evaluator_id', $request->user()->id);
+        } elseif ($request->user()->role?->name === 'school_manager' && $request->user()->training_site_id) {
+            $query->whereHas('trainingAssignment', fn ($q) => $q->where('training_site_id', $request->user()->training_site_id));
         }
         
         $evaluations = $query->latest()->paginate($request->per_page ?? 15);
@@ -39,10 +41,18 @@ class EvaluationController extends Controller
 
     public function store(StoreEvaluationRequest $request)
     {
+        if ($request->user()->role?->name === 'school_manager' && $request->user()->training_site_id) {
+            $assignment = TrainingAssignment::query()->findOrFail($request->input('training_assignment_id'));
+            if ((int) $assignment->training_site_id !== (int) $request->user()->training_site_id) {
+                abort(403, 'لا يمكن تقييم طالب خارج جهة التدريب التابعة لك.');
+            }
+        }
+
         $evaluation = $this->evaluationService->createEvaluation(
             $request->validated(),
             $request->user()->id
         );
+
         return new EvaluationResource($evaluation);
     }
 

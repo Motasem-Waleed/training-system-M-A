@@ -13,7 +13,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'university_id', 'name', 'email', 'password', 'status',
-        'department_id', 'role_id', 'phone'
+        'department_id', 'role_id', 'phone', 'training_site_id',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -26,6 +26,11 @@ class User extends Authenticatable
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function trainingSite()
+    {
+        return $this->belongsTo(TrainingSite::class);
     }
     public function hasPermission($permission)
 {
@@ -135,4 +140,18 @@ public function enrollments()
 {
     return $this->hasMany(Enrollment::class);
 }
+
+    /** أحدث تعيين تدريبي مرتبط بتسجيل الطالب (للجدول، السجل، المهام). */
+    public function currentTrainingAssignment(): ?TrainingAssignment
+    {
+        $enrollment = $this->enrollments()->latest('id')->first();
+        if (! $enrollment) {
+            return null;
+        }
+
+        return $enrollment->trainingAssignments()
+            ->with(['trainingSite', 'teacher', 'trainingPeriod'])
+            ->latest('id')
+            ->first();
+    }
 }

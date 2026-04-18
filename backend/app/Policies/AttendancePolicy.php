@@ -7,6 +7,17 @@ use App\Models\Attendance;
 
 class AttendancePolicy
 {
+    public function viewAny(User $user): bool
+    {
+        return in_array($user->role?->name, [
+            'admin',
+            'teacher',
+            'school_manager',
+            'academic_supervisor',
+            'student',
+        ], true);
+    }
+
     public function view(User $user, Attendance $attendance): bool
     {
         if ($user->id === $attendance->user_id) return true;

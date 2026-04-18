@@ -7,6 +7,17 @@ use App\Models\Evaluation;
 
 class EvaluationPolicy
 {
+    public function viewAny(User $user): bool
+    {
+        return in_array($user->role?->name, [
+            'admin',
+            'academic_supervisor',
+            'teacher',
+            'school_manager',
+            'student',
+        ], true);
+    }
+
     public function view(User $user, Evaluation $evaluation): bool
     {
         if ($user->role?->name === 'admin') return true;

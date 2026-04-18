@@ -14,7 +14,6 @@ class StoreTrainingLogRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'training_assignment_id' => 'required|exists:training_assignments,id',
             'log_date' => 'required|date',
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',

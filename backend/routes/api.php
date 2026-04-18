@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\{
     TrainingRequestController,
+    TrainingRequestBatchController,
     TrainingAssignmentController,
     EvaluationController,
     UserController,
@@ -68,6 +69,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('training-requests/{training_request}/send-to-school', [TrainingRequestController::class, 'sendToSchool']);
     Route::post('training-requests/{training_request}/school-approve', [TrainingRequestController::class, 'schoolApprove']);
     Route::post('training-requests/{training_request}/reject', [TrainingRequestController::class, 'reject']);
+    Route::post('training-requests/{training_request}/coordinator-review', [TrainingRequestController::class, 'coordinatorReview']);
+
+    // Coordinator batching
+    Route::get('training-request-batches', [TrainingRequestBatchController::class, 'index']);
+    Route::get('training-request-batches/{training_request_batch}', [TrainingRequestBatchController::class, 'show']);
+    Route::post('training-request-batches', [TrainingRequestBatchController::class, 'store']);
+    Route::post('training-request-batches/{training_request_batch}/send', [TrainingRequestBatchController::class, 'send']);
 
     // Affectations
     Route::apiResource('training-assignments', TrainingAssignmentController::class);
@@ -146,6 +154,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('student')->group(function () {
         Route::get('/training-requests', [TrainingRequestController::class, 'studentIndex']);
         Route::post('/training-requests', [TrainingRequestController::class, 'studentStore']);
+        Route::put('/training-requests/{training_request}', [TrainingRequestController::class, 'studentUpdate']);
         Route::get('/schedule', [WeeklyScheduleController::class, 'studentSchedule']);
         
         // Training logs
@@ -165,9 +174,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/tasks/{task}/submit', [TaskSubmissionController::class, 'store']);
         
         // Notifications étudiant
-        
-Route::get('/notifications', [NotificationController::class, 'index']);
-Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     });
 
     // Portfolio personnel

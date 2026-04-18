@@ -36,6 +36,14 @@ class AttendanceController extends Controller
         if ($request->has('date_to')) {
             $query->whereDate('date', '<=', $request->date_to);
         }
+
+        if ($request->user()->role?->name === 'teacher') {
+            $query->whereHas('trainingAssignment', function ($q) use ($request) {
+                $q->where('teacher_id', $request->user()->id);
+            });
+        } elseif ($request->user()->role?->name === 'student') {
+            $query->where('user_id', $request->user()->id);
+        }
         
         $attendances = $query->latest('date')->paginate($request->per_page ?? 15);
         return AttendanceResource::collection($attendances);

@@ -1,11 +1,16 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import SidebarMenuGlyph from "./SidebarMenuGlyph";
 
 const roleLabels = {
   admin: "مدير النظام",
   coordinator: "المنسق الأكاديمي",
+  training_coordinator: "منسق التدريب",
   supervisor: "المشرف الأكاديمي",
+  teacher: "المعلم المرشد",
   mentor: "المشرف الميداني",
+  psychologist: "الأخصائي النفسي",
   principal: "مدير جهة التدريب",
+  school_manager: "مدير جهة التدريب",
   health_directorate: "مديرية الصحة",
   education_directorate: "مديرية التربية والتعليم",
   student: "الطالب المتدرب",
@@ -57,9 +62,19 @@ const menus = {
   ],
 
   mentor: [
-    { name: "الرئيسية", path: "/mentor/attendance" },
+    { name: "الرئيسية", path: "/mentor/dashboard" },
+    { name: "طلبة التدريب", path: "/mentor/students" },
+    { name: "المهام", path: "/mentor/tasks" },
     { name: "الحضور", path: "/mentor/attendance" },
-    { name: "التقارير اليومية", path: "/mentor/reports" },
+    { name: "التقييمات", path: "/mentor/evaluations" },
+    { name: "الجدول الأسبوعي", path: "/mentor/schedule" },
+  ],
+
+  psychologist: [
+    { name: "الرئيسية", path: "/psychologist/dashboard" },
+    { name: "الطلبة", path: "/psychologist/students" },
+    { name: "الإرشاد والدعم", path: "/psychologist/guidance" },
+    { name: "الإشعارات", path: "/notifications" },
   ],
 
   student: [
@@ -87,6 +102,14 @@ const menus = {
     { name: "الكتب الرسمية", path: "/principal/official-letters" },
   ],
 
+  principal: [
+    { name: "الرئيسية", path: "/principal/dashboard" },
+    { name: "الملف الشخصي", path: "/principal/profile" },
+    { name: "تعيين المعلم المرشد", path: "/principal/mentor-assignment" },
+    { name: "الطلبة المتدربون", path: "/principal/trainee-students" },
+    { name: "الكتب الرسمية", path: "/principal/official-letters" },
+  ],
+
   health_directorate: [
     { name: "الرئيسية", path: "/health/dashboard" },
     { name: "أماكن التدريب", path: "/health/training-sites" },
@@ -102,9 +125,15 @@ const menus = {
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const savedUser = JSON.parse(localStorage.getItem("user")) || {};
-  const role = savedUser?.role?.name || savedUser?.role || "admin";
+  const rawRole = savedUser?.role?.name || savedUser?.role || "admin";
+  const role =
+    rawRole === "training_coordinator"
+      ? "coordinator"
+      : rawRole === "teacher"
+        ? "mentor"
+        : rawRole;
   const userName = savedUser?.name || "مستخدم تجريبي";
-const roleName = roleLabels[role] || "مستخدم النظام";
+const roleName = roleLabels[rawRole] || roleLabels[role] || "مستخدم النظام";
 const menu = menus[role] || [];
 
   const getInitials = (name) => {
@@ -135,7 +164,7 @@ const menu = menus[role] || [];
 
       <div className="sidebar-brand">
         <h2>جامعة الخليل</h2>
-        <p>نظام إدارة التدريب الميداني</p>
+        <p>منصة إدارة التدريب الميداني</p>
       </div>
 
       <div className="sidebar-menu">
@@ -150,6 +179,7 @@ const menu = menus[role] || [];
               `sidebar-link ${isActive ? "active" : ""}`
             }
           >
+            <SidebarMenuGlyph path={item.path} />
             <span>{item.name}</span>
           </NavLink>
         ))}

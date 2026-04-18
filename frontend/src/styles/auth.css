@@ -4,9 +4,9 @@
   place-items: center;
   padding: 28px 16px;
   background:
-    radial-gradient(circle at top right, rgba(176, 141, 87, 0.12), transparent 18%),
-    radial-gradient(circle at bottom left, rgba(23, 50, 75, 0.08), transparent 22%),
-    linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+    radial-gradient(circle at top right, rgba(158, 115, 70, 0.14), transparent 20%),
+    radial-gradient(circle at bottom left, rgba(20, 42, 66, 0.09), transparent 26%),
+    linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 45%, #e6ebf2 100%);
 }
 
 .auth-shell {
@@ -23,8 +23,8 @@
 
 .auth-side {
   background:
-    radial-gradient(circle at top, rgba(176, 141, 87, 0.18), transparent 26%),
-    linear-gradient(180deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+    radial-gradient(circle at 80% 0%, rgba(212, 188, 152, 0.2), transparent 32%),
+    linear-gradient(165deg, var(--secondary) 0%, var(--primary-dark) 55%, #0a1828 100%);
   color: #fff;
   padding: 44px 36px;
   display: flex;
@@ -69,16 +69,31 @@
 }
 
 .auth-logo {
-  width: 74px;
-  height: 74px;
+  width: 120px;
+  height: auto;
+  min-height: 74px;
   border-radius: 20px;
   display: grid;
   place-items: center;
+  padding: 10px 12px;
   margin-bottom: 18px;
-  background: linear-gradient(135deg, rgba(176, 141, 87, 0.16), rgba(23, 50, 75, 0.08));
+  background: linear-gradient(135deg, rgba(158, 115, 70, 0.18), rgba(20, 42, 66, 0.1));
   color: var(--secondary);
   font-size: 1.5rem;
   font-weight: 800;
+}
+
+.auth-logo-img {
+  width: 100%;
+  max-width: 104px;
+  height: auto;
+  margin: 0;
+  object-fit: contain;
+}
+
+.auth-form-alert {
+  margin-bottom: 14px;
+  margin-top: 4px;
 }
 
 .auth-card h2,
@@ -114,9 +129,16 @@
   transition: var(--transition);
 }
 
-.auth-btn:hover {
+.auth-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 16px 26px rgba(23, 50, 75, 0.2);
+}
+
+.auth-btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 8px 16px rgba(23, 50, 75, 0.1);
 }
 
 .auth-extra {
@@ -160,7 +182,11 @@
   }
 
   .auth-logo {
-    width: 64px;
-    height: 64px;
+    width: 104px;
+    min-height: 64px;
+  }
+
+  .auth-logo-img {
+    max-width: 88px;
   }
 }

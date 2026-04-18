@@ -20,11 +20,13 @@ class TrainingAssignmentController extends Controller
         $query = TrainingAssignment::with(['enrollment.user', 'trainingSite', 'teacher', 'academicSupervisor']);
         
         if ($request->user()->role?->name === 'student') {
-            $query->whereHas('enrollment', fn($q) => $q->where('user_id', $request->user()->id));
+            $query->whereHas('enrollment', fn ($q) => $q->where('user_id', $request->user()->id));
         } elseif ($request->user()->role?->name === 'teacher') {
             $query->where('teacher_id', $request->user()->id);
         } elseif ($request->user()->role?->name === 'academic_supervisor') {
             $query->where('academic_supervisor_id', $request->user()->id);
+        } elseif ($request->user()->role?->name === 'school_manager' && $request->user()->training_site_id) {
+            $query->where('training_site_id', $request->user()->training_site_id);
         }
         
         $assignments = $query->latest()->paginate($request->per_page ?? 15);

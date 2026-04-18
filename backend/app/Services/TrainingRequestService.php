@@ -8,12 +8,13 @@ use App\Models\TrainingAssignment;
 use App\Models\OfficialLetter;
 use App\Models\WorkflowInstance;
 use App\Models\WorkflowApproval;
+use App\Models\Notification as AppNotification;
 use App\Enums\BookStatus;
 use App\Enums\TrainingRequestStudentStatus;
 use App\Enums\OfficialLetterType;
 use App\Enums\OfficialLetterStatus;
+use App\Support\TrainingRequestNotifications;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 
 class TrainingRequestService
 {
@@ -119,6 +120,27 @@ class TrainingRequestService
                     ]);
                 }
             }
+
+            $this->notifyCoordinator(
+                $trainingRequest,
+                'training_request_directorate_approved',
+                'تمت موافقة الجهة الرسمية على طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . '.',
+                [
+                    'training_request_id' => $trainingRequest->id,
+                    'book_status' => BookStatus::DIRECTORATE_APPROVED->value,
+                ]
+            );
+
+            $trainingRequest->load('trainingRequestStudents');
+            TrainingRequestNotifications::forStudents(
+                $trainingRequest,
+                'training_request_directorate_approved_student',
+                'تمت موافقة الجهة الرسمية على طلب التدريب الخاص بك.',
+                [
+                    'training_request_id' => $trainingRequest->id,
+                    'book_status' => BookStatus::DIRECTORATE_APPROVED->value,
+                ]
+            );
         });
     }
 
@@ -180,6 +202,17 @@ class TrainingRequestService
                 'school_approved_at' => now(),
             ]);
 
+            $trainingRequest->load('trainingRequestStudents');
+            TrainingRequestNotifications::forStudents(
+                $trainingRequest,
+                'training_request_school_approved_student',
+                'تمت موافقة جهة التدريب ويمكنك متابعة التدريب الميداني في النظام.',
+                [
+                    'training_request_id' => $trainingRequest->id,
+                    'book_status' => BookStatus::SCHOOL_APPROVED->value,
+                ]
+            );
+
             // تحديث الـ workflow إلى completed
             $workflowInstance = WorkflowInstance::where('model_type', TrainingRequest::class)
                 ->where('model_id', $trainingRequest->id)
@@ -214,7 +247,55 @@ class TrainingRequestService
             if ($workflowInstance) {
                 $workflowInstance->update(['status' => 'rejected']);
             }
+
+            $this->notifyCoordinator(
+                $trainingRequest,
+                'training_request_directorate_rejected',
+                'تم رفض طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . '. سبب الرفض: ' . $reason,
+                [
+                    'training_request_id' => $trainingRequest->id,
+                    'book_status' => BookStatus::REJECTED->value,
+                    'rejection_reason' => $reason,
+                ]
+            );
+
+            $trainingRequest->load('trainingRequestStudents');
+            TrainingRequestNotifications::forStudents(
+                $trainingRequest,
+                'training_request_rejected_student',
+                'تم رفض طلب التدريب. السبب: ' . $reason,
+                [
+                    'training_request_id' => $trainingRequest->id,
+                    'book_status' => BookStatus::REJECTED->value,
+                    'rejection_reason' => $reason,
+                ]
+            );
         });
+    }
+
+    private function notifyCoordinator(
+        TrainingRequest $trainingRequest,
+        string $type,
+        string $message,
+        array $data = []
+    ): void {
+        $coordinatorId = OfficialLetter::where('training_request_id', $trainingRequest->id)
+            ->where('type', OfficialLetterType::TO_DIRECTORATE->value)
+            ->latest('id')
+            ->value('sent_by');
+
+        if (!$coordinatorId) {
+            return;
+        }
+
+        AppNotification::create([
+            'user_id' => $coordinatorId,
+            'type' => $type,
+            'message' => $message,
+            'notifiable_type' => TrainingRequest::class,
+            'notifiable_id' => $trainingRequest->id,
+            'data' => $data,
+        ]);
     }
 
     private function generateLetterNumber(): string

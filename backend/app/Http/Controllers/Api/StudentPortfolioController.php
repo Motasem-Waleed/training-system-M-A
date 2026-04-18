@@ -23,18 +23,20 @@ class StudentPortfolioController extends Controller
      * Get current user's portfolio (SAFE VERSION)
      * Route: /api/my-portfolio
      */
-public function getMyPortfolio(Request $request)
-{
-    $user = $request->user();
+    public function getMyPortfolio(Request $request)
+    {
+        $user = $request->user();
 
-    $portfolio = StudentPortfolio::with('entries')
-        ->firstOrCreate(
-            ['user_id' => $user->id],
-            ['training_assignment_id' => null]
-        );
+        $portfolio = StudentPortfolio::with('entries')
+            ->firstOrCreate(
+                ['user_id' => $user->id],
+                ['training_assignment_id' => null]
+            );
 
-    return new StudentPortfolioResource($portfolio->load('entries'));
-}
+        $this->authorize('view', $portfolio);
+
+        return new StudentPortfolioResource($portfolio->load('entries'));
+    }
 
     /**
      * List portfolios (admin/general use)

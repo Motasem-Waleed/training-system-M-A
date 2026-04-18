@@ -14,9 +14,9 @@ class SchoolApproveTrainingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'students' => 'required|array',
-            'students.*.id' => 'required|exists:training_request_students,id',
-            'students.*.assigned_teacher_id' => 'required|exists:users,id',
+            'students' => 'required_if:status,approved|array',
+            'students.*.id' => 'required_if:status,approved|exists:training_request_students,id',
+            'students.*.assigned_teacher_id' => 'required_if:status,approved|exists:users,id',
             'status' => 'required|in:approved,rejected',
             'rejection_reason' => 'required_if:status,rejected|nullable|string',
         ];

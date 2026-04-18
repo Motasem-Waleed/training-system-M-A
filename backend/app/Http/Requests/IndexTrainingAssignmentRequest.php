@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Enums\TrainingAssignmentStatus;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class IndexTrainingAssignmentRequest extends FormRequest
 {
@@ -15,7 +16,10 @@ class IndexTrainingAssignmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'nullable|in:' . implode(',', array_column(TrainingAssignmentStatus::cases(), 'value')),
+            'status' => [
+                'nullable',
+                Rule::in(array_map(static fn (TrainingAssignmentStatus $c) => $c->value, TrainingAssignmentStatus::cases())),
+            ],
             'user_id' => 'nullable|exists:users,id',
             'training_site_id' => 'nullable|exists:training_sites,id',
             'academic_supervisor_id' => 'nullable|exists:users,id',

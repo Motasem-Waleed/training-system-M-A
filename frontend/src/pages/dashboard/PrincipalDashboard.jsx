@@ -1,88 +1,151 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  getCurrentUser,
+  getNotifications,
+  getOfficialLetters,
+  getTrainingRequests,
+  itemsFromPagedResponse,
+} from "../../services/api";
+
 const PrincipalDashboard = () => {
-  const principalInfo = {
-    principalName: "أ. أحمد محمد الجعبري",
-    schoolName: "مدرسة الحسين الثانوية",
-    directorate: "مديرية الخليل",
-    schoolType: "مدرسة حكومية",
-    phone: "0599000000",
-    email: "principal@school.edu",
+  const [loading, setLoading] = useState(true);
+  const [principalInfo, setPrincipalInfo] = useState({
+    principalName: "—",
+    schoolName: "—",
+    directorate: "—",
+    schoolType: "—",
+    phone: "—",
+    email: "—",
+  });
+  const [requests, setRequests] = useState([]);
+  const [latestLetters, setLatestLetters] = useState([]);
+  const [latestActivities, setLatestActivities] = useState([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [userRes, requestsRes, lettersRes, notificationsRes] =
+        await Promise.all([
+          getCurrentUser().catch(() => null),
+          getTrainingRequests({ per_page: 100 }).catch(() => ({ data: [] })),
+          getOfficialLetters({ type: "to_school", per_page: 5 }).catch(() => ({
+            data: [],
+          })),
+          getNotifications({ per_page: 5 }).catch(() => ({ data: [] })),
+        ]);
+
+      const requestsList = itemsFromPagedResponse(requestsRes);
+      const lettersList = itemsFromPagedResponse(lettersRes);
+      const notificationsList = itemsFromPagedResponse(notificationsRes);
+
+      const u = userRes?.data || userRes || {};
+      const site = u.training_site?.data || u.training_site || {};
+      setPrincipalInfo({
+        principalName: u.name || "—",
+        schoolName: site.name || "غير محدد — اربط الحساب بموقع تدريب من الإدارة",
+        directorate: site.directorate || "—",
+        schoolType:
+          site.site_type_label ||
+          (site.school_type === "private"
+            ? "جهة خاصة"
+            : site.school_type === "public"
+              ? "جهة حكومية"
+              : site.site_type === "health_center"
+                ? "مركز صحي / تدريب صحي"
+                : "مدرسة / جهة تدريب"),
+        phone: u.phone || "—",
+        email: u.email || "—",
+      });
+      setRequests(requestsList);
+      setLatestLetters(
+        lettersList.map((letter) => ({
+          id: letter.id,
+          subject: letter.letter_number || "كتاب رسمي",
+          sender: letter.sent_by?.data?.name || letter.sent_by?.name || "—",
+          date: letter.letter_date || letter.created_at || "—",
+        }))
+      );
+      setLatestActivities(
+        notificationsList.map((item) => item.message).filter(Boolean)
+      );
+    } catch (error) {
+      console.error("Failed to load principal dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const pendingRequests = useMemo(() => {
+    return requests
+      .filter((request) =>
+        ["sent_to_school", "school_approved"].includes(request.book_status)
+      )
+      .flatMap((request) =>
+        (request.students || []).map((student) => ({
+          id: `${request.id}-${student.id}`,
+          studentName:
+            student.user?.data?.name || student.user?.name || "طالب غير معروف",
+          specialization:
+            student.course?.data?.name || student.course?.name || "—",
+          status: student.status_label || student.status || "قيد المراجعة",
+          badgeClass:
+            student.status === "approved"
+              ? "badge-custom badge-success"
+              : student.status === "rejected"
+              ? "badge-custom badge-danger"
+              : "badge-custom badge-warning",
+        }))
+      )
+      .slice(0, 6);
+  }, [requests]);
 
   const summaryCards = [
     {
       title: "طلبات التدريب الجديدة",
-      value: "5",
+      value: String(
+        requests.filter((request) => request.book_status === "sent_to_school")
+          .length
+      ),
       desc: "طلبات بحاجة لمراجعة واعتماد",
       className: "warning",
     },
     {
       title: "الطلبة المتدربون",
-      value: "12",
+      value: String(
+        requests
+          .flatMap((request) => request.students || [])
+          .filter((student) => student.status === "approved").length
+      ),
       desc: "عدد الطلبة المقبولين داخل المدرسة",
       className: "primary",
     },
     {
       title: "المعلمون المرشدون",
-      value: "6",
+      value: String(
+        requests
+          .flatMap((request) => request.students || [])
+          .filter((student) => student.assigned_teacher).length
+      ),
       desc: "تم تعيينهم لمتابعة الطلبة",
       className: "success",
     },
     {
       title: "الكتب الرسمية",
-      value: "3",
+      value: String(latestLetters.length),
       desc: "كتب جديدة واردة من المديرية",
       className: "accent",
     },
   ];
 
-  const pendingRequests = [
-    {
-      id: 1,
-      studentName: "محمد أحمد النجار",
-      specialization: "أساليب تدريس اللغة العربية",
-      status: "قيد المراجعة",
-      badgeClass: "badge-custom badge-warning",
-    },
-    {
-      id: 2,
-      studentName: "آية خالد أبو عيشة",
-      specialization: "الإرشاد النفسي والتربوي",
-      status: "قيد المراجعة",
-      badgeClass: "badge-custom badge-warning",
-    },
-    {
-      id: 3,
-      studentName: "لينا محمود الطروة",
-      specialization: "أساليب تدريس الرياضيات",
-      status: "بانتظار تعيين مرشد",
-      badgeClass: "badge-custom badge-warning",
-    },
-  ];
-
-  const latestLetters = [
-    {
-      id: 1,
-      subject: "كتاب اعتماد تدريب طلبة الفصل الأول",
-      sender: "مديرية الخليل",
-      date: "2026-03-26",
-    },
-    {
-      id: 2,
-      subject: "كتاب متابعة توزيع الطلبة",
-      sender: "كلية التربية - جامعة الخليل",
-      date: "2026-03-25",
-    },
-  ];
-
-  const latestActivities = [
-    "تمت إضافة 3 طلبات تدريب جديدة.",
-    "تم اعتماد طالبين للتدريب داخل المدرسة.",
-    "تم استلام كتاب رسمي جديد من المديرية.",
-    "تم تعيين معلم مرشد جديد لأحد الطلبة.",
-  ];
-
   return (
     <>
+      {loading ? (
+        <div className="alert-custom alert-info">جاري تحميل لوحة المدير...</div>
+      ) : null}
       <div className="content-header">
         <h1 className="page-title">الرئيسية - مدير المدرسة</h1>
         <p className="page-subtitle">

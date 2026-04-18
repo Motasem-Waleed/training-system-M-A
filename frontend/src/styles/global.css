@@ -1,28 +1,30 @@
 :root {
-  --primary: #17324b;
-  --primary-dark: #102638;
-  --secondary: #1d3b53;
-  --secondary-dark: #122b40;
-  --accent: #b08d57;
-  --accent-soft: #d9c2a1;
-  --success: #1f8f63;
-  --warning: #d18b1f;
-  --danger: #b03a48;
-  --info: #3b82b6;
+  /* هوية منصة أكاديمية: أزرق حبر، ورق دافئ، لمسة ذهبية معتدلة */
+  --primary: #142a42;
+  --primary-dark: #0d1f33;
+  --secondary: #1c3952;
+  --secondary-dark: #122a3d;
+  --accent: #9e7346;
+  --accent-soft: #d4bc98;
+  --success: #1c7a56;
+  --warning: #b87712;
+  --danger: #a33442;
+  --info: #2e6fa3;
 
-  --text: #1f2d3d;
-  --text-soft: #56697d;
-  --text-faint: #7b8da1;
+  --text: #1a2736;
+  --text-soft: #4a5f73;
+  --text-faint: #6b7f92;
 
-  --bg: #f5f7fb;
-  --bg-soft: #f9fbfd;
+  --bg: #f4f6f9;
+  --bg-soft: #faf8f5;
+  --bg-paper: #fffefb;
   --white: #ffffff;
-  --border: #dbe4ee;
-  --border-strong: #c9d6e3;
+  --border: #d5dde8;
+  --border-strong: #b9c8d9;
 
-  --shadow-sm: 0 6px 18px rgba(17, 38, 56, 0.05);
-  --shadow-md: 0 10px 30px rgba(17, 38, 56, 0.08);
-  --shadow-lg: 0 16px 40px rgba(17, 38, 56, 0.12);
+  --shadow-sm: 0 6px 20px rgba(13, 31, 51, 0.06);
+  --shadow-md: 0 12px 32px rgba(13, 31, 51, 0.09);
+  --shadow-lg: 0 18px 44px rgba(13, 31, 51, 0.12);
 
   --radius-sm: 10px;
   --radius-md: 16px;
@@ -34,6 +36,11 @@
   --sidebar-width: 300px;
   --navbar-height: 78px;
   --content-max: 100%;
+
+  /* بطاقات لوحة التحكم */
+  --stat-border-primary: var(--info);
+  --stat-border-success: var(--success);
+  --stat-border-info: var(--primary);
 }
 
 *,
@@ -52,9 +59,14 @@ body {
   direction: rtl;
   text-align: right;
   font-family: "Tajawal", "Cairo", "Segoe UI", sans-serif;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(158, 115, 70, 0.06), transparent 45%),
+    radial-gradient(ellipse 90% 60% at 0% 100%, rgba(20, 42, 66, 0.04), transparent 50%),
+    linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 38%, #eef1f6 100%);
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
 }
 
 body,
@@ -99,7 +111,7 @@ p {
 }
 
 ::selection {
-  background: rgba(176, 141, 87, 0.2);
+  background: rgba(158, 115, 70, 0.22);
 }
 
 /* Typography */
@@ -167,7 +179,7 @@ p {
 .content-card,
 .data-card,
 .form-card {
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  background: linear-gradient(180deg, var(--bg-paper) 0%, #f8fafc 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -292,6 +304,7 @@ p {
 }
 
 .form-control-custom,
+.form-input-custom,
 .form-select-custom,
 .form-textarea-custom,
 .input-custom,
@@ -316,6 +329,7 @@ p {
 }
 
 .form-control-custom:focus,
+.form-input-custom:focus,
 .form-select-custom:focus,
 .form-textarea-custom:focus,
 .input-custom:focus,

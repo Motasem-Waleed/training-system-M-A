@@ -9,10 +9,8 @@ class DepartmentSeeder extends Seeder
 {
     public function run()
     {
-        Department::insert([
-            ['name' => 'psychology'],
-            ['name' => 'usool_tarbiah'],
-            ['name' => 'administration'],
-        ]);
+        foreach (['psychology', 'usool_tarbiah', 'administration'] as $name) {
+            Department::query()->firstOrCreate(['name' => $name]);
+        }
     }
 }

@@ -1,101 +1,170 @@
+import { useEffect, useState } from "react";
+import {
+  getCurrentUser,
+  getOfficialLetters,
+  getTrainingSites,
+  getAnnouncements,
+} from "../../services/api";
+
 const EducationDirectorateDashboard = () => {
-  const directorateInfo = {
-    name: "مديرية الخليل",
-    officer: "أ. سامر القواسمي",
-    email: "directorate@edu.ps",
-    phone: "022222222",
+  const [loading, setLoading] = useState(true);
+
+  const [directorateInfo, setDirectorateInfo] = useState({
+    name: "مديرية التربية",
+    officer: "—",
+    email: "—",
+    phone: "—",
+  });
+
+  const [officialLetters, setOfficialLetters] = useState([]);
+  const [trainingPlaces, setTrainingPlaces] = useState([]);
+  const [latestActivities, setLatestActivities] = useState([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      const [userRes, lettersRes, sitesRes, announcementsRes] =
+        await Promise.all([
+          getCurrentUser().catch(() => null),
+          getOfficialLetters().catch(() => []),
+          getTrainingSites().catch(() => []),
+          getAnnouncements().catch(() => []),
+        ]);
+
+      const lettersData = Array.isArray(lettersRes?.data)
+        ? lettersRes.data
+        : Array.isArray(lettersRes)
+        ? lettersRes
+        : [];
+
+      const sitesData = Array.isArray(sitesRes?.data)
+        ? sitesRes.data
+        : Array.isArray(sitesRes)
+        ? sitesRes
+        : [];
+
+      const announcementsData = Array.isArray(announcementsRes?.data)
+        ? announcementsRes.data
+        : Array.isArray(announcementsRes)
+        ? announcementsRes
+        : [];
+
+      setDirectorateInfo({
+        name:
+          userRes?.directorate ||
+          userRes?.department?.name ||
+          "مديرية الخليل",
+        officer: userRes?.name || "مسؤول مديرية التربية",
+        email: userRes?.email || "—",
+        phone: userRes?.phone || "—",
+      });
+
+      setOfficialLetters(
+        lettersData.slice(0, 5).map((item) => ({
+          id: item.id,
+          title: item.training_request?.title || item.letter_number || "بدون عنوان",
+          receiver:
+            item.training_site?.name ||
+            item.received_by?.data?.name ||
+            item.received_by?.name ||
+            "غير محدد",
+          date: item.letter_date || item.created_at || "—",
+          status: item.status_label || "مرسل للمديرية",
+          badgeClass:
+            item.status === "directorate_approved"
+              ? "badge-custom badge-success"
+              : item.status === "sent_to_school" || item.status === "school_received"
+              ? "badge-custom badge-info"
+              : item.status === "completed"
+              ? "badge-custom badge-soft"
+              : item.status === "rejected"
+              ? "badge-custom badge-danger"
+              : "badge-custom badge-warning",
+        }))
+      );
+
+      setTrainingPlaces(
+        sitesData.slice(0, 5).map((item) => ({
+          id: item.id,
+          name: item.name || "بدون اسم",
+          type:
+            item.site_type === "school"
+              ? "مدرسة"
+              : item.site_type === "health_center"
+              ? "مركز صحي"
+              : item.site_type || "غير محدد",
+          capacity: item.capacity ?? 0,
+          contact: item.phone || item.contact || item.location || "—",
+          status:
+            item.is_active === true || item.is_active === 1 ? "متاح" : "غير نشط",
+          badgeClass:
+            item.is_active === true || item.is_active === 1
+              ? "badge-custom badge-success"
+              : "badge-custom badge-danger",
+        }))
+      );
+
+      setLatestActivities(
+        announcementsData.length > 0
+          ? announcementsData.slice(0, 4).map((item) => item.title || item.message || item.description)
+          : [
+              "لا توجد أنشطة حديثة حاليًا.",
+            ]
+      );
+    } catch (error) {
+      console.error("Failed to load education dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const summaryCards = [
     {
       title: "الكتب الرسمية الجديدة",
-      value: "4",
+      value: String(officialLetters.length),
       desc: "كتب بانتظار المراجعة أو الإرسال",
       className: "primary",
     },
     {
       title: "أماكن التدريب",
-      value: "18",
+      value: String(trainingPlaces.length),
       desc: "عدد المدارس والجهات التدريبية",
       className: "accent",
     },
     {
       title: "الأماكن النشطة",
-      value: "14",
+      value: String(
+        trainingPlaces.filter(
+          (item) => item.status === "نشط" || item.status === "متاح"
+        ).length
+      ),
       desc: "جهات متاحة لاستقبال الطلبة",
       className: "success",
     },
     {
       title: "بحاجة لتحديث",
-      value: "3",
+      value: String(
+        trainingPlaces.filter(
+          (item) => item.status !== "نشط" && item.status !== "متاح"
+        ).length
+      ),
       desc: "مدارس يجب تحديث بياناتها",
       className: "warning",
     },
   ];
 
-  const officialLetters = [
-    {
-      id: 1,
-      title: "كتاب توزيع الطلبة المتدربين",
-      receiver: "مدارس مديرية الخليل",
-      date: "2026-03-28",
-      status: "بانتظار الإرسال",
-      badgeClass: "badge-custom badge-warning",
-    },
-    {
-      id: 2,
-      title: "كتاب اعتماد أماكن التدريب",
-      receiver: "مدارس المرحلة الثانوية",
-      date: "2026-03-27",
-      status: "تمت الموافقة",
-      badgeClass: "badge-custom badge-success",
-    },
-    {
-      id: 3,
-      title: "كتاب تحديث الطاقة الاستيعابية",
-      receiver: "جميع المدارس",
-      date: "2026-03-26",
-      status: "تم الإرسال",
-      badgeClass: "badge-custom badge-info",
-    },
-  ];
-
-  const trainingPlaces = [
-    {
-      id: 1,
-      name: "مدرسة الحسين الثانوية",
-      type: "مدرسة حكومية",
-      capacity: 8,
-      contact: "0599000001",
-      status: "نشط",
-      badgeClass: "badge-custom badge-success",
-    },
-    {
-      id: 2,
-      name: "مدرسة ابن رشد",
-      type: "مدرسة حكومية",
-      capacity: 5,
-      contact: "0599000002",
-      status: "نشط",
-      badgeClass: "badge-custom badge-success",
-    },
-    {
-      id: 3,
-      name: "مدرسة خالد بن الوليد",
-      type: "مدرسة حكومية",
-      capacity: 0,
-      contact: "0599000003",
-      status: "بحاجة تحديث",
-      badgeClass: "badge-custom badge-warning",
-    },
-  ];
-
-  const latestActivities = [
-    "تمت إضافة مكان تدريب جديد في مديرية الخليل.",
-    "تم تحديث الطاقة الاستيعابية لمدرسة الحسين الثانوية.",
-    "تمت الموافقة على كتاب رسمي جديد.",
-    "تم إرسال كتاب رسمي إلى المدارس المعتمدة.",
-  ];
+  if (loading) {
+    return (
+      <div className="alert-custom alert-info">
+        جاري تحميل لوحة مديرية التربية...
+      </div>
+    );
+  }
 
   return (
     <>

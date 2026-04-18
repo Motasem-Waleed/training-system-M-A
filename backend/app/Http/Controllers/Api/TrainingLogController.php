@@ -61,12 +61,11 @@ public function index(Request $request)
     {
         $user = $request->user();
 
-        $assignment = optional($user->enrollment)->trainingAssignment;
+        $assignment = $user->currentTrainingAssignment();
 
-        // ✅ منع الإنشاء بدون تدريب
-        if (!$assignment) {
+        if (! $assignment) {
             return response()->json([
-                'message' => 'لا يمكنك إضافة سجل بدون تدريب'
+                'message' => 'لا يمكنك إضافة سجل بدون تدريب',
             ], 400);
         }
 

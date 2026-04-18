@@ -17,10 +17,10 @@ class OfficialLetterController extends Controller
     protected $officialLetterService;
 
     public function __construct(OfficialLetterService $officialLetterService)
-    {
-        $this->officialLetterService = $officialLetterService;
-        $this->authorizeResource(OfficialLetter::class, 'official_letter');
-    }
+{
+    $this->officialLetterService = $officialLetterService;
+    // $this->authorizeResource(OfficialLetter::class, 'official_letter');
+}
 
     public function index(Request $request)
     {

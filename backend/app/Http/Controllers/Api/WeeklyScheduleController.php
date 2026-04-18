@@ -44,4 +44,52 @@ class WeeklyScheduleController extends Controller
         $weeklySchedule->delete();
         return response()->json(['message' => 'تم حذف الجدول']);
     }
+
+    /**
+     * جدول الطالب الأسبوعي حسب موقع التدريب والمعلم المرشد في تعيينه الحالي.
+     */
+    public function studentSchedule(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->role?->name === 'student', 403);
+
+        $assignment = $user->currentTrainingAssignment();
+        if (! $assignment || ! $assignment->training_site_id || ! $assignment->teacher_id) {
+            return WeeklyScheduleResource::collection(collect())->additional([
+                'meta' => [
+                    'school_name' => null,
+                    'mentor_name' => null,
+                    'period_name' => null,
+                    'period_start' => null,
+                    'period_end' => null,
+                    'message' => 'لا يوجد تعيين تدريبي نشط أو لم يُحدَّد المعلم المرشد بعد.',
+                ],
+            ]);
+        }
+
+        $assignment->loadMissing(['trainingSite', 'teacher', 'trainingPeriod']);
+
+        $order = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
+        $items = WeeklySchedule::with(['teacher', 'trainingSite'])
+            ->where('training_site_id', $assignment->training_site_id)
+            ->where('teacher_id', $assignment->teacher_id)
+            ->get()
+            ->sortBy(function ($row) use ($order) {
+                $i = array_search($row->day, $order, true);
+
+                return $i === false ? 99 : $i;
+            })
+            ->values();
+
+        return WeeklyScheduleResource::collection($items)->additional([
+            'meta' => [
+                'school_name' => $assignment->trainingSite?->name,
+                'mentor_name' => $assignment->teacher?->name,
+                'period_name' => $assignment->trainingPeriod?->name,
+                'period_start' => $assignment->trainingPeriod?->start_date?->toDateString(),
+                'period_end' => $assignment->trainingPeriod?->end_date?->toDateString(),
+                'message' => null,
+            ],
+        ]);
+    }
 }

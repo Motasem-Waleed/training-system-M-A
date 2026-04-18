@@ -24,6 +24,7 @@ class TrainingSiteResource extends JsonResource
             'capacity' => $this->capacity,
             'site_type' => $this->site_type,
             'site_type_label' => SiteType::tryFrom($this->site_type)?->label() ?? $this->site_type,
+            'school_type' => $this->school_type ?? null,
             'governing_body' => $this->governing_body,
             'governing_body_label' => GoverningBody::tryFrom($this->governing_body)?->label() ?? $this->governing_body,
             'created_at' => $this->created_at?->toDateTimeString(),

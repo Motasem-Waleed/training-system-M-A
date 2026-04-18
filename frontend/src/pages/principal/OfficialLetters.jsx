@@ -1,59 +1,68 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getOfficialLetters, receiveOfficialLetter } from "../../services/api";
+
+const normalizeLetter = (item) => ({
+  id: item.id,
+  subject:
+    item.training_request?.data?.letter_number ||
+    item.training_request?.letter_number ||
+    item.letter_number ||
+    "بدون عنوان",
+  sender: item.sent_by?.data?.name || item.sent_by?.name || "غير محدد",
+  date: item.letter_date || item.created_at || "—",
+  status: item.status || "sent_to_school",
+  status_label: item.status_label || "مرسل للمدرسة",
+});
 
 const OfficialLetters = () => {
-  const [letters, setLetters] = useState([
-    {
-      id: 1,
-      subject: "كتاب اعتماد تدريب طلبة الفصل الأول",
-      sender: "مديرية الخليل",
-      date: "2026-03-26",
-      status: "جديد",
-      notes: "",
-    },
-    {
-      id: 2,
-      subject: "كتاب متابعة توزيع الطلبة",
-      sender: "كلية التربية - جامعة الخليل",
-      date: "2026-03-25",
-      status: "تمت القراءة",
-      notes: "تم الاطلاع وتحويله للمتابعة.",
-    },
-    {
-      id: 3,
-      subject: "كتاب ترشيح معلمين مرشدين",
-      sender: "مديرية التربية",
-      date: "2026-03-24",
-      status: "مؤرشف",
-      notes: "",
-    },
-  ]);
+  const [letters, setLetters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [savedMessage, setSavedMessage] = useState("");
+  const [savingId, setSavingId] = useState(null);
 
-  const handleStatusChange = (id, value) => {
-    setLetters((prev) =>
-      prev.map((letter) =>
-        letter.id === id ? { ...letter, status: value } : letter
-      )
-    );
-  };
+  useEffect(() => {
+    fetchLetters();
+  }, []);
 
-  const handleNotesChange = (id, value) => {
-    setLetters((prev) =>
-      prev.map((letter) =>
-        letter.id === id ? { ...letter, notes: value } : letter
-      )
-    );
+  const fetchLetters = async () => {
+    try {
+      setLoading(true);
+      const data = await getOfficialLetters({ type: "to_school", per_page: 100 });
+      const list = Array.isArray(data?.data) ? data.data : [];
+      setLetters(list.map(normalizeLetter));
+      setErrorMessage("");
+    } catch (error) {
+      console.error("Failed to load school letters:", error);
+      setErrorMessage("تعذر تحميل الكتب الرسمية.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusClass = (status) => {
-    switch (status) {
-      case "جديد":
-        return "badge-custom badge-info";
-      case "تمت القراءة":
-        return "badge-custom badge-success";
-      case "مؤرشف":
-        return "badge-custom badge-soft";
-      default:
-        return "badge-custom badge-warning";
+    if (status === "sent_to_school") return "badge-custom badge-info";
+    if (status === "school_received") return "badge-custom badge-success";
+    if (status === "completed") return "badge-custom badge-soft";
+    return "badge-custom badge-warning";
+  };
+
+  const handleReceive = async (letter) => {
+    try {
+      setSavingId(letter.id);
+      setSavedMessage("");
+      setErrorMessage("");
+      await receiveOfficialLetter(letter.id, {
+        received_at: new Date().toISOString(),
+        status: "school_received",
+      });
+      setSavedMessage("تم استلام الكتاب وتحديث حالته بنجاح.");
+      await fetchLetters();
+    } catch (error) {
+      console.error("Failed to receive official letter:", error);
+      setErrorMessage(error?.response?.data?.message || "تعذر استلام الكتاب.");
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -68,69 +77,66 @@ const OfficialLetters = () => {
 
       <div className="section-card">
         <h4>إدارة الكتب الرسمية</h4>
-
-        <div className="table-wrapper">
-          <table className="table-custom">
-            <thead>
-              <tr>
-                <th>عنوان الكتاب</th>
-                <th>الجهة المرسلة</th>
-                <th>التاريخ</th>
-                <th>الحالة</th>
-                <th>تعديل الحالة</th>
-                <th>ملاحظات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {letters.map((letter) => (
-                <tr key={letter.id}>
-                  <td className="fw-bold">{letter.subject}</td>
-                  <td>{letter.sender}</td>
-                  <td>{letter.date}</td>
-
-                  <td>
-                    <span className={getStatusClass(letter.status)}>
-                      {letter.status}
-                    </span>
-                  </td>
-
-                  <td style={{ minWidth: "180px" }}>
-                    <select
-                      value={letter.status}
-                      onChange={(e) =>
-                        handleStatusChange(letter.id, e.target.value)
-                      }
-                      className="form-select-custom"
-                    >
-                      <option value="جديد">جديد</option>
-                      <option value="تمت القراءة">تمت القراءة</option>
-                      <option value="مؤرشف">مؤرشف</option>
-                    </select>
-                  </td>
-
-                  <td style={{ minWidth: "240px" }}>
-                    <textarea
-                      value={letter.notes}
-                      onChange={(e) =>
-                        handleNotesChange(letter.id, e.target.value)
-                      }
-                      placeholder="اكتب ملاحظاتك حول هذا الكتاب"
-                      className="form-textarea-custom"
-                    />
-                  </td>
-                </tr>
-              ))}
-
-              {letters.length === 0 && (
+        {loading ? (
+          <div className="alert-custom alert-info">جاري تحميل الكتب الرسمية...</div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="table-custom">
+              <thead>
                 <tr>
-                  <td colSpan="6" className="text-center">
-                    لا توجد كتب رسمية حاليًا
-                  </td>
+                  <th>عنوان الكتاب</th>
+                  <th>الجهة المرسلة</th>
+                  <th>التاريخ</th>
+                  <th>الحالة</th>
+                  <th>الإجراء</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {letters.map((letter) => (
+                  <tr key={letter.id}>
+                    <td className="fw-bold">{letter.subject}</td>
+                    <td>{letter.sender}</td>
+                    <td>{letter.date}</td>
+                    <td>
+                      <span className={getStatusClass(letter.status)}>
+                        {letter.status_label}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-primary-custom btn-sm-custom"
+                        onClick={() => handleReceive(letter)}
+                        disabled={savingId === letter.id || letter.status === "school_received"}
+                      >
+                        {savingId === letter.id
+                          ? "جاري التحديث..."
+                          : letter.status === "school_received"
+                          ? "تم الاستلام"
+                          : "تأكيد الاستلام"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {letters.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="text-center">
+                      لا توجد كتب رسمية حاليًا
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {savedMessage && (
+          <div className="alert-custom alert-success mt-3">{savedMessage}</div>
+        )}
+        {errorMessage && (
+          <div className="alert-custom alert-danger mt-3">{errorMessage}</div>
+        )}
       </div>
     </>
   );

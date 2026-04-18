@@ -24,7 +24,7 @@
   padding: 16px 18px;
   border-radius: 20px;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  background: linear-gradient(180deg, var(--bg-paper) 0%, #f6f8fb 100%);
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
@@ -49,7 +49,7 @@
 }
 
 .stat-card.primary {
-  border-top: 4px solid #2f80c0;
+  border-top: 4px solid var(--stat-border-primary);
 }
 
 .stat-card.accent {
@@ -57,11 +57,11 @@
 }
 
 .stat-card.success {
-  border-top: 4px solid #1f9a64;
+  border-top: 4px solid var(--stat-border-success);
 }
 
 .stat-card.info {
-  border-top: 4px solid #17324b;
+  border-top: 4px solid var(--stat-border-info);
 }
 
 .stat-card.warning {

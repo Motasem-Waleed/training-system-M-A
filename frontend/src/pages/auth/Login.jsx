@@ -18,16 +18,17 @@ export default function Login() {
     try {
       const response = await login({ email, password });
 
-      const user = response.user;
+      const user = response?.user?.data ?? response?.user;
       const token = response.access_token; // ✔️ التصحيح هنا
       const userRole = user?.role?.name;
+
+      if (!token || token === "undefined" || token === "null") {
+        throw new Error("لم يتم استلام رمز الدخول من الخادم");
+      }
 
       // 🔥 تخزين البيانات
       localStorage.setItem("access_token", token);
       localStorage.setItem("user", JSON.stringify(user));
-      console.log(user);
-console.log(user?.role);
-console.log(user?.role?.name);
 
       // التوجيه حسب الدور
       switch (userRole) {
@@ -35,6 +36,7 @@ console.log(user?.role?.name);
           navigate("/dashboard");
           break;
         case "coordinator":
+        case "training_coordinator":
           navigate("/coordinator/dashboard");
           break;
         case "academic_supervisor":
@@ -43,13 +45,18 @@ console.log(user?.role?.name);
         case "teacher":
           navigate("/mentor/dashboard");
           break;
+        case "psychologist":
+          navigate("/psychologist/dashboard");
+          break;
         case "school_manager":
+        case "principal":
           navigate("/principal/dashboard");
           break;
         case "education_directorate":
           navigate("/education/dashboard");
           break;
         case "ministry_of_health":
+        case "health_directorate":
           navigate("/health/dashboard");
           break;
         case "student":
@@ -60,7 +67,7 @@ console.log(user?.role?.name);
       }
 
     } catch (err) {
-      setError(err.response?.data?.message || "فشل تسجيل الدخول");
+      setError(err.response?.data?.message || err.message || "فشل تسجيل الدخول");
     } finally {
       setLoading(false);
     }
@@ -87,7 +94,7 @@ console.log(user?.role?.name);
 
         <div className="auth-card">
           <div className="auth-logo">
-            <img src={myLogo} alt="HU Logo" style={{ width: "120px", marginBottom: "20px" }} />
+            <img src={myLogo} alt="شعار جامعة الخليل" className="auth-logo-img" />
           </div>
 
           <h2>تسجيل الدخول</h2>
@@ -125,7 +132,7 @@ console.log(user?.role?.name);
             </div>
 
             {error && (
-              <div className="error-message" style={{ color: "red", marginBottom: "10px" }}>
+              <div className="alert-custom alert-danger auth-form-alert" role="alert">
                 {error}
               </div>
             )}

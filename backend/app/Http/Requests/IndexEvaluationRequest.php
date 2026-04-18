@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Enums\EvaluationFormType;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class IndexEvaluationRequest extends FormRequest
 {
@@ -17,7 +18,10 @@ class IndexEvaluationRequest extends FormRequest
         return [
             'training_assignment_id' => 'nullable|exists:training_assignments,id',
             'template_id' => 'nullable|exists:evaluation_templates,id',
-            'form_type' => 'nullable|in:' . implode(',', array_column(EvaluationFormType::cases(), 'value')),
+            'form_type' => [
+                'nullable',
+                Rule::in(array_map(static fn (EvaluationFormType $c) => $c->value, EvaluationFormType::cases())),
+            ],
             'evaluator_id' => 'nullable|exists:users,id',
             'per_page' => 'nullable|integer|min:1|max:100',
         ];

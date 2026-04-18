@@ -33,10 +33,14 @@ class EvaluationService
             ]);
 
             foreach ($data['scores'] as $scoreItem) {
+                $safeScore = isset($scoreItem['score']) && $scoreItem['score'] !== null
+                    ? $scoreItem['score']
+                    : 0;
+
                 EvaluationScore::create([
                     'evaluation_id' => $evaluation->id,
                     'item_id' => $scoreItem['item_id'],
-                    'score' => $scoreItem['score'] ?? null,
+                    'score' => $safeScore,
                     'response_text' => $scoreItem['response_text'] ?? null,
                     'file_path' => $scoreItem['file_path'] ?? null,
                 ]);
@@ -62,8 +66,12 @@ class EvaluationService
                         ->where('item_id', $scoreData['item_id'])
                         ->first();
                     if ($score) {
+                        $safeScore = isset($scoreData['score']) && $scoreData['score'] !== null
+                            ? $scoreData['score']
+                            : 0;
+
                         $score->update([
-                            'score' => $scoreData['score'] ?? $score->score,
+                            'score' => $safeScore,
                             'response_text' => $scoreData['response_text'] ?? $score->response_text,
                         ]);
                     }

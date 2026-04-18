@@ -8,7 +8,9 @@ class UserPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->role?->name === 'admin';
+        // school_manager: fetch teachers for mentor assignment
+        // training_coordinator: fetch students for distribution lists
+        return in_array($user->role?->name, ['admin', 'school_manager', 'training_coordinator', 'coordinator', 'psychologist'], true);
     }
 
     public function view(User $user, User $model): bool

@@ -11,8 +11,16 @@ class TrainingSite extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 'location', 'phone', 'description', 'is_active',
-        'directorate', 'capacity', 'site_type', 'governing_body'
+        'name',
+        'location',
+        'phone',
+        'description',
+        'is_active',
+        'directorate',
+        'capacity',
+        'site_type',
+        'governing_body',
+        'school_type',
     ];
 
     public function trainingRequests()

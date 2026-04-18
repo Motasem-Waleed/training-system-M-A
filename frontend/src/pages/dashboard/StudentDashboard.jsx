@@ -6,6 +6,7 @@ import {
   getStudentPortfolio,
   getStudentTrainingLogs,
   getStudentNotifications,
+  itemsFromPagedResponse,
 } from "../../services/api";
 
 export default function StudentDashboard() {
@@ -61,14 +62,14 @@ export default function StudentDashboard() {
       }));
 
       // 2. طلبات التدريب
-      const trainingRequest = requestsRes?.data?.[0] || null;
+      const trainingRequest = itemsFromPagedResponse(requestsRes)[0] || null;
       let requestStatus = "لم يتم التقديم بعد";
       let schoolName = "";
       let directorateName = "";
       if (trainingRequest) {
-        requestStatus = trainingRequest.status_label || trainingRequest.status || "قيد الانتظار";
+        requestStatus = trainingRequest.book_status_label || trainingRequest.book_status || trainingRequest.status_label || trainingRequest.status || "قيد الانتظار";
         schoolName = trainingRequest.training_site?.name || "";
-        directorateName = trainingRequest.training_site?.directorate_label || "";
+        directorateName = trainingRequest.training_site?.directorate_label || trainingRequest.training_site?.directorate || "";
       }
       setStudentInfo(prev => ({
         ...prev,
@@ -82,7 +83,7 @@ export default function StudentDashboard() {
         prev.map(card => {
           if (card.title === "طلب التدريب") return { ...card, value: requestStatus };
           if (card.title === "المهام") {
-            const tasks = tasksRes?.data || [];
+            const tasks = itemsFromPagedResponse(tasksRes);
             const pendingTasks = tasks.filter(t => t.status !== "submitted" && t.status !== "graded").length;
             return { ...card, value: `${pendingTasks} مهمة متبقية` };
           }
@@ -92,7 +93,7 @@ export default function StudentDashboard() {
             return { ...card, value: `${entriesCount} ملفات` };
           }
           if (card.title === "برنامج التدريب") {
-            const logs = logsRes?.data || [];
+            const logs = itemsFromPagedResponse(logsRes);
             const logsCount = logs.length;
             return { ...card, value: `${logsCount} أيام مسجلة` };
           }
@@ -101,7 +102,7 @@ export default function StudentDashboard() {
       );
 
       // 4. آخر الإشعارات
-      const notifications = notifRes?.data || [];
+      const notifications = itemsFromPagedResponse(notifRes);
       const formattedNotif = notifications.slice(0, 5).map(notif => ({
         title: notif.type === "training_request_approved" ? "تم قبول طلب التدريب" : (notif.title || "تحديث جديد"),
         text: notif.message || notif.data?.message || "لا يوجد محتوى",

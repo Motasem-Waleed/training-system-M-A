@@ -14,7 +14,7 @@ class AnnouncementController extends Controller
 {
     public function __construct()
     {
-        $this->authorizeResource(Announcement::class, 'announcement');
+       //$this->authorizeResource(Announcement::class, 'announcement');
     }
 
     public function index(Request $request)

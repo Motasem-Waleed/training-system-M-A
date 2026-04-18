@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\BookStatus;
 use App\Models\TrainingRequest;
 use App\Models\TrainingSite;
 use App\Models\TrainingPeriod;
@@ -16,7 +17,7 @@ class TrainingRequestFactory extends Factory
         return [
             'letter_number' => 'LET-' . $this->faker->unique()->numberBetween(1000, 9999),
             'letter_date' => $this->faker->date(),
-            'book_status' => $this->faker->randomElement(['draft', 'sent_to_directorate', 'directorate_approved', 'sent_to_school', 'school_approved', 'rejected']),
+            'book_status' => $this->faker->randomElement(array_map(static fn (BookStatus $c) => $c->value, BookStatus::cases())),
             'status' => $this->faker->randomElement(['pending', 'approved', 'rejected']),
             'sent_to_directorate_at' => $this->faker->optional()->dateTime(),
             'directorate_approved_at' => $this->faker->optional()->dateTime(),

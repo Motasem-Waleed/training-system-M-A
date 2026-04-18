@@ -9,13 +9,11 @@ class WeeklySchedule extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['teacher_id', 'day', 'start_time', 'end_time', 'training_site_id'];
+    protected $fillable = ['teacher_id', 'day', 'start_time', 'end_time', 'training_site_id', 'submitted_by'];
 
     protected $casts = [
         'start_time' => 'datetime:H:i:s',
         'end_time' => 'datetime:H:i:s',
-            'submitted_by',   // <-- أضف هذا السطر
-
     ];
 
     public function teacher()

@@ -1,92 +1,188 @@
-import { useState } from "react";
-
-const studentsData = [
-  {
-    id: 1,
-    name: "محمد أحمد النجار",
-    universityNumber: "22001111",
-    college: "كلية التربية",
-    specialization: "أساليب تدريس اللغة العربية",
-    directorate: "مديرية الخليل",
-    schoolName: "مدرسة الحسين الثانوية",
-    schoolAddress: "الخليل - عين سارة",
-  },
-  {
-    id: 2,
-    name: "آية خالد أبو عيشة",
-    universityNumber: "22002222",
-    college: "كلية التربية",
-    specialization: "الإرشاد النفسي والتربوي",
-    directorate: "مديرية شمال الخليل",
-    schoolName: "مدرسة حلحول الثانوية",
-    schoolAddress: "حلحول",
-  },
-  {
-    id: 3,
-    name: "لينا محمود الطروة",
-    universityNumber: "22003333",
-    college: "كلية التربية",
-    specialization: "أساليب تدريس الرياضيات",
-    directorate: "مديرية جنوب الخليل",
-    schoolName: "مدرسة دير سامت الثانوية",
-    schoolAddress: "دير سامت",
-  },
-];
-
-const evaluationItems = [
-  "الدوام",
-  "التعاون مع الهيئة التدريسية",
-  "العلاقة مع الطلبة",
-  "تحركاته في الاتجاه نحو المهنة",
-  "المقدرة على التخطيط مع الهيئة التدريسية",
-  "دراسة تحضيراته اليومية",
-];
+import { useEffect, useMemo, useState } from "react";
+import {
+  createEvaluation,
+  getCurrentUser,
+  getEvaluationTemplates,
+  getTrainingAssignments,
+} from "../../services/api";
 
 const TraineeStudents = () => {
-  const [selectedStudentId, setSelectedStudentId] = useState(studentsData[0].id);
+  const [studentsData, setStudentsData] = useState([]);
+  const [template, setTemplate] = useState(null);
+  const [scoresByStudent, setScoresByStudent] = useState({});
+  const [schoolInfo, setSchoolInfo] = useState({
+    name: "—",
+    directorate: "—",
+    location: "—",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [savedMessage, setSavedMessage] = useState("");
 
-  const [evaluation, setEvaluation] = useState({
-    "الدوام": { notes: "" },
-    "التعاون مع الهيئة التدريسية": { notes: "" },
-    "العلاقة مع الطلبة": { notes: "" },
-    "تحركاته في الاتجاه نحو المهنة": { notes: "" },
-    "المقدرة على التخطيط مع الهيئة التدريسية": { notes: "" },
-    "دراسة تحضيراته اليومية": { notes: "" },
-    generalNotes: "",
-  });
+  useEffect(() => {
+    fetchStudents();
+  }, []);
 
-  const selectedStudent =
-    studentsData.find((student) => student.id === selectedStudentId) ||
-    studentsData[0];
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const [userRes, assignmentsRes] = await Promise.all([
+        getCurrentUser(),
+        getTrainingAssignments({ per_page: 200 }),
+      ]);
+      const user = userRes?.data || userRes || {};
+      const trainingSite = user.training_site?.data || user.training_site || {};
+      const allAssignments = Array.isArray(assignmentsRes?.data)
+        ? assignmentsRes.data
+        : Array.isArray(assignmentsRes?.data?.data)
+        ? assignmentsRes.data.data
+        : [];
+      const schoolAssignments = allAssignments.filter((assignment) => {
+        const assignmentSiteId =
+          assignment.training_site?.data?.id || assignment.training_site?.id;
+        return trainingSite?.id ? assignmentSiteId === trainingSite.id : true;
+      });
+
+      let principalTemplate = null;
+      try {
+        const templatesRes = await getEvaluationTemplates();
+        const templateList = Array.isArray(templatesRes?.data)
+          ? templatesRes.data
+          : [];
+        principalTemplate =
+          templateList.find((item) => item.form_type === "evaluation") || null;
+      } catch (templateError) {
+        console.error("Failed to load evaluation templates:", templateError);
+      }
+
+      const students = schoolAssignments
+        .map((assignment) => {
+          const enrollment = assignment.enrollment?.data || assignment.enrollment || {};
+          const student = enrollment.user?.data || enrollment.user || {};
+          const section = enrollment.section?.data || enrollment.section || {};
+          const course = enrollment.section?.data?.course?.data ||
+            enrollment.section?.course?.data ||
+            enrollment.section?.course ||
+            {};
+          const mentor = assignment.teacher?.data || assignment.teacher || {};
+          return {
+            id: assignment.id,
+            assignmentId: assignment.id,
+            name: student.name || "—",
+            universityNumber: student.university_id || "—",
+            universityName: "جامعة الخليل",
+            academicYear: enrollment.academic_year || section.academic_year || "—",
+            semester:
+              enrollment.semester ||
+              section.semester ||
+              "—",
+            mentorName: mentor.name || "—",
+            specialization: course.name || "—",
+            directorate: trainingSite.directorate || "—",
+            schoolName: trainingSite.name || "—",
+            schoolAddress: trainingSite.location || "—",
+          };
+        })
+        .filter((item) => item.name !== "—");
+
+      setStudentsData(students);
+      setSelectedStudentId(students[0]?.id || null);
+      setTemplate(principalTemplate);
+      setSchoolInfo({
+        name: trainingSite.name || "—",
+        directorate: trainingSite.directorate || "—",
+        location: trainingSite.location || "—",
+      });
+      if (!students.length) {
+        setErrorMessage("لا يوجد طلبة متدربون معتمدون في المدرسة حاليًا.");
+      } else {
+        setErrorMessage("");
+      }
+    } catch (error) {
+      console.error("Failed to load trainee students:", error);
+      setErrorMessage("تعذر تحميل بيانات الطلبة المتدربين.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedStudent = useMemo(
+    () =>
+      studentsData.find((student) => student.id === selectedStudentId) ||
+      studentsData[0] ||
+      null,
+    [studentsData, selectedStudentId]
+  );
+
+  const selectedScores = useMemo(
+    () => scoresByStudent[selectedStudentId] || {},
+    [scoresByStudent, selectedStudentId]
+  );
 
   const handleStudentChange = (e) => {
-    setSelectedStudentId(Number(e.target.value));
+    const value = e.target.value;
+    setSelectedStudentId(value ? Number(value) : null);
     setSavedMessage("");
   };
 
-  const handleNotesChange = (item, value) => {
-    setEvaluation((prev) => ({
+  const handleNotesChange = (itemId, value) => {
+    setScoresByStudent((prev) => ({
       ...prev,
-      [item]: {
-        ...prev[item],
-        notes: value,
+      [selectedStudentId]: {
+        ...(prev[selectedStudentId] || {}),
+        [itemId]: value,
       },
     }));
     setSavedMessage("");
   };
 
   const handleGeneralNotesChange = (value) => {
-    setEvaluation((prev) => ({
+    setScoresByStudent((prev) => ({
       ...prev,
-      generalNotes: value,
+      [selectedStudentId]: {
+        ...(prev[selectedStudentId] || {}),
+        __generalNotes: value,
+      },
     }));
     setSavedMessage("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSavedMessage("تم حفظ تقييم الطالب بنجاح.");
+    if (!selectedStudent || !template) {
+      setErrorMessage("لا يمكن حفظ التقييم لعدم توفر القالب أو بيانات الطالب.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setSavedMessage("");
+      setErrorMessage("");
+      const items = template.items || [];
+      const scoresPayload = items.map((item) => ({
+        item_id: item.id,
+        response_text: selectedScores[item.id] || "",
+        score:
+          item.field_type === "score"
+            ? Number(selectedScores[item.id] || 0)
+            : null,
+      }));
+
+      await createEvaluation({
+        training_assignment_id: selectedStudent.assignmentId,
+        template_id: template.id,
+        scores: scoresPayload,
+        notes: selectedScores.__generalNotes || null,
+      });
+      setSavedMessage("تم حفظ تقييم الطالب بنجاح.");
+    } catch (error) {
+      console.error("Failed to save evaluation:", error);
+      setErrorMessage(error?.response?.data?.message || "تعذر حفظ التقييم.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -100,15 +196,23 @@ const TraineeStudents = () => {
 
       <div className="section-card mb-3">
         <h4>اختيار الطالب المتدرب</h4>
+        {loading ? (
+          <div className="alert-custom alert-info">جاري تحميل الطلبة...</div>
+        ) : null}
+        {errorMessage ? (
+          <div className="alert-custom alert-danger">{errorMessage}</div>
+        ) : null}
 
         <div className="row">
           <div className="col-md-6">
             <label className="form-label-custom">اختر الطالب المتدرب</label>
             <select
-              value={selectedStudentId}
+              value={selectedStudentId ?? ""}
               onChange={handleStudentChange}
               className="form-select-custom"
+              disabled={!studentsData.length}
             >
+              <option value="">اختر الطالب المتدرب</option>
               {studentsData.map((student) => (
                 <option key={student.id} value={student.id}>
                   {student.name}
@@ -119,49 +223,46 @@ const TraineeStudents = () => {
         </div>
       </div>
 
-      <div className="section-card mb-3">
-        <h4>بيانات الطالب</h4>
+      {selectedStudent ? (
+        <div className="section-card mb-3">
+          <h4>بيانات الطالب المتدرب</h4>
 
-        <div className="summary-grid">
-          <div className="kpi-box">
-            <strong>{selectedStudent.name}</strong>
-            <span>اسم الطالب</span>
-          </div>
-
-          <div className="kpi-box">
-            <strong>{selectedStudent.universityNumber}</strong>
-            <span>الرقم الجامعي</span>
-          </div>
-
-          <div className="kpi-box">
-            <strong>{selectedStudent.college}</strong>
-            <span>الكلية</span>
-          </div>
-
-          <div className="kpi-box">
-            <strong>{selectedStudent.specialization}</strong>
-            <span>التخصص التربوي</span>
-          </div>
-
-          <div className="kpi-box">
-            <strong>{selectedStudent.directorate}</strong>
-            <span>اسم المديرية</span>
-          </div>
-
-          <div className="kpi-box">
-            <strong>{selectedStudent.schoolName}</strong>
-            <span>اسم المدرسة</span>
-          </div>
-
-          <div className="kpi-box">
-            <strong>{selectedStudent.schoolAddress}</strong>
-            <span>عنوان المدرسة</span>
+          <div className="table-wrapper">
+            <table className="table-custom">
+              <tbody>
+                <tr>
+                  <th>اسم الطالب</th>
+                  <td>{selectedStudent.name}</td>
+                  <th>جامعة الخليل</th>
+                  <td>{selectedStudent.universityName}</td>
+                  <th>العام الدراسي</th>
+                  <td>{selectedStudent.academicYear}</td>
+                  <th>الفصل الدراسي</th>
+                  <td>{selectedStudent.semester}</td>
+                </tr>
+                <tr>
+                  <th>اسم المعلم المقيم</th>
+                  <td>{selectedStudent.mentorName}</td>
+                  <th>اسم المدرسة</th>
+                  <td>{schoolInfo.name || selectedStudent.schoolName}</td>
+                  <th>المديرية</th>
+                  <td>{schoolInfo.directorate || selectedStudent.directorate}</td>
+                  <th>عنوان المدرسة</th>
+                  <td>{schoolInfo.location || selectedStudent.schoolAddress}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="section-card">
         <h4>نموذج التقييم</h4>
+        {!template ? (
+          <div className="alert-custom alert-warning mb-3">
+            لا يوجد قالب تقييم معرف حاليًا. يرجى إنشاء قالب من إدارة النظام.
+          </div>
+        ) : null}
 
         <form onSubmit={handleSubmit}>
           <div className="table-wrapper">
@@ -173,21 +274,42 @@ const TraineeStudents = () => {
                 </tr>
               </thead>
               <tbody>
-                {evaluationItems.map((item) => (
-                  <tr key={item}>
-                    <td className="fw-bold">{item}</td>
+                {(template?.items || []).map((item) => (
+                  <tr key={item.id}>
+                    <td className="fw-bold">{item.title}</td>
                     <td style={{ minWidth: "300px" }}>
-                      <textarea
-                        value={evaluation[item].notes}
-                        onChange={(e) =>
-                          handleNotesChange(item, e.target.value)
-                        }
-                        placeholder="اكتب الملاحظات"
-                        className="form-textarea-custom"
-                      />
+                      {item.field_type === "score" ? (
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.max_score ?? 100}
+                          value={selectedScores[item.id] || ""}
+                          onChange={(e) =>
+                            handleNotesChange(item.id, e.target.value)
+                          }
+                          placeholder={`أدخل درجة من 0 إلى ${item.max_score ?? 100}`}
+                          className="form-control-custom"
+                        />
+                      ) : (
+                        <textarea
+                          value={selectedScores[item.id] || ""}
+                          onChange={(e) =>
+                            handleNotesChange(item.id, e.target.value)
+                          }
+                          placeholder="اكتب الملاحظات"
+                          className="form-textarea-custom"
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}
+                {!template?.items?.length ? (
+                  <tr>
+                    <td colSpan="2" className="text-center">
+                      لا توجد بنود ضمن قالب التقييم الحالي.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
@@ -195,7 +317,7 @@ const TraineeStudents = () => {
           <div className="mt-3">
             <label className="form-label-custom">ملاحظات عامة</label>
             <textarea
-              value={evaluation.generalNotes}
+              value={selectedScores.__generalNotes || ""}
               onChange={(e) => handleGeneralNotesChange(e.target.value)}
               placeholder="اكتب ملاحظات عامة حول أداء الطالب"
               className="form-textarea-custom"
@@ -207,10 +329,19 @@ const TraineeStudents = () => {
               {savedMessage}
             </div>
           )}
+          {errorMessage && (
+            <div className="alert-custom alert-danger mt-3">
+              {errorMessage}
+            </div>
+          )}
 
           <div className="mt-3">
-            <button type="submit" className="btn-primary-custom">
-              حفظ التقييم
+            <button
+              type="submit"
+              className="btn-primary-custom"
+              disabled={saving || !selectedStudent || !template}
+            >
+              {saving ? "جاري الحفظ..." : "حفظ التقييم"}
             </button>
           </div>
         </form>

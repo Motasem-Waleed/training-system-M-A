@@ -40,12 +40,17 @@ class PortfolioEntryController extends Controller
     public function store(StorePortfolioEntryRequest $request)
     {
         $data = $request->validated();
-        
-        // رفع الملف إذا وُجد
+
+        $portfolio = StudentPortfolio::query()->firstOrCreate(
+            ['user_id' => $request->user()->id],
+            ['training_assignment_id' => null]
+        );
+        $data['student_portfolio_id'] = $portfolio->id;
+
         if ($request->hasFile('file')) {
             $data['file_path'] = $request->file('file')->store('portfolio', 'public');
         }
-        
+
         $entry = PortfolioEntry::create($data);
         return new PortfolioEntryResource($entry);
     }

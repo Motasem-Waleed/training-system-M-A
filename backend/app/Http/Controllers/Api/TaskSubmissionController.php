@@ -44,19 +44,30 @@ class TaskSubmissionController extends Controller
     public function store(StoreTaskSubmissionRequest $request)
     {
         $data = $request->validated();
-        
-        // رفع الملف
+
+        $task = Task::with('trainingAssignment.enrollment')->findOrFail($data['task_id']);
+        $studentId = $request->user()->id;
+        if ($task->trainingAssignment?->enrollment?->user_id !== $studentId) {
+            abort(403, 'هذه المهمة لا تخصك.');
+        }
+
         if ($request->hasFile('file')) {
             $data['file_path'] = $request->file('file')->store('task_submissions', 'public');
         }
-        
+
         $data['submitted_at'] = now();
-        $data['user_id'] = $request->user()->id;
-        
-        $submission = TaskSubmission::create($data);
-        
+        $data['user_id'] = $studentId;
+        unset($data['task_id']);
+
+        $submission = TaskSubmission::create([
+            'task_id' => $task->id,
+            'user_id' => $data['user_id'],
+            'file_path' => $data['file_path'] ?? null,
+            'notes' => $data['notes'] ?? null,
+            'submitted_at' => $data['submitted_at'],
+        ]);
+
         // تحديث حالة المهمة إلى "submitted" إذا كانت لا تزال pending أو in_progress
-        $task = Task::find($data['task_id']);
         if ($task && in_array($task->status, ['pending', 'in_progress'])) {
             $task->update(['status' => 'submitted']);
         }

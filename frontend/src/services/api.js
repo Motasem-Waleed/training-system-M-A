@@ -10,16 +10,40 @@ const apiClient = axios.create({
   withCredentials: false,
 });
 
+/** أصل الخادم بدون ‎/api (لروابط التخزين /storage/...) */
+export const apiOrigin = String(apiClient.defaults.baseURL || "").replace(/\/api\/?$/, "") || "http://localhost:8000";
+
+// Laravel API Resources often return payload as { data: ... }.
+// Normalize responses to keep frontend forms and lists stable.
+const unwrapResource = (payload) => payload?.data ?? payload;
+
 // Inject token automatically
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("access_token");
-    if (token) {
+    if (token && token !== "undefined" && token !== "null") {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
     }
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+    }
+    return Promise.reject(error);
+  }
 );
 
 // -------------------- AUTH --------------------
@@ -38,9 +62,18 @@ export const logout = async () => {
   return response.data;
 };
 
+/** Laravel paginator or plain array from API list endpoints */
+export const itemsFromPagedResponse = (payload) => {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+};
+
 // CURRENT USER
-export const getCurrentUser = async () => {
-  const response = await apiClient.get("/user");
+export const getCurrentUser = async (config = {}) => {
+  const response = await apiClient.get("/user", config);
   return response.data;
 };
 
@@ -71,6 +104,22 @@ export const sendToSchool = async (id, letterData) => {
 export const schoolApprove = async (id, data) => {
   return apiClient.post(`/training-requests/${id}/school-approve`, data);
 };
+
+export const coordinatorReviewTrainingRequest = (id, data) =>
+  apiClient.post(`/training-requests/${id}/coordinator-review`, data).then((res) => res.data);
+
+// ==================== Coordinator batching ====================
+export const getTrainingRequestBatches = (params = {}) =>
+  apiClient.get("/training-request-batches", { params }).then((res) => res.data);
+
+export const getTrainingRequestBatch = (id) =>
+  apiClient.get(`/training-request-batches/${id}`).then((res) => res.data);
+
+export const createTrainingRequestBatch = (data) =>
+  apiClient.post("/training-request-batches", data).then((res) => res.data);
+
+export const sendTrainingRequestBatch = (id, data) =>
+  apiClient.post(`/training-request-batches/${id}/send`, data).then((res) => res.data);
 
 
 // services/api.js
@@ -118,14 +167,16 @@ export const updateTrainingSite = (id, data) => apiClient.put(`/training-sites/$
 export const deleteTrainingSite = (id) => apiClient.delete(`/training-sites/${id}`).then(res => res.data);
 
 // ==================== Training Periods ====================
-export const getTrainingPeriods = () => apiClient.get('/training-periods').then(res => res.data);
+export const getTrainingPeriods = (params = {}) =>
+  apiClient.get('/training-periods', { params }).then((res) => res.data);
 export const createTrainingPeriod = (data) => apiClient.post('/training-periods', data).then(res => res.data);
 export const updateTrainingPeriod = (id, data) => apiClient.put(`/training-periods/${id}`, data).then(res => res.data);
 export const deleteTrainingPeriod = (id) => apiClient.delete(`/training-periods/${id}`).then(res => res.data);
 export const setActivePeriod = (id) => apiClient.patch(`/training-periods/${id}/set-active`).then(res => res.data);
 
 // ==================== Announcements ====================
-export const getAnnouncements = () => apiClient.get('/announcements').then(res => res.data);
+export const getAnnouncements = (params = {}) =>
+  apiClient.get('/announcements', { params }).then((res) => res.data);
 export const createAnnouncement = (data) => apiClient.post('/announcements', data).then(res => res.data);
 export const updateAnnouncement = (id, data) => apiClient.put(`/announcements/${id}`, data).then(res => res.data);
 export const deleteAnnouncement = (id) => apiClient.delete(`/announcements/${id}`).then(res => res.data);
@@ -153,6 +204,32 @@ export const addTemplateItem = (templateId, data) => apiClient.post(`/evaluation
 export const updateTemplateItem = (itemId, data) => apiClient.put(`/evaluation-items/${itemId}`, data).then(res => res.data);
 export const deleteTemplateItem = (itemId) => apiClient.delete(`/evaluation-items/${itemId}`).then(res => res.data);
 
+// ==================== Evaluations ====================
+export const getEvaluations = (params = {}) =>
+  apiClient.get("/evaluations", { params }).then((res) => res.data);
+
+export const createEvaluation = (data) =>
+  apiClient.post("/evaluations", data).then((res) => res.data);
+
+// ==================== Training Assignments ====================
+export const getTrainingAssignments = (params = {}) =>
+  apiClient.get("/training-assignments", { params }).then((res) => res.data);
+
+// ==================== Tasks (مشرف / معلم) ====================
+export const getTasks = (params = {}) =>
+  apiClient.get("/tasks", { params }).then((res) => res.data);
+
+// ==================== Attendance ====================
+export const getAttendances = (params = {}) =>
+  apiClient.get("/attendances", { params }).then((res) => res.data);
+
+export const approveAttendance = (id, data) =>
+  apiClient.patch(`/attendances/${id}/approve`, data).then((res) => res.data);
+
+// ==================== Weekly schedules ====================
+export const getWeeklySchedules = (params = {}) =>
+  apiClient.get("/weekly-schedules", { params }).then((res) => res.data);
+
 // ==================== Activity Logs (للأنشطة الأخيرة) ====================
 export const getRecentActivities = async (limit = 5) => {
     const response = await apiClient.get('/activity-logs', { params: { per_page: limit } });
@@ -171,73 +248,78 @@ export const getLatestAnnouncement = async () => {
 
 export const getUser = async (id) => {
     const response = await apiClient.get(`/users/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 // ==================== Roles (كاملة) ====================
 
 export const getRole = async (id) => {
     const response = await apiClient.get(`/roles/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 export const getPermission = async (id) => {
     const response = await apiClient.get(`/permissions/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 // ==================== Departments (كاملة) ====================
 
 export const getDepartment = async (id) => {
     const response = await apiClient.get(`/departments/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 export const getCourse = async (id) => {
     const response = await apiClient.get(`/courses/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 export const getSection = async (id) => {
     const response = await apiClient.get(`/sections/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 export const getEnrollment = async (id) => {
     const response = await apiClient.get(`/enrollments/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 export const getTrainingSite = async (id) => {
     const response = await apiClient.get(`/training-sites/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 
 export const getTrainingPeriod = async (id) => {
     const response = await apiClient.get(`/training-periods/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 export const getAnnouncement = async (id) => {
     const response = await apiClient.get(`/announcements/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 export const getEvaluationTemplate = async (id) => {
     const response = await apiClient.get(`/evaluation-templates/${id}`);
-    return response.data;
+    return unwrapResource(response.data);
 };
 
 // ==================== Student specific ====================
-export const getStudentTrainingRequests = async () => {
-    const response = await apiClient.get('/user');
-    return response.data;
+export const getStudentTrainingRequests = async (config = {}) => {
+  const response = await apiClient.get('/student/training-requests', config);
+  return response.data;
 };
 
 export const createStudentTrainingRequest = async (data) => {
     const response = await apiClient.post('/student/training-requests', data);
     return response.data;
+};
+
+export const updateStudentTrainingRequest = async (id, data) => {
+  const response = await apiClient.put(`/student/training-requests/${id}`, data);
+  return response.data;
 };
 
 export const getStudentSchedule = async () => {
@@ -271,8 +353,8 @@ export const getStudentPortfolio = async () => {
 };
 
 export const addPortfolioEntry = async (data) => {
-    const response = await apiClient.post('/student/portfolio/entries', data);
-    return response.data;
+  const response = await apiClient.post("/student/portfolio/entries", data);
+  return response.data;
 };
 
 export const updatePortfolioEntry = async (id, data) => {
@@ -290,17 +372,54 @@ export const getStudentTasks = async () => {
     return response.data;
 };
 
+/** data: JSON object أو FormData (لرفع ملف) */
 export const submitStudentTask = async (taskId, data) => {
-    const response = await apiClient.post(`/student/tasks/${taskId}/submit`, data);
-    return response.data;
+  const response = await apiClient.post(`/student/tasks/${taskId}/submit`, data);
+  return response.data;
 };
 
-export const getStudentNotifications = async () => {
-    const response = await apiClient.get('/student/notifications');
-    return response.data;
+export const getStudentNotifications = async (config = {}) => {
+  const response = await apiClient.get("/student/notifications", config);
+  return response.data;
 };
 
 export const markNotificationAsRead = async (id) => {
     const response = await apiClient.patch(`/student/notifications/${id}/read`);
     return response.data;
 };
+// ==================== System Notifications ====================
+export const getNotifications = (params = {}) =>
+  apiClient.get("/notifications", { params }).then((res) => res.data);
+
+export const getUnreadNotificationsCount = () =>
+  apiClient.get("/notifications/unread-count").then((res) => res.data);
+
+export const markSystemNotificationAsRead = (id) =>
+  apiClient.patch(`/notifications/${id}/read`).then((res) => res.data);
+
+export const markAllSystemNotificationsAsRead = () =>
+  apiClient.post("/notifications/mark-all-read").then((res) => res.data);
+// ==================== Official Letters ====================
+export const getOfficialLetters = (params) =>
+  apiClient.get("/official-letters", { params }).then((res) => res.data);
+
+export const getOfficialLetter = (id) =>
+  apiClient.get(`/official-letters/${id}`).then((res) => res.data);
+
+export const createOfficialLetter = (data) =>
+  apiClient.post("/official-letters", data).then((res) => res.data);
+
+export const updateOfficialLetter = (id, data) =>
+  apiClient.put(`/official-letters/${id}`, data).then((res) => res.data);
+
+export const deleteOfficialLetter = (id) =>
+  apiClient.delete(`/official-letters/${id}`).then((res) => res.data);
+
+export const approveOfficialLetter = (id, data = {}) =>
+  apiClient.post(`/official-letters/${id}/approve`, data).then((res) => res.data);
+
+export const receiveOfficialLetter = (id, data = {}) =>
+  apiClient.post(`/official-letters/${id}/receive`, data).then((res) => res.data);
+
+export const sendOfficialLetter = (id, data = {}) =>
+  apiClient.post(`/official-letters/${id}/send`, data).then((res) => res.data);

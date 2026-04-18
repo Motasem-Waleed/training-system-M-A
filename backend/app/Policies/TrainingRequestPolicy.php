@@ -2,32 +2,113 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\TrainingRequest;
+use App\Models\User;
 
 class TrainingRequestPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role?->name, ['admin', 'coordinator', 'education_directorate', 'school_manager', 'academic_supervisor']);
+        return in_array($user->role?->name, [
+            'admin',
+            'coordinator',
+            'training_coordinator',
+            'education_directorate',
+            'health_directorate',
+            'ministry_of_health',
+            'school_manager',
+            'academic_supervisor',
+            'head_of_department',
+        ], true);
     }
 
     public function view(User $user, TrainingRequest $trainingRequest): bool
     {
-        if ($user->role?->name === 'admin') return true;
-        if ($user->role?->name === 'coordinator') return true;
-        if ($user->role?->name === 'education_directorate' && $trainingRequest->book_status === 'sent_to_directorate') return true;
-        if ($user->role?->name === 'school_manager' && $trainingRequest->training_site_id === $user->training_site_id) return true;
+        if ($user->role?->name === 'admin') {
+            return true;
+        }
+
+        if (in_array($user->role?->name, ['coordinator', 'training_coordinator'], true)) {
+            return true;
+        }
+
+        if ($user->role?->name === 'head_of_department') {
+            return true;
+        }
+
+        if ($user->role?->name === 'student') {
+            if ($trainingRequest->requested_by === $user->id) {
+                return true;
+            }
+
+            return $trainingRequest->trainingRequestStudents()
+                ->where('user_id', $user->id)
+                ->exists();
+        }
+
+        if ($user->role?->name === 'education_directorate'
+            && in_array($trainingRequest->book_status, ['sent_to_directorate', 'directorate_approved', 'sent_to_school', 'school_approved', 'rejected'], true)) {
+            return true;
+        }
+
+        if (in_array($user->role?->name, ['health_directorate', 'ministry_of_health'], true)
+            && in_array($trainingRequest->book_status, ['sent_to_health_ministry', 'directorate_approved', 'sent_to_school', 'school_approved', 'rejected'], true)) {
+            return true;
+        }
+
+        if ($user->role?->name === 'school_manager') {
+            $sameSite = ! $user->training_site_id
+                || (int) $trainingRequest->training_site_id === (int) $user->training_site_id;
+            $inSchoolFlow = in_array($trainingRequest->book_status, [
+                'sent_to_school',
+                'school_approved',
+            ], true);
+
+            return $sameSite && $inSchoolFlow;
+        }
+
+        if ($user->role?->name === 'academic_supervisor') {
+            return true;
+        }
+
         return false;
     }
 
     public function create(User $user): bool
     {
- return in_array($user->role?->name, ['student', 'coordinator']);    }
+        return in_array($user->role?->name, ['student', 'coordinator', 'training_coordinator'], true);
+    }
 
     public function update(User $user, TrainingRequest $trainingRequest): bool
     {
-        return $user->role?->name === 'coordinator' && in_array($trainingRequest->book_status, ['draft', 'rejected']);
+        return in_array($user->role?->name, ['coordinator', 'training_coordinator'], true)
+            && in_array($trainingRequest->book_status, ['draft', 'rejected', 'coordinator_rejected'], true);
+    }
+
+    /**
+     * تعديل الطالب لطلبه بعد إرجاعه للتعديل من المنسق.
+     */
+    public function updateAsStudent(User $user, TrainingRequest $trainingRequest): bool
+    {
+        return $user->role?->name === 'student'
+            && (int) $trainingRequest->requested_by === (int) $user->id
+            && $trainingRequest->book_status === 'needs_edit';
+    }
+
+    /**
+     * مراجعة المنسق الأكاديمي لطلبات الطلبة.
+     */
+    public function coordinateReview(User $user, TrainingRequest $trainingRequest): bool
+    {
+        if (! in_array($user->role?->name, ['training_coordinator', 'coordinator'], true)) {
+            return false;
+        }
+
+        return in_array($trainingRequest->book_status, [
+            'sent_to_coordinator',
+            'coordinator_under_review',
+            'needs_edit',
+        ], true);
     }
 
     public function delete(User $user, TrainingRequest $trainingRequest): bool
@@ -37,21 +118,50 @@ class TrainingRequestPolicy
 
     public function sendToDirectorate(User $user, TrainingRequest $trainingRequest): bool
     {
-        return $user->role?->name === 'coordinator' && $trainingRequest->book_status === 'draft';
+        return in_array($user->role?->name, ['coordinator', 'training_coordinator'], true)
+            && $trainingRequest->book_status === 'draft';
     }
 
     public function approveByDirectorate(User $user, TrainingRequest $trainingRequest): bool
     {
-        return $user->role?->name === 'education_directorate' && $trainingRequest->book_status === 'sent_to_directorate';
+        if ($user->role?->name === 'education_directorate'
+            && $trainingRequest->book_status === 'sent_to_directorate') {
+            return true;
+        }
+
+        return in_array($user->role?->name, ['health_directorate', 'ministry_of_health'], true)
+            && $trainingRequest->book_status === 'sent_to_health_ministry';
     }
 
     public function sendToSchool(User $user, TrainingRequest $trainingRequest): bool
     {
-        return $user->role?->name === 'education_directorate' && $trainingRequest->book_status === 'directorate_approved';
+        if ($trainingRequest->book_status !== 'directorate_approved') {
+            return false;
+        }
+
+        if ($user->role?->name === 'education_directorate'
+            && $trainingRequest->governing_body === 'directorate_of_education') {
+            return true;
+        }
+
+        return in_array($user->role?->name, ['health_directorate', 'ministry_of_health'], true)
+            && $trainingRequest->governing_body === 'ministry_of_health';
     }
 
     public function approveBySchool(User $user, TrainingRequest $trainingRequest): bool
     {
-        return $user->role?->name === 'school_manager' && $trainingRequest->book_status === 'sent_to_school';
+        if ($user->role?->name !== 'school_manager') {
+            return false;
+        }
+
+        if ($trainingRequest->book_status !== 'sent_to_school') {
+            return false;
+        }
+
+        if (! $user->training_site_id) {
+            return true;
+        }
+
+        return (int) $trainingRequest->training_site_id === (int) $user->training_site_id;
     }
 }

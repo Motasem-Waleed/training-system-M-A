@@ -11,7 +11,7 @@ class StudentPortfolioPolicy
 {
     $role = $user->role?->name;
 
-    return in_array($role, ['student', 'academic_supervisor', 'coordinator', 'admin']);
+    return in_array($role, ['student', 'academic_supervisor', 'coordinator', 'training_coordinator', 'admin'], true);
 }
 
   public function view(User $user, StudentPortfolio $studentPortfolio): bool
@@ -27,7 +27,7 @@ class StudentPortfolioPolicy
             && $user->id === $studentPortfolio->trainingAssignment->academic_supervisor_id;
     }
 
-    return in_array($role, ['coordinator', 'admin']);
+    return in_array($role, ['coordinator', 'training_coordinator', 'admin'], true);
 }
 
 public function create(User $user): bool
@@ -43,11 +43,11 @@ public function update(User $user, StudentPortfolio $studentPortfolio): bool
         return $user->id === $studentPortfolio->user_id;
     }
 
-    return in_array($role, ['coordinator', 'admin']);
+    return in_array($role, ['coordinator', 'training_coordinator', 'admin'], true);
 }
 
-public function delete(User $user): bool
-{
-    return $user->role?->name === 'admin';
-}
+    public function delete(User $user, StudentPortfolio $studentPortfolio): bool
+    {
+        return $user->role?->name === 'admin';
+    }
 }

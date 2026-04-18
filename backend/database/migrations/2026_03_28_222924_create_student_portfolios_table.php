@@ -19,9 +19,9 @@ return new class extends Migration
                 ->onDelete('cascade');
 
             $table->foreignId('training_assignment_id')
-                ->constrained()
-                ->onDelete('cascade')
-                ->nullabel();
+                ->nullable()
+                ->constrained('training_assignments')
+                ->nullOnDelete();
 
             $table->timestamps();
 

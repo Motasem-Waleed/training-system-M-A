@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -11,17 +10,22 @@ class DatabaseSeeder extends Seeder
     {
         // 👇 تشغيل seeders أولًا
         $this->call([
-    RoleSeeder::class,
-    DepartmentSeeder::class,
-    PermissionSeeder::class,
-    TrainingSitesSeeder::class,
-    RolePermissionSeeder::class,
-    SectionsSeeder::class ,  // أضف هذا
-    CoursesSeeder::class,
-    UsersSeeder::class, // 👈 آخر إشي
-    FeatureFlagsSeeder::class
-
-]);
+            RoleSeeder::class,
+            DepartmentSeeder::class,
+            PermissionSeeder::class,
+            CoursesSeeder::class,
+            TrainingPeriodsSeeder::class,
+            TrainingSitesSeeder::class,
+            HebronGovernmentSchoolsXlsxSeeder::class,
+            RolePermissionSeeder::class,
+            UsersSeeder::class,
+            StudentsSeeder::class,
+            SectionsSeeder::class,
+            EnrollmentsSeeder::class,
+            DemoDataSeeder::class,
+            OfficialLettersSeeder::class,
+            FeatureFlagsSeeder::class,
+        ]);
 
       
     }

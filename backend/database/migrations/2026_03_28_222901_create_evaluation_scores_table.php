@@ -11,30 +11,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-      Schema::create('evaluation_scores', function (Blueprint $table) {
-    $table->id();
+        Schema::create('evaluation_scores', function (Blueprint $table) {
+            $table->id();
 
-    $table->foreignId('evaluation_id')
-        ->constrained()
-        ->onDelete('cascade');
+            $table->foreignId('evaluation_id')
+                ->constrained()
+                ->onDelete('cascade');
 
-    $table->foreignId('item_id')
-        ->constrained('evaluation_items')
-        ->onDelete('cascade');
-      // نجعل score قابلًا للـ null (لأن النماذج قد لا تحتوي على درجة)
-            $table->decimal('score', 5, 2)->nullable()->change();
-            
-            // إضافة حقول للإجابات النصية والملفات
+            $table->foreignId('item_id')
+                ->constrained('evaluation_items')
+                ->onDelete('cascade');
+
+            // بعض البنود نصية ولا تحتوي على درجة رقمية
+            $table->decimal('score', 5, 2)->nullable();
             $table->text('response_text')->nullable();
             $table->string('file_path')->nullable();
 
-    $table->decimal('score', 5, 2);
+            $table->timestamps();
 
-    $table->timestamps();
-
-    // 🔥 يمنع تكرار نفس item لنفس evaluation
-    $table->unique(['evaluation_id', 'item_id']);
-});
+            // يمنع تكرار نفس البند لنفس التقييم
+            $table->unique(['evaluation_id', 'item_id']);
+        });
     }
 
     /**
