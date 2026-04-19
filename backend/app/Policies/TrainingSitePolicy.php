@@ -40,7 +40,15 @@ class TrainingSitePolicy
     public function update(User $user, TrainingSite $trainingSite): bool
     {
         $allowedRoles = ['admin', 'education_directorate', 'ministry_of_health'];
-        return in_array($user->role?->name, $allowedRoles);
+        if (in_array($user->role?->name, $allowedRoles, true)) {
+            return true;
+        }
+        // مدير المدرسة يعدّل موقع التدريب المرتبط بحسابه فقط
+        if ($user->role?->name === 'school_manager' && $user->training_site_id) {
+            return (int) $user->training_site_id === (int) $trainingSite->id;
+        }
+
+        return false;
     }
 
     /**
