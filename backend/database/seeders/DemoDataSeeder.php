@@ -208,6 +208,41 @@ class DemoDataSeeder extends Seeder
             );
         }
 
+        // ——— طلبات إضافية: مرسلة إلى جهة التدريب (3 طلبات) ———
+        $sentToSchoolStudents = array_values(array_filter([$stu01, $stu02, $stu03]));
+        foreach ($sentToSchoolStudents as $i => $stu) {
+            $seq = str_pad((string) ($i + 1), 3, '0', STR_PAD_LEFT);
+            $trSentToSchool = TrainingRequest::query()->updateOrCreate(
+                ['letter_number' => "DEMO-TR-SCHOOL-{$seq}"],
+                [
+                    'requested_by' => $stu->id,
+                    'book_status' => 'sent_to_school',
+                    'status' => 'pending',
+                    'training_site_id' => $site->id,
+                    'training_period_id' => $period->id,
+                    'governing_body' => 'directorate_of_education',
+                    'requested_at' => now()->subDays(15 + $i),
+                    'sent_to_directorate_at' => now()->subDays(14 + $i),
+                    'directorate_approved_at' => now()->subDays(12 + $i),
+                    'sent_to_school_at' => now()->subDays(10 + $i),
+                    'coordinator_reviewed_at' => now()->subDays(14 + $i),
+                ]
+            );
+
+            TrainingRequestStudent::query()->updateOrCreate(
+                [
+                    'training_request_id' => $trSentToSchool->id,
+                    'user_id' => $stu->id,
+                ],
+                [
+                    'course_id' => $course->id,
+                    'start_date' => $period->start_date,
+                    'end_date' => $period->end_date,
+                    'status' => 'approved',
+                ]
+            );
+        }
+
         // ——— طلب 3: موافقة مدرسة — جاهز للتعيين والحضور والمهام ———
         $trActive = TrainingRequest::query()->updateOrCreate(
             ['letter_number' => 'DEMO-TR-ACTIVE-001'],
