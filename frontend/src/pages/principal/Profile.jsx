@@ -31,7 +31,6 @@ const Profile = () => {
     phone: "",
     email: "",
     address: "",
-    username: "",
   });
 
   const [loading, setLoading] = useState(true);
@@ -61,7 +60,6 @@ const Profile = () => {
         phone: empty(user.phone) || "",
         email: empty(user.email) || "",
         address: empty(trainingSite.location) || "",
-        username: empty(user.university_id) || "",
       });
       setErrorMessage("");
     } catch (error) {
@@ -251,18 +249,6 @@ const Profile = () => {
                 onChange={handleChange}
                 className="form-control-custom"
                 disabled={saving || noTrainingSite}
-              />
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label-custom">اسم المستخدم (الرقم الجامعي)</label>
-              <input
-                type="text"
-                name="username"
-                value={profileData.username}
-                className="form-control-custom"
-                readOnly
-                title="يُعدّل من قبل إدارة النظام"
               />
             </div>
           </div>
