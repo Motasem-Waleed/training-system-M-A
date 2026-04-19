@@ -36,8 +36,8 @@ const TraineeStudents = () => {
       const trainingSite = user.training_site?.data || user.training_site || {};
       const allAssignments = Array.isArray(assignmentsRes?.data)
         ? assignmentsRes.data
-        : Array.isArray(assignmentsRes?.data?.data)
-        ? assignmentsRes.data.data
+        : Array.isArray(assignmentsRes)
+        ? assignmentsRes
         : [];
       const schoolAssignments = allAssignments.filter((assignment) => {
         const assignmentSiteId =

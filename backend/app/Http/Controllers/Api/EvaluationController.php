@@ -7,6 +7,7 @@ use App\Http\Requests\StoreEvaluationRequest;
 use App\Http\Requests\UpdateEvaluationRequest;
 use App\Http\Resources\EvaluationResource;
 use App\Models\Evaluation;
+use App\Models\TrainingAssignment;
 use App\Services\EvaluationService;
 use Illuminate\Http\Request;
 
