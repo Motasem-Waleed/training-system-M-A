@@ -66,18 +66,20 @@ class UserController extends Controller
     public function store(StoreUserRequest $request)
     {
         $user = $this->userService->createUser($request->validated());
-        return new UserResource($user);
+
+        return new UserResource($user->load(['role', 'department', 'trainingSite']));
     }
 
     public function show(User $user)
     {
-        return new UserResource($user->load(['role', 'department']));
+        return new UserResource($user->load(['role', 'department', 'trainingSite']));
     }
 
     public function update(UpdateUserRequest $request, User $user)
     {
         $user = $this->userService->updateUser($user, $request->validated());
-        return new UserResource($user);
+
+        return new UserResource($user->fresh(['role', 'department', 'trainingSite']));
     }
 
     public function destroy(User $user)
@@ -89,7 +91,8 @@ class UserController extends Controller
     public function changeStatus(ChangeUserStatusRequest $request, User $user)
     {
         $user = $this->userService->changeStatus($user, $request->status);
-        return new UserResource($user);
+
+        return new UserResource($user->fresh(['role', 'department', 'trainingSite']));
     }
 
     // ========== دوال تسجيل الدخول والخروج ==========
