@@ -665,3 +665,61 @@ p {
     min-width: 100%;
   }
 }
+
+/* Principal - Trainee Students */
+.trainee-students-page .trainee-card {
+  border-radius: 12px;
+}
+
+.trainee-table-wrapper {
+  border-radius: 0;
+  border: 1px solid #303030;
+  box-shadow: none;
+}
+
+.trainee-info-table,
+.trainee-evaluation-table {
+  min-width: 820px;
+  border-collapse: collapse;
+}
+
+.trainee-info-table th,
+.trainee-info-table td,
+.trainee-evaluation-table th,
+.trainee-evaluation-table td {
+  border: 1px solid #303030;
+  background: #f0f0f0;
+  padding: 10px 12px;
+  font-size: 0.93rem;
+}
+
+.trainee-evaluation-table thead th,
+.trainee-info-table thead th {
+  background: #e6e6e6;
+  color: #1f1f1f;
+  font-weight: 700;
+}
+
+.trainee-evaluation-table tbody tr:hover,
+.trainee-info-table tbody tr:hover {
+  background: transparent;
+}
+
+.evaluation-score-cell .form-control-custom {
+  background: #fff;
+  border-color: #5a5a5a;
+  border-radius: 0;
+}
+
+.trainee-evaluation-table .form-textarea-custom {
+  min-height: 74px;
+  border-radius: 0;
+  background: #fff;
+  border-color: #5a5a5a;
+}
+
+.evaluation-na,
+.evaluation-hint {
+  color: #555;
+  font-size: 0.87rem;
+}

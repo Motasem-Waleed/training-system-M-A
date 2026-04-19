@@ -186,7 +186,7 @@ const TraineeStudents = () => {
   };
 
   return (
-    <>
+    <div className="trainee-students-page">
       <div className="content-header">
         <h1 className="page-title">الطلبة المتدربون وتقييمهم</h1>
         <p className="page-subtitle">
@@ -194,7 +194,7 @@ const TraineeStudents = () => {
         </p>
       </div>
 
-      <div className="section-card mb-3">
+      <div className="section-card trainee-card mb-3">
         <h4>اختيار الطالب المتدرب</h4>
         {loading ? (
           <div className="alert-custom alert-info">جاري تحميل الطلبة...</div>
@@ -224,11 +224,11 @@ const TraineeStudents = () => {
       </div>
 
       {selectedStudent ? (
-        <div className="section-card mb-3">
+        <div className="section-card trainee-card mb-3">
           <h4>بيانات الطالب المتدرب</h4>
 
-          <div className="table-wrapper">
-            <table className="table-custom">
+          <div className="table-wrapper trainee-table-wrapper">
+            <table className="table-custom trainee-info-table">
               <tbody>
                 <tr>
                   <th>اسم الطالب</th>
@@ -256,7 +256,7 @@ const TraineeStudents = () => {
         </div>
       ) : null}
 
-      <div className="section-card">
+      <div className="section-card trainee-card">
         <h4>نموذج التقييم</h4>
         {!template ? (
           <div className="alert-custom alert-warning mb-3">
@@ -265,11 +265,12 @@ const TraineeStudents = () => {
         ) : null}
 
         <form onSubmit={handleSubmit}>
-          <div className="table-wrapper">
-            <table className="table-custom">
+          <div className="table-wrapper trainee-table-wrapper">
+            <table className="table-custom trainee-evaluation-table">
               <thead>
                 <tr>
-                  <th>البند</th>
+                  <th>المحور</th>
+                  <th>التقدير</th>
                   <th>الملاحظات</th>
                 </tr>
               </thead>
@@ -277,7 +278,7 @@ const TraineeStudents = () => {
                 {(template?.items || []).map((item) => (
                   <tr key={item.id}>
                     <td className="fw-bold">{item.title}</td>
-                    <td style={{ minWidth: "300px" }}>
+                    <td className="evaluation-score-cell">
                       {item.field_type === "score" ? (
                         <input
                           type="number"
@@ -290,6 +291,15 @@ const TraineeStudents = () => {
                           placeholder={`أدخل درجة من 0 إلى ${item.max_score ?? 100}`}
                           className="form-control-custom"
                         />
+                      ) : (
+                        <span className="evaluation-na">—</span>
+                      )}
+                    </td>
+                    <td style={{ minWidth: "280px" }}>
+                      {item.field_type === "score" ? (
+                        <span className="evaluation-hint">
+                          أدخل الملاحظات العامة أسفل الجدول.
+                        </span>
                       ) : (
                         <textarea
                           value={selectedScores[item.id] || ""}
@@ -305,7 +315,7 @@ const TraineeStudents = () => {
                 ))}
                 {!template?.items?.length ? (
                   <tr>
-                    <td colSpan="2" className="text-center">
+                    <td colSpan="3" className="text-center">
                       لا توجد بنود ضمن قالب التقييم الحالي.
                     </td>
                   </tr>
@@ -346,7 +356,7 @@ const TraineeStudents = () => {
           </div>
         </form>
       </div>
-    </>
+    </div>
   );
 };
 
