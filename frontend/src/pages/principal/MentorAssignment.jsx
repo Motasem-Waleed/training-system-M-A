@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  getTrainingRequests,
-  getUsers,
+  getSchoolManagerMentorRequests,
+  getSchoolManagerTeachers,
   itemsFromPagedResponse,
-  schoolApprove,
+  schoolManagerApproveRequest,
 } from "../../services/api";
 
 const teacherId = (user) =>
@@ -54,24 +54,15 @@ export default function MentorAssignment() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [requestsRes, usersRes] = await Promise.all([
-        getTrainingRequests({
-          book_status: "sent_to_school",
-          per_page: 100,
-        }),
-        getUsers({
-          status: "active",
-          per_page: 150,
-        }),
+      const [requestsRes, teachersRes] = await Promise.all([
+        getSchoolManagerMentorRequests({ per_page: 100 }),
+        getSchoolManagerTeachers(),
       ]);
 
       const list = itemsFromPagedResponse(requestsRes);
       setRequests(list);
 
-      const allUsers = itemsFromPagedResponse(usersRes);
-      const teacherList = allUsers.filter(
-        (user) => (user.role?.name || user.role?.data?.name) === "teacher"
-      );
+      const teacherList = itemsFromPagedResponse(teachersRes);
       setTeachers(teacherList);
 
       setRows(list.flatMap(normalizeRowsFromRequest));
@@ -116,7 +107,7 @@ export default function MentorAssignment() {
       setSavingRequestId(requestId);
       setSavedMessage("");
       setErrorMessage("");
-      await schoolApprove(requestId, {
+      await schoolManagerApproveRequest(requestId, {
         status: "approved",
         students: requestRows.map((row) => ({
           id: row.studentRowId,
@@ -141,7 +132,7 @@ export default function MentorAssignment() {
       setSavingRequestId(requestId);
       setSavedMessage("");
       setErrorMessage("");
-      await schoolApprove(requestId, {
+      await schoolManagerApproveRequest(requestId, {
         status: "rejected",
         rejection_reason: reason.trim(),
       });

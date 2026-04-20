@@ -178,6 +178,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     });
 
+    // ========== ROUTES مدير جهة التدريب ==========
+    Route::prefix('school-manager')->group(function () {
+        Route::get('/mentor-requests', [TrainingRequestController::class, 'schoolManagerMentorRequests']);
+        Route::get('/teachers', [TrainingRequestController::class, 'schoolManagerTeachers']);
+        Route::post('/mentor-requests/{training_request}/approve', [TrainingRequestController::class, 'schoolManagerApprove']);
+    });
+
     // Portfolio personnel
     Route::get('/my-portfolio', [StudentPortfolioController::class, 'getMyPortfolio']);
 });

@@ -16,8 +16,10 @@ use App\Http\Resources\TrainingRequestResource;
 use App\Models\TrainingRequest;
 use App\Models\TrainingRequestStudent;
 use App\Models\TrainingSite;
+use App\Models\User;
 use App\Services\TrainingRequestService;
 use App\Support\TrainingRequestNotifications;
+use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 
 class TrainingRequestController extends Controller
@@ -368,5 +370,84 @@ class TrainingRequestController extends Controller
         );
 
         return new TrainingRequestResource($withRelations);
+    }
+
+    // ========== School Manager Endpoints ==========
+
+    /**
+     * جلب طلبات التدريب المرسلة إلى جهة التدريب الخاصة بمدير المدرسة
+     */
+    public function schoolManagerMentorRequests(Request $request)
+    {
+        $user = $request->user();
+
+        if (!in_array($user->role?->name, ['school_manager', 'principal'], true)) {
+            abort(403, 'هذه الخدمة متاحة فقط لمدير جهة التدريب.');
+        }
+
+        $query = TrainingRequest::with([
+            'trainingSite',
+            'requestedBy.department',
+            'trainingRequestStudents.user',
+            'trainingRequestStudents.course',
+            'trainingRequestStudents.assignedTeacher',
+            'trainingPeriod',
+        ])
+            ->where('book_status', 'sent_to_school')
+            ->where('status', 'pending');
+
+        if ($user->training_site_id) {
+            $query->where('training_site_id', $user->training_site_id);
+        }
+
+        if ($request->filled('governing_body')) {
+            $query->where('governing_body', $request->governing_body);
+        }
+
+        $trainingRequests = $query->latest('sent_to_school_at')->paginate($request->per_page ?? 100);
+
+        return TrainingRequestResource::collection($trainingRequests);
+    }
+
+    /**
+     * جلب المعلمين المتاحين للتعيين كمرشدين في جهة التدريب
+     */
+    public function schoolManagerTeachers(Request $request)
+    {
+        $user = $request->user();
+
+        if (!in_array($user->role?->name, ['school_manager', 'principal'], true)) {
+            abort(403, 'هذه الخدمة متاحة فقط لمدير جهة التدريب.');
+        }
+
+        $teachers = User::where('status', 'active')
+            ->whereHas('role', fn($q) => $q->where('name', 'teacher'))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->search) . '%';
+                $q->where(function ($sub) use ($term) {
+                    $sub->where('name', 'like', $term)
+                        ->orWhere('university_id', 'like', $term);
+                });
+            })
+            ->orderBy('name')
+            ->get();
+
+        return UserResource::collection($teachers);
+    }
+
+    /**
+     * موافقة/رفض مدير المدرسة على طلب التدريب مع تعيين المعلمين المرشدين
+     */
+    public function schoolManagerApprove(SchoolApproveTrainingRequest $request, TrainingRequest $trainingRequest)
+    {
+        $this->authorize('approveBySchool', $trainingRequest);
+
+        if ($request->status === 'rejected') {
+            $this->trainingRequestService->reject($trainingRequest, $request->rejection_reason, $request->user()->id);
+            return response()->json(['message' => 'تم رفض الكتاب من قبل المدرسة']);
+        }
+
+        $this->trainingRequestService->schoolApprove($trainingRequest, $request->user()->id, $request->students);
+        return response()->json(['message' => 'تمت موافقة المدرسة وتعيين المعلمين المرشدين بنجاح']);
     }
 }

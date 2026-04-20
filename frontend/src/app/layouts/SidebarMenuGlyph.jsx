@@ -59,9 +59,8 @@ const ROUTE_ICON = {
 
   "/principal/dashboard": "home",
   "/principal/profile": "user",
-  "/principal/mentor-assignment": "mentor",
+  "/principal/mentor-assignment": "fileText",
   "/principal/trainee-students": "graduation",
-  "/principal/official-letters": "document",
 
   "/health/dashboard": "home",
   "/health/training-sites": "mapPin",

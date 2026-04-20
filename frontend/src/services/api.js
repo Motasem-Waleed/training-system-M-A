@@ -318,8 +318,8 @@ export const createStudentTrainingRequest = async (data) => {
 };
 
 export const updateStudentTrainingRequest = async (id, data) => {
-  const response = await apiClient.put(`/student/training-requests/${id}`, data);
-  return response.data;
+    const response = await apiClient.put(`/student/training-requests/${id}`, data);
+    return response.data;
 };
 
 export const getStudentSchedule = async () => {
@@ -387,6 +387,22 @@ export const markNotificationAsRead = async (id) => {
     const response = await apiClient.patch(`/student/notifications/${id}/read`);
     return response.data;
 };
+
+// ==================== School Manager specific ====================
+export const getSchoolManagerMentorRequests = async (params = {}) => {
+  const response = await apiClient.get('/school-manager/mentor-requests', { params });
+  return response.data;
+};
+
+export const getSchoolManagerTeachers = async (params = {}) => {
+  const response = await apiClient.get('/school-manager/teachers', { params });
+  return response.data;
+};
+
+export const schoolManagerApproveRequest = async (id, data) => {
+  return apiClient.post(`/school-manager/mentor-requests/${id}/approve`, data);
+};
+
 // ==================== System Notifications ====================
 export const getNotifications = (params = {}) =>
   apiClient.get("/notifications", { params }).then((res) => res.data);
@@ -399,6 +415,7 @@ export const markSystemNotificationAsRead = (id) =>
 
 export const markAllSystemNotificationsAsRead = () =>
   apiClient.post("/notifications/mark-all-read").then((res) => res.data);
+
 // ==================== Official Letters ====================
 export const getOfficialLetters = (params) =>
   apiClient.get("/official-letters", { params }).then((res) => res.data);

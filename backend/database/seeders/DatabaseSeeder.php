@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             SectionsSeeder::class,
             EnrollmentsSeeder::class,
             DemoDataSeeder::class,
+            SchoolAdminSupervisorRequestsSeeder::class,
             OfficialLettersSeeder::class,
             FeatureFlagsSeeder::class,
         ]);

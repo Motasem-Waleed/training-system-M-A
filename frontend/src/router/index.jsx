@@ -82,7 +82,6 @@ import PrincipalDashboard from "../pages/dashboard/PrincipalDashboard";
 import PrincipalProfile from "../pages/principal/Profile";
 import MentorAssignment from "../pages/principal/MentorAssignment";
 import TraineeStudents from "../pages/principal/TraineeStudents";
-import PrincipalOfficialLetters from "../pages/principal/OfficialLetters";
 
 // Health Directorate
 import HealthDirectorateDashboard from "../pages/dashboard/HealthDirectorateDashboard";
@@ -155,7 +154,7 @@ export default function AppRouter() {
           <Route path="/admin/evaluation-templates/create" element={<EvaluationTemplateForm />} />
           <Route path="/admin/evaluation-templates/edit/:id" element={<EvaluationTemplateForm />} />
 
-          {/* ✅ FIXED REPORTS */}
+          {/* Reports */}
           <Route path="/reports" element={<ReportsDashboard />} />
 
           {/* Student */}
@@ -201,7 +200,6 @@ export default function AppRouter() {
           <Route path="/principal/profile" element={<PrincipalProfile />} />
           <Route path="/principal/mentor-assignment" element={<MentorAssignment />} />
           <Route path="/principal/trainee-students" element={<TraineeStudents />} />
-          <Route path="/principal/official-letters" element={<PrincipalOfficialLetters />} />
 
           {/* Health */}
           <Route path="/health/dashboard" element={<HealthDirectorateDashboard />} />
@@ -216,6 +214,15 @@ export default function AppRouter() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/notifications" element={<Notifications />} />
+
+          {/* 404 — أي رابط غير معروف */}
+          <Route path="*" element={
+            <div style={{ padding: 40, textAlign: "center" }}>
+              <h2>الصفحة غير موجودة</h2>
+              <p>الرابط الذي تحاول الوصول إليه غير متاح.</p>
+              <a href="/principal/dashboard" style={{ color: "var(--primary)", fontWeight: "bold" }}>العودة للرئيسية</a>
+            </div>
+          } />
         </Route>
       </Routes>
     </BrowserRouter>

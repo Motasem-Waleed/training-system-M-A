@@ -97,17 +97,15 @@ const menus = {
   school_manager: [
     { name: "الرئيسية", path: "/principal/dashboard" },
     { name: "الملف الشخصي", path: "/principal/profile" },
-    { name: "تعيين المعلم المرشد", path: "/principal/mentor-assignment" },
+    { name: "طلبات التدريب", path: "/principal/mentor-assignment" },
     { name: "الطلبة المتدربون", path: "/principal/trainee-students" },
-    { name: "الكتب الرسمية", path: "/principal/official-letters" },
   ],
 
   principal: [
     { name: "الرئيسية", path: "/principal/dashboard" },
     { name: "الملف الشخصي", path: "/principal/profile" },
-    { name: "تعيين المعلم المرشد", path: "/principal/mentor-assignment" },
+    { name: "طلبات التدريب", path: "/principal/mentor-assignment" },
     { name: "الطلبة المتدربون", path: "/principal/trainee-students" },
-    { name: "الكتب الرسمية", path: "/principal/official-letters" },
   ],
 
   health_directorate: [
