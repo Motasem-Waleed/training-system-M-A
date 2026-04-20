@@ -119,7 +119,7 @@ class UserController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => new UserResource($user->load(['role', 'department', 'trainingSite'])),
+            'user' => new UserResource($user->load(['role', 'department', 'trainingSite', 'fieldSupervisorProfile'])),
             'access_token' => $token,
             'token_type' => 'Bearer',
         ]);

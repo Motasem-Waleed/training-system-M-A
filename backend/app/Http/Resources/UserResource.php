@@ -21,7 +21,7 @@ class UserResource extends JsonResource
             'role_id' => $this->role_id,
             'department_id' => $this->department_id,
             'training_site_id' => $this->training_site_id,
-            // لا تُمرَّر علاقة null إلى JsonResource — يُسبب 500 عند عدم وجود دور/قسم/موقع
+            // لا تُمرَّر علاقة null إلى JsonResource — يُسبب 500 عند عدم وجود دور/قسم/موقع
             'training_site' => $this->when(
                 $this->relationLoaded('trainingSite') && $this->trainingSite !== null,
                 fn () => new TrainingSiteResource($this->trainingSite)
@@ -34,6 +34,7 @@ class UserResource extends JsonResource
                 $this->relationLoaded('role') && $this->role !== null,
                 fn () => new RoleResource($this->role)
             ),
+            'field_supervisor_profile' => $this->whenLoaded('fieldSupervisorProfile'),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
             'deleted_at' => $this->deleted_at?->toDateTimeString(),

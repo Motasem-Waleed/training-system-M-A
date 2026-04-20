@@ -1,0 +1,180 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class DailyReport extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'student_id',
+        'field_supervisor_id',
+        'training_assignment_id',
+        'template_id',
+        'report_date',
+        'content',
+        'status',
+        'supervisor_comment',
+        'reviewed_at',
+        'reviewed_by',
+    ];
+
+    protected $casts = [
+        'report_date' => 'date',
+        'content' => 'array',
+        'reviewed_at' => 'datetime',
+    ];
+
+    const STATUS_DRAFT = 'draft';
+    const STATUS_SUBMITTED = 'submitted';
+    const STATUS_UNDER_REVIEW = 'under_review';
+    const STATUS_CONFIRMED = 'confirmed';
+    const STATUS_RETURNED = 'returned';
+
+    /**
+     * الطالب
+     */
+    public function student()
+    {
+        return $this->belongsTo(User::class, 'student_id');
+    }
+
+    /**
+     * المشرف الميداني
+     */
+    public function fieldSupervisor()
+    {
+        return $this->belongsTo(User::class, 'field_supervisor_id');
+    }
+
+    /**
+     * التعيين التدريبي
+     */
+    public function trainingAssignment()
+    {
+        return $this->belongsTo(TrainingAssignment::class);
+    }
+
+    /**
+     * قالب التقرير
+     */
+    public function template()
+    {
+        return $this->belongsTo(DailyReportTemplate::class, 'template_id');
+    }
+
+    /**
+     * من قام بالمراجعة
+     */
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    /**
+     * المرفقات
+     */
+    public function attachments()
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    /**
+     * نطاق: بحسب الحالة
+     */
+    public function scopeWithStatus($query, string $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * نطاق: تقارير اليوم
+     */
+    public function scopeToday($query)
+    {
+        return $query->whereDate('report_date', today());
+    }
+
+    /**
+     * نطاق: تقارير طالب معين
+     */
+    public function scopeForStudent($query, int $studentId)
+    {
+        return $query->where('student_id', $studentId);
+    }
+
+    /**
+     * نطاق: تقارير مشرف معين
+     */
+    public function scopeForSupervisor($query, int $supervisorId)
+    {
+        return $query->where('field_supervisor_id', $supervisorId);
+    }
+
+    /**
+     * نطاق: بحاجة للمراجعة
+     */
+    public function scopePendingReview($query)
+    {
+        return $query->whereIn('status', [self::STATUS_SUBMITTED, self::STATUS_UNDER_REVIEW]);
+    }
+
+    /**
+     * تأكيد التقرير
+     */
+    public function confirm(int $reviewerId, ?string $comment = null): void
+    {
+        $this->update([
+            'status' => self::STATUS_CONFIRMED,
+            'supervisor_comment' => $comment,
+            'reviewed_at' => now(),
+            'reviewed_by' => $reviewerId,
+        ]);
+    }
+
+    /**
+     * إعادة التقرير للتعديل
+     */
+    public function returnForEdit(int $reviewerId, string $comment): void
+    {
+        $this->update([
+            'status' => self::STATUS_RETURNED,
+            'supervisor_comment' => $comment,
+            'reviewed_at' => now(),
+            'reviewed_by' => $reviewerId,
+        ]);
+    }
+
+    /**
+     * الحصول على الحالة بالعربية
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            self::STATUS_DRAFT => 'مسودة',
+            self::STATUS_SUBMITTED => 'مُرسل',
+            self::STATUS_UNDER_REVIEW => 'قيد المراجعة',
+            self::STATUS_CONFIRMED => 'مُعتمد',
+            self::STATUS_RETURNED => 'مُعاد للتعديل',
+            default => $this->status,
+        };
+    }
+
+    /**
+     * الحصول على لون الحالة
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            self::STATUS_CONFIRMED => 'green',
+            self::STATUS_RETURNED => 'red',
+            self::STATUS_UNDER_REVIEW => 'yellow',
+            self::STATUS_SUBMITTED => 'blue',
+            self::STATUS_DRAFT => 'gray',
+            default => 'gray',
+        };
+    }
+}

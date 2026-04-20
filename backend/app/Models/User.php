@@ -154,4 +154,62 @@ public function enrollments()
             ->latest('id')
             ->first();
     }
+
+    // ─── علاقات المشرف الميداني ───
+
+    /**
+     * المشرف الميداني: ملف التعريف
+     */
+    public function fieldSupervisorProfile()
+    {
+        return $this->hasOne(FieldSupervisorProfile::class);
+    }
+
+    /**
+     * المشرف الميداني: التقارير اليومية للمراجعة
+     */
+    public function dailyReportsToReview()
+    {
+        return $this->hasMany(DailyReport::class, 'field_supervisor_id');
+    }
+
+    /**
+     * المشرف الميداني: التقييمات الميدانية
+     */
+    public function fieldEvaluationsGiven()
+    {
+        return $this->hasMany(FieldEvaluation::class, 'field_supervisor_id');
+    }
+
+    /**
+     * الطالب: التقارير اليومية المرفوعة
+     */
+    public function dailyReports()
+    {
+        return $this->hasMany(DailyReport::class, 'student_id');
+    }
+
+    /**
+     * الطالب: التقييمات الميدانية المستلمة
+     */
+    public function fieldEvaluations()
+    {
+        return $this->hasMany(FieldEvaluation::class, 'student_id');
+    }
+
+    /**
+     * التحقق إذا كان المستخدم مشرف ميداني
+     */
+    public function isFieldSupervisor(): bool
+    {
+        return $this->fieldSupervisorProfile()->exists();
+    }
+
+    /**
+     * الحصول على نوع المشرف الميداني
+     */
+    public function getFieldSupervisorType(): ?string
+    {
+        return $this->fieldSupervisorProfile?->supervisor_type;
+    }
 }

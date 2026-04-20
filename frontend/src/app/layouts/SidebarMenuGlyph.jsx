@@ -20,6 +20,8 @@ const ROUTE_ICON = {
   "/admin/activity-logs": "activity",
   "/admin/feature-flags": "flag",
   "/reports": "chart",
+  "/profile": "user",
+  "/change-password": "lock",
 
   "/supervisor/dashboard": "home",
   "/supervisor/tasks": "task",
@@ -31,16 +33,24 @@ const ROUTE_ICON = {
   "/supervisor/evaluations": "star",
   "/supervisor/reports": "chart",
 
-  "/mentor/dashboard": "home",
-  "/mentor/students": "graduation",
-  "/mentor/tasks": "task",
-  "/mentor/attendance": "clipboardCheck",
-  "/mentor/evaluations": "star",
-  "/mentor/schedule": "calendar",
+  // Unified field-staff paths
+  "/field-staff/dashboard": "home",
+  "/field-staff/students": "graduation",
+  "/field-staff/evaluations": "star",
+  "/field-staff/notes": "fileText",
+  "/field-staff/daily-reports": "journal",
+  "/field-staff/guidance": "clipboard",
+  "/field-staff/tasks": "task",
+  "/field-staff/final-evaluation": "star",
 
-  "/psychologist/dashboard": "home",
-  "/psychologist/students": "users",
-  "/psychologist/guidance": "clipboard",
+  // Supervisor specific paths
+  "/supervisor/field-visits": "map",
+  "/supervisor/sections": "layers",
+  "/supervisor/submissions": "inbox",
+
+  // Legacy mentor paths (still used for attendance/schedule)
+  "/mentor/attendance": "clipboardCheck",
+  "/mentor/schedule": "calendar",
 
   "/notifications": "bell",
 
@@ -55,6 +65,7 @@ const ROUTE_ICON = {
 
   "/coordinator/dashboard": "home",
   "/coordinator/students": "users",
+  "/coordinator/training-requests": "fileText",
   "/coordinator/distribution": "share",
   "/coordinator/statistics": "chart",
 
@@ -69,9 +80,11 @@ const ROUTE_ICON = {
   "/psychology-center/trainee-students": "graduation",
 
   "/health/dashboard": "home",
+  "/health/training-requests": "fileText",
   "/health/training-sites": "mapPin",
 
   "/education/dashboard": "home",
+  "/education/training-requests": "fileText",
   "/education/training-sites": "school",
   "/education/official-letters": "document",
 };

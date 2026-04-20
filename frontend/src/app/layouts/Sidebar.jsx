@@ -8,6 +8,7 @@ const roleLabels = {
   supervisor: "المشرف الأكاديمي",
   teacher: "المعلم المرشد",
   mentor: "المشرف الميداني",
+  field_supervisor: "المشرف الميداني",
   psychologist: "الأخصائي النفسي",
   principal: "مدير المدرسة",
   school_manager: "مدير المدرسة",
@@ -16,6 +17,53 @@ const roleLabels = {
   education_directorate: "مديرية التربية والتعليم",
   student: "الطالب المتدرب",
 };
+
+/** القائمة الموحدة للكادر الميداني — نفس العناصر مع Conditional Rendering */
+function buildFieldStaffMenu(roleKey) {
+  // الصفحات الموحدة الأساسية لكل الكادر الميداني
+  const menu = [
+    { name: "الرئيسية", path: "/field-staff/dashboard" },
+    { name: "ملفات الطلبة", path: "/field-staff/students" },
+    { name: "التقييمات", path: "/field-staff/evaluations" },
+    { name: "الملاحظات", path: "/field-staff/notes" },
+  ];
+
+  // المهام والسجلات اليومية والتقييم النهائي: للمعلم والمشرف الأكاديمي والمشرف الميداني
+  if (roleKey === "mentor" || roleKey === "supervisor" || roleKey === "field_supervisor") {
+    menu.push(
+      { name: "المهام", path: "/field-staff/tasks" },
+      { name: "السجلات اليومية", path: "/field-staff/daily-reports" },
+      { name: "التقييم النهائي", path: "/field-staff/final-evaluation" },
+    );
+  }
+
+  // الإرشاد النفسي: للأخصائي النفسي فقط
+  if (roleKey === "psychologist") {
+    menu.push({ name: "الإرشاد والدعم", path: "/field-staff/guidance" });
+  }
+
+  // صفحات خاصة بالمشرف الأكاديمي
+  if (roleKey === "supervisor") {
+    // إضافة مساحة العمل الموحدة في البداية
+    menu.unshift({ name: "🏠 مساحة العمل", path: "/supervisor/workspace" });
+    menu.push(
+      { name: "الزيارات الميدانية", path: "/supervisor/field-visits" },
+      { name: "الشعب", path: "/supervisor/sections" },
+      { name: "حلول الطلبة", path: "/supervisor/submissions" },
+    );
+  }
+
+  // الجدول الأسبوعي: للمعلم فقط
+  if (roleKey === "mentor") {
+    menu.push(
+      { name: "الحضور", path: "/mentor/attendance" },
+      { name: "الجدول الأسبوعي", path: "/mentor/schedule" },
+    );
+  }
+
+  menu.push({ name: "الإشعارات", path: "/notifications" });
+  return menu;
+}
 
 const menus = {
   admin: [
@@ -47,36 +95,22 @@ const menus = {
     
     // تقارير
     { name: "التقارير", path: "/reports" },
+
+    // صفحات مشتركة
+    { name: "الملف الشخصي", path: "/profile" },
+    { name: "تغيير كلمة المرور", path: "/change-password" },
+    { name: "الإشعارات", path: "/notifications" },
   ],
   
 
-  supervisor: [
-    { name: "الرئيسية", path: "/supervisor/dashboard" },
-    { name: "المهام", path: "/supervisor/tasks" },
-    { name: "حلول الطلبة", path: "/supervisor/submissions" },
-    { name: "السجل اليومي", path: "/supervisor/training-logs" },
-    { name: "متابعة الحضور", path: "/supervisor/attendance-follow-up" },
-    { name: "الزيارات الميدانية", path: "/supervisor/field-visits" },
-    { name: "الشعب", path: "/supervisor/sections" },
-    { name: "التقييمات", path: "/supervisor/evaluations" },
-    { name: "التقارير", path: "/supervisor/reports" },
-  ],
-
-  mentor: [
-    { name: "الرئيسية", path: "/mentor/dashboard" },
-    { name: "طلبة التدريب", path: "/mentor/students" },
-    { name: "المهام", path: "/mentor/tasks" },
-    { name: "الحضور", path: "/mentor/attendance" },
-    { name: "التقييمات", path: "/mentor/evaluations" },
-    { name: "الجدول الأسبوعي", path: "/mentor/schedule" },
-  ],
-
-  psychologist: [
-    { name: "الرئيسية", path: "/psychologist/dashboard" },
-    { name: "الطلبة", path: "/psychologist/students" },
-    { name: "الإرشاد والدعم", path: "/psychologist/guidance" },
-    { name: "الإشعارات", path: "/notifications" },
-  ],
+  // الكادر الميداني الموحد — يُبنى ديناميكياً حسب الدور
+  mentor: buildFieldStaffMenu("mentor"),
+  psychologist: buildFieldStaffMenu("psychologist"),
+  supervisor: buildFieldStaffMenu("supervisor"),
+  principal: buildFieldStaffMenu("principal"),
+  
+  // المشرف الميداني — يستخدم نفس قائمة الكادر الميداني
+  field_supervisor: buildFieldStaffMenu("field_supervisor"),
 
   student: [
     { name: "الرئيسية", path: "/student/dashboard" },
@@ -92,6 +126,7 @@ const menus = {
   coordinator: [
     { name: "الرئيسية", path: "/coordinator/dashboard" },
     { name: "الطلبة", path: "/coordinator/students" },
+    { name: "طلبات التدريب", path: "/coordinator/training-requests" },
     { name: "التوزيع", path: "/coordinator/distribution" },
     { name: "الإحصائيات", path: "/coordinator/statistics" },
   ],
@@ -119,11 +154,13 @@ const menus = {
 
   health_directorate: [
     { name: "الرئيسية", path: "/health/dashboard" },
+    { name: "طلبات التدريب", path: "/health/training-requests" },
     { name: "أماكن التدريب", path: "/health/training-sites" },
   ],
 
   education_directorate: [
     { name: "الرئيسية", path: "/education/dashboard" },
+    { name: "طلبات التدريب", path: "/education/training-requests" },
     { name: "أماكن التدريب", path: "/education/training-sites" },
     { name: "الكتب الرسمية", path: "/education/official-letters" },
   ],
@@ -140,7 +177,11 @@ export default function Sidebar({ isOpen, onClose }) {
         ? "mentor"
         : rawRole === "psychology_center_manager"
           ? "psychology_center_manager"
-          : rawRole;
+          : rawRole === "academic_supervisor"
+            ? "supervisor"
+            : rawRole === "school_manager"
+              ? "principal"
+              : rawRole;
   const userName = savedUser?.name || "مستخدم تجريبي";
 const roleName = roleLabels[rawRole] || roleLabels[role] || "مستخدم النظام";
 const menu = menus[role] || [];

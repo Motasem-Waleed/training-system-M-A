@@ -18,7 +18,10 @@ use App\Models\Course;
 use App\Models\TrainingPeriod;
 use App\Models\WeeklySchedule;
 use App\Models\Notification;
+use App\Models\ActivityLog;
+use App\Models\Note;
 use App\Policies\UserPolicy;
+use App\Policies\ActivityLogPolicy;
 use App\Policies\TrainingRequestPolicy;
 use App\Policies\TrainingAssignmentPolicy;
 use App\Policies\TaskPolicy;
@@ -34,6 +37,7 @@ use App\Policies\CoursePolicy;
 use App\Policies\TrainingPeriodPolicy;
 use App\Policies\WeeklySchedulePolicy;
 use App\Policies\NotificationPolicy;
+use App\Policies\NotePolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -56,6 +60,8 @@ class AuthServiceProvider extends ServiceProvider
         TrainingPeriod::class => TrainingPeriodPolicy::class,
         WeeklySchedule::class => WeeklySchedulePolicy::class,
         Notification::class => NotificationPolicy::class,
+        ActivityLog::class => ActivityLogPolicy::class,
+        Note::class => NotePolicy::class,
     ];
 
     public function boot(): void

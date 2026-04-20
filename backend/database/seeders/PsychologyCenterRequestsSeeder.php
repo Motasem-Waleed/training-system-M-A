@@ -139,7 +139,6 @@ class PsychologyCenterRequestsSeeder extends Seeder
                     'academic_year' => '2025-2026',
                     'semester' => 'first',
                     'status' => 'active',
-                    'enrolled_at' => now()->subMonths(3),
                 ]
             );
         }

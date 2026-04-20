@@ -30,7 +30,7 @@ class EvaluationController extends Controller
         }
         if ($request->user()->role?->name === 'student') {
             $query->whereHas('trainingAssignment.enrollment', fn ($q) => $q->where('user_id', $request->user()->id));
-        } elseif ($request->user()->role?->name === 'teacher') {
+        } elseif (in_array($request->user()->role?->name, ['teacher', 'psychologist'])) {
             $query->where('evaluator_id', $request->user()->id);
         } elseif ($request->user()->role?->name === 'school_manager' && $request->user()->training_site_id) {
             $query->whereHas('trainingAssignment', fn ($q) => $q->where('training_site_id', $request->user()->training_site_id));

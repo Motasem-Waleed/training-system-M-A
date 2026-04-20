@@ -16,6 +16,8 @@ class EvaluationTemplateResource extends JsonResource
             'description' => $this->description,
             'form_type' => $this->form_type,
             'form_type_label' => EvaluationFormType::tryFrom($this->form_type)?->label() ?? $this->form_type,
+            'target_role' => $this->target_role,
+            'target_role_label' => $this->target_role_label,
             'items' => EvaluationItemResource::collection($this->whenLoaded('items')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),

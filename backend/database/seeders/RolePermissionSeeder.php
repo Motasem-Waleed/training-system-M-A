@@ -92,5 +92,18 @@ class RolePermissionSeeder extends Seeder
             ])->get();
             $psychologist->permissions()->sync($psychologistPerms);
         }
+
+        // 8. المشرف الميداني الموحد (معلم مرشد / مرشد تربوي / أخصائي نفسي)
+        $fieldSupervisor = Role::where('name', 'field_supervisor')->first();
+        if ($fieldSupervisor) {
+            $fieldSupervisorPerms = Permission::whereIn('name', [
+                'manage_tasks', 'manage_task_submissions',
+                'manage_attendances',
+                'manage_evaluations',
+                'view_reports',
+                'send_notifications',
+            ])->get();
+            $fieldSupervisor->permissions()->sync($fieldSupervisorPerms);
+        }
     }
 }

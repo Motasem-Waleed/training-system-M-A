@@ -98,6 +98,7 @@ class EvaluationService
             'academic_supervisor' => null,
             'school_mentor' => null,
             'school_principal' => null,
+            'psychologist' => null,
         ];
 
         foreach ($evaluations as $eval) {
@@ -111,6 +112,9 @@ class EvaluationService
                     break;
                 case 'school_manager':
                     $result['school_principal'] = $eval;
+                    break;
+                case 'psychologist':
+                    $result['psychologist'] = $eval;
                     break;
             }
         }

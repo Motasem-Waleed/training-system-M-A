@@ -13,6 +13,7 @@ class RoleSeeder extends Seeder
             'admin',                      // مدير النظام (صلاحيات كاملة)
             'student',                    // الطالب المتدرب
             'teacher',                    // المعلم المرشد
+            'field_supervisor',           // المشرف الميداني الموحد (جديد)
             'school_manager',             // مدير المدرسة
             'psychology_center_manager',  // مدير المركز النفسي
             'adviser',                    // المرشد التربوي

@@ -23,6 +23,8 @@ use App\Http\Controllers\Api\{
     PermissionController,
     StudentPortfolioController,
     SupervisorVisitController,
+    SupervisorWorkspaceController,
+    FieldSupervisorController,
     BackupController,
     ActivityLogController,
     TrainingPeriodController,
@@ -94,7 +96,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Tâches
     Route::apiResource('tasks', TaskController::class);
     Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
-    Route::post('task-submissions/{submission}/grade', [TaskController::class, 'grade']);
+    Route::apiResource('task-submissions', TaskSubmissionController::class);
+    Route::post('task-submissions/{task_submission}/grade', [TaskSubmissionController::class, 'grade']);
 
     // Évaluations
     Route::apiResource('evaluations', EvaluationController::class);
@@ -150,6 +153,62 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Logs d'activité
     Route::apiResource('activity-logs', ActivityLogController::class);
+
+    // ========== ROUTES SUPERVISOR WORKSPACE ==========
+    Route::prefix('supervisor')->group(function () {
+        Route::get('/stats', [SupervisorWorkspaceController::class, 'stats']);
+        Route::get('/students', [SupervisorWorkspaceController::class, 'students']);
+        Route::get('/sections', [SupervisorWorkspaceController::class, 'sections']);
+        Route::get('/students/{studentId}/overview', [SupervisorWorkspaceController::class, 'studentOverview']);
+        Route::get('/students/{studentId}/attendance', [SupervisorWorkspaceController::class, 'studentAttendance']);
+        Route::post('/students/{studentId}/attendance-comment', [SupervisorWorkspaceController::class, 'attendanceComment']);
+        Route::post('/students/{studentId}/attendance-alert', [SupervisorWorkspaceController::class, 'attendanceAlert']);
+        Route::get('/students/{studentId}/daily-logs', [SupervisorWorkspaceController::class, 'studentDailyLogs']);
+        Route::get('/students/{studentId}/portfolio', [SupervisorWorkspaceController::class, 'studentPortfolio']);
+        Route::get('/students/{studentId}/tasks', [SupervisorWorkspaceController::class, 'studentTasks']);
+        Route::get('/students/{studentId}/task-submissions', [SupervisorWorkspaceController::class, 'studentTaskSubmissions']);
+        Route::get('/students/{studentId}/field-evaluations', [SupervisorWorkspaceController::class, 'studentFieldEvaluations']);
+        Route::get('/students/{studentId}/academic-evaluation', [SupervisorWorkspaceController::class, 'studentAcademicEvaluation']);
+        Route::get('/students/{studentId}/messages', [SupervisorWorkspaceController::class, 'studentMessages']);
+        Route::post('/students/{studentId}/messages', [SupervisorWorkspaceController::class, 'sendMessage']);
+        Route::get('/students/{studentId}/timeline', [SupervisorWorkspaceController::class, 'studentTimeline']);
+        Route::post('/students/{studentId}/escalate', [SupervisorWorkspaceController::class, 'escalate']);
+    });
+
+    // ========== ROUTES FIELD SUPERVISOR WORKSPACE ==========
+    Route::prefix('field-supervisor')->group(function () {
+        // Dashboard
+        Route::get('/dashboard', [FieldSupervisorController::class, 'dashboard']);
+        
+        // Students
+        Route::get('/students', [FieldSupervisorController::class, 'students']);
+        Route::get('/students/{studentId}', [FieldSupervisorController::class, 'studentOverview']);
+        
+        // Attendance
+        Route::get('/students/{studentId}/attendance', [FieldSupervisorController::class, 'studentAttendance']);
+        Route::post('/attendance', [FieldSupervisorController::class, 'recordAttendance']);
+        
+        // Daily Reports
+        Route::get('/report-templates', [FieldSupervisorController::class, 'getReportTemplates']);
+        Route::get('/students/{studentId}/daily-reports', [FieldSupervisorController::class, 'studentDailyReports']);
+        Route::get('/daily-reports/{reportId}', [FieldSupervisorController::class, 'getDailyReport']);
+        Route::post('/daily-reports/{reportId}/confirm', [FieldSupervisorController::class, 'confirmDailyReport']);
+        Route::post('/daily-reports/{reportId}/return', [FieldSupervisorController::class, 'returnDailyReport']);
+        
+        // Evaluations
+        Route::get('/evaluation-templates', [FieldSupervisorController::class, 'getEvaluationTemplates']);
+        Route::get('/students/{studentId}/evaluation', [FieldSupervisorController::class, 'getStudentEvaluation']);
+        Route::post('/students/{studentId}/evaluation-draft', [FieldSupervisorController::class, 'saveEvaluationDraft']);
+        Route::post('/students/{studentId}/evaluation-submit', [FieldSupervisorController::class, 'submitEvaluation']);
+        
+        // Communication
+        Route::get('/students/{studentId}/messages', [FieldSupervisorController::class, 'studentMessages']);
+        Route::post('/students/{studentId}/messages', [FieldSupervisorController::class, 'sendMessage']);
+        Route::post('/students/{studentId}/message-academic-supervisor', [FieldSupervisorController::class, 'messageAcademicSupervisor']);
+        
+        // Timeline
+        Route::get('/students/{studentId}/timeline', [FieldSupervisorController::class, 'studentTimeline']);
+    });
 
     // ========== ROUTES ÉTUDIANTS ==========
     Route::prefix('student')->group(function () {

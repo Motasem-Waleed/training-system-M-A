@@ -29,6 +29,7 @@ export default function EvaluationTemplateForm() {
     name: "",
     description: "",
     form_type: "evaluation",
+    target_role: "",
   });
   const [items, setItems] = useState([]);
   const [itemForm, setItemForm] = useState({
@@ -51,6 +52,7 @@ export default function EvaluationTemplateForm() {
           name: data?.name || "",
           description: data?.description || "",
           form_type: data?.form_type || "evaluation",
+          target_role: data?.target_role || "",
         });
         setItems(Array.isArray(data?.items) ? data.items : []);
       } catch (error) {
@@ -209,6 +211,24 @@ export default function EvaluationTemplateForm() {
           </select>
           {templateErrors.form_type && (
             <span className="error">{templateErrors.form_type[0]}</span>
+          )}
+        </div>
+
+        <div className="form-group">
+          <label>الدور المستهدف (اختياري)</label>
+          <select
+            name="target_role"
+            value={template.target_role || ""}
+            onChange={handleTemplateChange}
+          >
+            <option value="">عام — غير مخصص لدور معين</option>
+            <option value="teacher">المعلم المرشد</option>
+            <option value="academic_supervisor">المشرف الأكاديمي</option>
+            <option value="psychologist">الأخصائي النفسي</option>
+            <option value="school_manager">مدير جهة التدريب</option>
+          </select>
+          {templateErrors.target_role && (
+            <span className="error">{templateErrors.target_role[0]}</span>
           )}
         </div>
 

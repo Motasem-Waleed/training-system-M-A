@@ -1,7 +1,7 @@
 // src/services/api.js
 import axios from "axios";
 
-const apiClient = axios.create({
+export const apiClient = axios.create({
   baseURL: "http://localhost:8000/api",
   headers: {
     "Content-Type": "application/json",
@@ -156,6 +156,8 @@ export const createSection = (data) => apiClient.post('/sections', data).then(re
 export const updateSection = (id, data) => apiClient.put(`/sections/${id}`, data).then(res => res.data);
 export const deleteSection = (id) => apiClient.delete(`/sections/${id}`).then(res => res.data);
 export const getEnrollments = (params) => apiClient.get('/enrollments', { params }).then(res => res.data);
+export const enrollStudent = (data) => apiClient.post('/enrollments', data).then(res => res.data);
+export const getStudents = (params) => apiClient.get('/users', { params: { ...params, role_id: 2 } }).then(res => res.data);
 export const createEnrollment = (data) => apiClient.post('/enrollments', data).then(res => res.data);
 export const updateEnrollment = (id, data) => apiClient.put(`/enrollments/${id}`, data).then(res => res.data);
 export const deleteEnrollment = (id) => apiClient.delete(`/enrollments/${id}`).then(res => res.data);
@@ -183,6 +185,8 @@ export const deleteAnnouncement = (id) => apiClient.delete(`/announcements/${id}
 
 // ==================== Backups ====================
 export const getBackups = () => apiClient.get('/backups').then(res => res.data);
+export const getBackup = (id) => apiClient.get(`/backups/${id}`).then(res => res.data);
+export const getBackupTableData = (id, tableName) => apiClient.get(`/backups/${id}/tables/${tableName}`).then(res => res.data);
 export const createBackup = (data) => apiClient.post('/backups', data).then(res => res.data);
 export const restoreBackup = (id) => apiClient.post(`/backups/${id}/restore`).then(res => res.data);
 export const deleteBackup = (id) => apiClient.delete(`/backups/${id}`).then(res => res.data);
@@ -196,7 +200,8 @@ export const getFeatureFlags = () => apiClient.get('/feature-flags').then(res =>
 export const updateFeatureFlag = (id, isOpen) => apiClient.patch(`/feature-flags/${id}`, { is_open: isOpen }).then(res => res.data);
 
 // ==================== Evaluation Templates ====================
-export const getEvaluationTemplates = () => apiClient.get('/evaluation-templates').then(res => res.data);
+export const getEvaluationTemplates = (params = {}) => apiClient.get('/evaluation-templates', { params }).then(res => res.data);
+export const getEvaluationTemplate = (id) => apiClient.get(`/evaluation-templates/${id}`).then(res => res.data);
 export const createEvaluationTemplate = (data) => apiClient.post('/evaluation-templates', data).then(res => res.data);
 export const updateEvaluationTemplate = (id, data) => apiClient.put(`/evaluation-templates/${id}`, data).then(res => res.data);
 export const deleteEvaluationTemplate = (id) => apiClient.delete(`/evaluation-templates/${id}`).then(res => res.data);
@@ -211,6 +216,15 @@ export const getEvaluations = (params = {}) =>
 export const createEvaluation = (data) =>
   apiClient.post("/evaluations", data).then((res) => res.data);
 
+export const getEvaluation = (id) =>
+  apiClient.get(`/evaluations/${id}`).then((res) => res.data);
+
+export const updateEvaluation = (id, data) =>
+  apiClient.put(`/evaluations/${id}`, data).then((res) => res.data);
+
+export const deleteEvaluation = (id) =>
+  apiClient.delete(`/evaluations/${id}`).then((res) => res.data);
+
 // ==================== Training Assignments ====================
 export const getTrainingAssignments = (params = {}) =>
   apiClient.get("/training-assignments", { params }).then((res) => res.data);
@@ -219,12 +233,51 @@ export const getTrainingAssignments = (params = {}) =>
 export const getTasks = (params = {}) =>
   apiClient.get("/tasks", { params }).then((res) => res.data);
 
+export const createTask = (data) =>
+  apiClient.post("/tasks", data).then((res) => res.data);
+
+export const updateTask = (id, data) =>
+  apiClient.put(`/tasks/${id}`, data).then((res) => res.data);
+
+export const deleteTask = (id) =>
+  apiClient.delete(`/tasks/${id}`).then((res) => res.data);
+
+export const getTask = (id) =>
+  apiClient.get(`/tasks/${id}`).then((res) => res.data);
+
+// ==================== Task Submissions ====================
+export const getTaskSubmissions = (params = {}) =>
+  apiClient.get("/task-submissions", { params }).then((res) => res.data);
+
+export const gradeTaskSubmission = (id, data) =>
+  apiClient.post(`/task-submissions/${id}/grade`, data).then((res) => res.data);
+
 // ==================== Attendance ====================
 export const getAttendances = (params = {}) =>
   apiClient.get("/attendances", { params }).then((res) => res.data);
 
 export const approveAttendance = (id, data) =>
   apiClient.patch(`/attendances/${id}/approve`, data).then((res) => res.data);
+
+// ==================== Training Logs (مراجعة المشرف/المعلم) ====================
+export const getTrainingLogs = (params = {}) =>
+  apiClient.get("/training-logs", { params }).then((res) => res.data);
+
+export const reviewTrainingLog = (id, data) =>
+  apiClient.post(`/training-logs/${id}/review`, data).then((res) => res.data);
+
+// ==================== Notes ====================
+export const getNotes = (params = {}) =>
+  apiClient.get("/notes", { params }).then((res) => res.data);
+
+export const createNote = (data) =>
+  apiClient.post("/notes", data).then((res) => res.data);
+
+export const updateNote = (id, data) =>
+  apiClient.put(`/notes/${id}`, data).then((res) => res.data);
+
+export const deleteNote = (id) =>
+  apiClient.delete(`/notes/${id}`).then((res) => res.data);
 
 // ==================== Weekly schedules ====================
 export const getWeeklySchedules = (params = {}) =>
@@ -298,11 +351,6 @@ export const getTrainingPeriod = async (id) => {
 
 export const getAnnouncement = async (id) => {
     const response = await apiClient.get(`/announcements/${id}`);
-    return unwrapResource(response.data);
-};
-
-export const getEvaluationTemplate = async (id) => {
-    const response = await apiClient.get(`/evaluation-templates/${id}`);
     return unwrapResource(response.data);
 };
 

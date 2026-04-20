@@ -21,6 +21,10 @@ class TrainingAssignmentPolicy
         if ($user->role?->name === 'admin') return true;
         if ($user->id === $assignment->teacher_id) return true;
         if ($user->id === $assignment->academic_supervisor_id) return true;
+        // المشرف الميداني يرى تعيينات طلابه
+        if ($user->role?->name === 'field_supervisor') {
+            return $user->id === $assignment->teacher_id;
+        }
         if ($user->id === $assignment->coordinator_id) return true;
         if ($user->id === $assignment->enrollment->user_id) {
             return true;

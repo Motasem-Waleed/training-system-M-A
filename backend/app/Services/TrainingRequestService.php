@@ -90,6 +90,17 @@ class TrainingRequestService
                 'workflow_step_id' => 1, // خطوة المديرية
                 'status' => 'pending',
             ]);
+
+            // إشعار للجهة الرسمية (مديرية)
+            TrainingRequestNotifications::forDirectorate(
+                $trainingRequest->governing_body,
+                'training_request_received_from_coordinator',
+                'طلب تدريب جديد بانتظار الموافقة. كتاب رقم: ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}"),
+                [
+                    'training_request_id' => $trainingRequest->id,
+                    'book_status' => BookStatus::SENT_TO_DIRECTORATE->value,
+                ]
+            );
         });
     }
 
@@ -166,6 +177,17 @@ class TrainingRequestService
                 'status' => OfficialLetterStatus::SENT_TO_SCHOOL->value,
                 'training_site_id' => $trainingRequest->training_site_id,
             ]);
+
+            // إشعار لمدير المدرسة
+            TrainingRequestNotifications::forSchoolManager(
+                $trainingRequest->training_site_id,
+                'training_request_received_from_directorate',
+                'تم إرسال طلب تدريب من الجهة الرسمية بانتظار موافقتك وتعيين المعلمين المرشدين.',
+                [
+                    'training_request_id' => $trainingRequest->id,
+                    'book_status' => BookStatus::SENT_TO_SCHOOL->value,
+                ]
+            );
         });
     }
 

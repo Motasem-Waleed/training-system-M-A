@@ -1,3 +1,5 @@
+import NotificationBell from "../../components/common/NotificationBell";
+
 export default function Navbar({ onMenuClick }) {
   const savedUser = JSON.parse(localStorage.getItem("user")) || {};
 
@@ -36,6 +38,7 @@ export default function Navbar({ onMenuClick }) {
       </div>
 
       <div className="navbar-left">
+        <NotificationBell />
         <div className="navbar-chip">
           <span>{userName}</span>
           <span>—</span>

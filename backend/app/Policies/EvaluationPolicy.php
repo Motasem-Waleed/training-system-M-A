@@ -13,6 +13,8 @@ class EvaluationPolicy
             'admin',
             'academic_supervisor',
             'teacher',
+            'field_supervisor',
+            'psychologist',
             'school_manager',
             'psychology_center_manager',
             'student',

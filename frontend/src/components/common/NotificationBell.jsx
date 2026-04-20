@@ -1,0 +1,215 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import { getUnreadNotificationsCount, getNotifications, markSystemNotificationAsRead, markAllSystemNotificationsAsRead } from "../../services/api";
+import { useNavigate } from "react-router-dom";
+
+const notificationIcons = {
+  training_request_new_from_student: "📝",
+  training_request_student_resubmitted: "🔄",
+  training_request_coordinator_review: "👁️",
+  training_request_received_from_coordinator: "📨",
+  training_request_directorate_approved: "✅",
+  training_request_received_from_directorate: "📋",
+  training_request_school_approved_student: "🎓",
+  training_request_directorate_rejected: "❌",
+  training_request_rejected_student: "❌",
+  default: "🔔",
+};
+
+const notificationTitles = {
+  training_request_new_from_student: "طلب جديد من طالب",
+  training_request_student_resubmitted: "تعديل طلب من طالب",
+  training_request_coordinator_review: "مراجعة منسق",
+  training_request_received_from_coordinator: "طلب من المنسق",
+  training_request_directorate_approved: "موافقة الجهة الرسمية",
+  training_request_received_from_directorate: "طلب من الجهة الرسمية",
+  training_request_school_approved_student: "موافقة المدرسة",
+  training_request_directorate_rejected: "رفض الجهة الرسمية",
+  training_request_rejected_student: "رفض طلب",
+  default: "إشعار جديد",
+};
+
+export default function NotificationBell() {
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const dropdownRef = useRef(null);
+  const navigate = useNavigate();
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const data = await getUnreadNotificationsCount();
+      setUnreadCount(data?.unread_count || 0);
+    } catch (error) {
+      console.error("Failed to fetch unread count:", error);
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getNotifications({ per_page: 5 });
+      const list = Array.isArray(data?.data) ? data.data : [];
+      setNotifications(list);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Poll every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchNotifications();
+    }
+  }, [isOpen, fetchNotifications]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleMarkAsRead = async (e, id) => {
+    e.stopPropagation();
+    try {
+      await markSystemNotificationAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllSystemNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read_at: new Date().toISOString() })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    setIsOpen(false);
+    // Navigate based on notification type
+    const type = notification.type;
+    if (type.includes("coordinator") && !type.includes("student")) {
+      navigate("/coordinator/training-requests");
+    } else if (type.includes("directorate")) {
+      const user = JSON.parse(localStorage.getItem("user")) || {};
+      const role = user?.role?.name || user?.role;
+      if (role === "health_directorate") {
+        navigate("/health/training-requests");
+      } else if (role === "education_directorate") {
+        navigate("/education/training-requests");
+      }
+    } else if (type.includes("school") || type.includes("principal")) {
+      navigate("/principal/training-requests");
+    } else if (type.includes("student")) {
+      navigate("/student/notifications-updates");
+    } else {
+      navigate("/notifications");
+    }
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+
+    if (diff < 60) return "الآن";
+    if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
+    if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
+    return date.toLocaleDateString("ar-SA");
+  };
+
+  return (
+    <div className="notification-bell-container" ref={dropdownRef}>
+      <button
+        className="notification-bell-btn"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-label="الإشعارات"
+      >
+        <span className="bell-icon">🔔</span>
+        {unreadCount > 0 && (
+          <span className="notification-badge">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="notification-dropdown">
+          <div className="notification-dropdown-header">
+            <h4>الإشعارات</h4>
+            {unreadCount > 0 && (
+              <button className="mark-all-read" onClick={handleMarkAllAsRead}>
+                تعليم الكل كمقروء
+              </button>
+            )}
+          </div>
+
+          <div className="notification-dropdown-body">
+            {loading ? (
+              <div className="notification-loading">جاري التحميل...</div>
+            ) : notifications.length === 0 ? (
+              <div className="notification-empty">لا توجد إشعارات</div>
+            ) : (
+              notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`notification-item ${!notification.read_at ? "unread" : ""}`}
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  <span className="notification-icon">
+                    {notificationIcons[notification.type] || notificationIcons.default}
+                  </span>
+                  <div className="notification-content">
+                    <p className="notification-title">
+                      {notificationTitles[notification.type] || notificationTitles.default}
+                    </p>
+                    <p className="notification-message">{notification.message}</p>
+                    <span className="notification-time">
+                      {formatTime(notification.created_at)}
+                    </span>
+                  </div>
+                  {!notification.read_at && (
+                    <button
+                      className="mark-read-btn"
+                      onClick={(e) => handleMarkAsRead(e, notification.id)}
+                      title="تعليم كمقروء"
+                    >
+                      ✓
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="notification-dropdown-footer">
+            <button onClick={() => { setIsOpen(false); navigate("/notifications"); }}>
+              عرض جميع الإشعارات
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

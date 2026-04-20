@@ -89,4 +89,30 @@ class TrainingAssignment extends Model
     {
         return $this->hasOne(StudentPortfolio::class);
     }
+
+    // ─── علاقات المشرف الميداني ───
+
+    /**
+     * التقارير اليومية المرتبطة بهذا التعيين
+     */
+    public function dailyReports()
+    {
+        return $this->hasMany(DailyReport::class);
+    }
+
+    /**
+     * التقييمات الميدانية المرتبطة بهذا التعيين
+     */
+    public function fieldEvaluations()
+    {
+        return $this->hasMany(FieldEvaluation::class);
+    }
+
+    /**
+     * المشرف الميداني (المعلم المرشد)
+     */
+    public function fieldSupervisor()
+    {
+        return $this->belongsTo(User::class, 'teacher_id');
+    }
 }

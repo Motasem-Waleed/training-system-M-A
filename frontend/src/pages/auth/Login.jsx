@@ -31,6 +31,9 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(user));
 
       // التوجيه حسب الدور
+      // الكادر الميداني الموحد: المعلم المرشد، المشرف الأكاديمي، الأخصائي النفسي، مدير المدرسة
+      const fieldStaffRoles = ["teacher", "academic_supervisor", "psychologist", "school_manager"];
+
       switch (userRole) {
         case "admin":
           navigate("/dashboard");
@@ -39,16 +42,13 @@ export default function Login() {
         case "training_coordinator":
           navigate("/coordinator/dashboard");
           break;
-        case "academic_supervisor":
-          navigate("/supervisor/dashboard");
-          break;
+        case "field_supervisor":
         case "teacher":
-          navigate("/mentor/dashboard");
-          break;
+        case "academic_supervisor":
         case "psychologist":
-          navigate("/psychologist/dashboard");
-          break;
         case "school_manager":
+          navigate("/field-staff/dashboard");
+          break;
         case "principal":
           navigate("/principal/dashboard");
           break;

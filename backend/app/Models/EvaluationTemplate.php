@@ -9,7 +9,19 @@ class EvaluationTemplate extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'form_type'];
+    protected $fillable = ['name', 'description', 'form_type', 'target_role'];
+
+    private static array $targetRoleLabels = [
+        'teacher' => 'نموذج المعلم المرشد',
+        'academic_supervisor' => 'نموذج المشرف الأكاديمي',
+        'psychologist' => 'نموذج الأخصائي النفسي',
+        'school_manager' => 'نموذج مدير المدرسة',
+    ];
+
+    public function getTargetRoleLabelAttribute(): string
+    {
+        return static::$targetRoleLabels[$this->target_role] ?? 'نموذج عام';
+    }
 
     public function items()
     {

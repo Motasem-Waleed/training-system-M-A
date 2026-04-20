@@ -23,6 +23,21 @@ class EvaluationTemplateController extends Controller
     {
         $query = EvaluationTemplate::with('items');
         if ($request->has('form_type')) $query->where('form_type', $request->form_type);
+
+        // فلترة حسب الدور المستهدف
+        if ($request->has('target_role')) {
+            $query->where('target_role', $request->target_role);
+        }
+
+        // إذا لم يحدد target_role وكان المستخدم مقيمًا، نعرض قوالب دوره + القوالب العامة
+        if (!$request->has('target_role') && $request->has('for_my_role')) {
+            $role = $request->user()->role?->name;
+            $query->where(function ($q) use ($role) {
+                $q->where('target_role', $role)
+                  ->orWhereNull('target_role');
+            });
+        }
+
         $templates = $query->paginate($request->per_page ?? 15);
         return EvaluationTemplateResource::collection($templates);
     }
