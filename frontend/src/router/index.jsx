@@ -109,13 +109,12 @@ import PrincipalTrainingRequests from "../pages/principal/TrainingRequests";
 // Health Directorate
 import HealthDirectorateDashboard from "../pages/dashboard/HealthDirectorateDashboard";
 import HealthTrainingSites from "../pages/healthDirectorate/HealthTrainingSites";
-import HealthDirectorateTrainingRequests from "../pages/healthDirectorate/TrainingRequests";
 
 // Education Directorate
 import EducationDirectorateDashboard from "../pages/dashboard/EducationDirectorateDashboard";
 import TrainingSites from "../pages/educationDirectorate/TrainingSites";
 import EducationOfficialLetters from "../pages/educationDirectorate/OfficialLetters";
-import EducationDirectorateTrainingRequests from "../pages/educationDirectorate/TrainingRequests";
+import HealthOfficialLetters from "../pages/healthDirectorate/OfficialLetters";
 
 export default function AppRouter() {
   return (
@@ -291,13 +290,12 @@ export default function AppRouter() {
           {/* Health */}
           <Route path="/health/dashboard" element={<HealthDirectorateDashboard />} />
           <Route path="/health/training-sites" element={<HealthTrainingSites />} />
-          <Route path="/health/training-requests" element={<HealthDirectorateTrainingRequests />} />
+          <Route path="/health/official-letters" element={<HealthOfficialLetters siteType="health_center" />} />
 
           {/* Education */}
           <Route path="/education/dashboard" element={<EducationDirectorateDashboard />} />
           <Route path="/education/training-sites" element={<TrainingSites />} />
-          <Route path="/education/official-letters" element={<EducationOfficialLetters />} />
-          <Route path="/education/training-requests" element={<EducationDirectorateTrainingRequests />} />
+          <Route path="/education/official-letters" element={<EducationOfficialLetters siteType="school" />} />
 
           {/* Common */}
           <Route path="/profile" element={<Profile />} />

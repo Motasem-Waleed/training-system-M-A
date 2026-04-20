@@ -1,38 +1,29 @@
 import { useEffect, useState } from "react";
 import {
-  approveOfficialLetter,
   directorateApprove,
-  getOfficialLetters,
   getTrainingRequests,
   sendToSchool,
 } from "../../services/api";
+import { siteLabels } from "../../utils/roles";
 
-const normalizeLetter = (item) => ({
-  id: item.id,
-  title:
-    item.training_request?.title ||
-    item.letter_number ||
-    item.type_label ||
-    "بدون عنوان",
-  receiver:
-    item.training_site?.name ||
-    item.received_by?.data?.name ||
-    item.received_by?.name ||
-    "غير محدد",
-  date: item.letter_date || item.created_at || "—",
-  status: item.status || "sent_to_directorate",
-  status_label: item.status_label || "مرسل للمديرية",
-  rejection_reason: item.rejection_reason || "",
-});
+const OfficialLetters = ({ siteType = "school" }) => {
+  const labels = siteLabels(siteType);
+  const isHealth = siteType === "health_center";
+  
+  // Dynamic configuration from siteLabels
+  const governingBody = labels.governingBody;
+  const directorateName = labels.directorateName;
+  const incomingTitle = "📥 طلبات التدريب الواردة من المنسق (بانتظار القرار)";
+  const approvedTitle = `✅ الطلبات المعتمدة (جاهزة للإرسال إلى ${labels.siteName})`;
+  const sendButtonLabel = `📤 إرسال لـ${labels.managerLabel}`;
+  const successSendMessage = `تم إرسال الطلب إلى ${labels.managerLabel} بنجاح.`;
+  const pageSubtitle = isHealth
+    ? "متابعة الكتب الرسمية، اعتمادها، تحديث حالتها، وإرسالها إلى المراكز الصحية."
+    : "متابعة الكتب الرسمية، اعتمادها، تحديث حالتها، وإرسالها إلى المدارس.";
 
-const OfficialLetters = () => {
   const [savedMessage, setSavedMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [letters, setLetters] = useState([]);
-  const [decisionMap, setDecisionMap] = useState({});
-  const [reasonMap, setReasonMap] = useState({});
-  const [savingId, setSavingId] = useState(null);
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [approvedRequests, setApprovedRequests] = useState([]);
   const [requestDecision, setRequestDecision] = useState({});
@@ -42,101 +33,24 @@ const OfficialLetters = () => {
   const [sendingToSchoolId, setSendingToSchoolId] = useState(null);
 
   useEffect(() => {
-    fetchLetters();
     fetchTrainingRequests();
   }, []);
 
-  const fetchLetters = async () => {
-    try {
-      setLoading(true);
-
-      const data = await getOfficialLetters();
-
-      const list = Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data)
-        ? data
-        : [];
-
-      setLetters(list.map(normalizeLetter));
-      setErrorMessage("");
-    } catch (error) {
-      console.error("Failed to load official letters:", error);
-      setErrorMessage("تعذر تحميل الكتب الرسمية.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchTrainingRequests = async () => {
     try {
+      setLoading(true);
       const [incomingRes, approvedRes] = await Promise.all([
-        getTrainingRequests({ book_status: "sent_to_directorate", governing_body: "directorate_of_education", per_page: 100 }),
-        getTrainingRequests({ book_status: "directorate_approved", governing_body: "directorate_of_education", per_page: 100 }),
+        getTrainingRequests({ book_status: "sent_to_directorate", governing_body: governingBody, per_page: 100 }),
+        getTrainingRequests({ book_status: "directorate_approved", governing_body: governingBody, per_page: 100 }),
       ]);
       setIncomingRequests(Array.isArray(incomingRes?.data) ? incomingRes.data : []);
       setApprovedRequests(Array.isArray(approvedRes?.data) ? approvedRes.data : []);
     } catch (error) {
       console.error("Failed to load training requests:", error);
-    }
-  };
-
-  const handleDecisionChange = (id, value) => {
-    setDecisionMap((prev) => ({ ...prev, [id]: value }));
-    setSavedMessage("");
-    setErrorMessage("");
-  };
-
-  const handleReasonChange = (id, value) => {
-    setReasonMap((prev) => ({ ...prev, [id]: value }));
-    setSavedMessage("");
-    setErrorMessage("");
-  };
-
-  const handleApprove = async (letter) => {
-    const decision = decisionMap[letter.id];
-    if (!decision) {
-      setErrorMessage("اختر القرار قبل الحفظ.");
-      return;
-    }
-
-    if (decision === "rejected" && !reasonMap[letter.id]?.trim()) {
-      setErrorMessage("سبب الرفض مطلوب عند اختيار الرفض.");
-      return;
-    }
-
-    try {
-      setSavingId(letter.id);
-      setSavedMessage("");
-      setErrorMessage("");
-
-      await approveOfficialLetter(letter.id, {
-        status: decision,
-        rejection_reason: decision === "rejected" ? reasonMap[letter.id] : "",
-      });
-
-      setSavedMessage("تم تحديث حالة الكتاب بنجاح.");
-      setDecisionMap((prev) => ({ ...prev, [letter.id]: "" }));
-      setReasonMap((prev) => ({ ...prev, [letter.id]: "" }));
-      await fetchLetters();
-    } catch (error) {
-      console.error("Failed to save official letters:", error);
-      setErrorMessage(
-        error?.response?.data?.message || "تعذر تحديث حالة الكتاب الرسمي."
-      );
+      setErrorMessage("تعذر تحميل طلبات التدريب.");
     } finally {
-      setSavingId(null);
+      setLoading(false);
     }
-  };
-
-  const getBadgeClass = (status) => {
-    if (status === "directorate_approved") return "badge-custom badge-success";
-    if (status === "sent_to_school" || status === "school_received") {
-      return "badge-custom badge-info";
-    }
-    if (status === "completed") return "badge-custom badge-soft";
-    if (status === "rejected") return "badge-custom badge-danger";
-    return "badge-custom badge-warning";
   };
 
   const getRequestStatusClass = (bookStatus) => {
@@ -145,8 +59,6 @@ const OfficialLetters = () => {
     if (bookStatus === "rejected") return "badge-custom badge-danger";
     return "badge-custom badge-warning";
   };
-
-  const canBeDecided = (bookStatus) => bookStatus === "sent_to_directorate";
 
   const handleRequestDecision = async (requestId) => {
     const decision = requestDecision[requestId];
@@ -167,7 +79,7 @@ const OfficialLetters = () => {
         status: decision,
         rejection_reason: decision === "rejected" ? requestReason[requestId] : "",
       });
-      setSavedMessage("تم تحديث قرار مديرية التربية على الطلب.");
+      setSavedMessage(`تم تحديث قرار ${directorateName} على الطلب.`);
       await fetchTrainingRequests();
     } catch (error) {
       console.error("Failed to decide training request:", error);
@@ -182,9 +94,7 @@ const OfficialLetters = () => {
       ...prev,
       [requestId]: {
         letter_number: prev[requestId]?.letter_number || "",
-        letter_date:
-          prev[requestId]?.letter_date ||
-          new Date().toISOString().slice(0, 10),
+        letter_date: prev[requestId]?.letter_date || new Date().toISOString().slice(0, 10),
         content: prev[requestId]?.content || "",
         [field]: value,
       },
@@ -194,7 +104,6 @@ const OfficialLetters = () => {
   const handleSendToSchool = async (request) => {
     const form = sendFormMap[request.id] || {};
     
-    // Validation
     const errors = [];
     if (!form.letter_number?.trim()) errors.push("رقم الكتاب");
     if (!form.letter_date) errors.push("تاريخ الكتاب");
@@ -205,32 +114,22 @@ const OfficialLetters = () => {
       return;
     }
 
-    console.log("Sending to school:", {
-      requestId: request.id,
-      letter_number: form.letter_number,
-      letter_date: form.letter_date,
-      content: form.content?.substring(0, 50) + "..."
-    });
-
     try {
       setSendingToSchoolId(request.id);
       setSavedMessage("");
       setErrorMessage("");
       
-      const response = await sendToSchool(request.id, {
+      await sendToSchool(request.id, {
         letter_number: form.letter_number.trim(),
         letter_date: form.letter_date,
         content: form.content.trim()
       });
       
-      console.log("Send to school response:", response);
-      setSavedMessage("تم إرسال الطلب إلى مدراء المدارس بنجاح.");
+      setSavedMessage(successSendMessage);
       await fetchTrainingRequests();
     } catch (error) {
-      console.error("Failed to send request to school:", error);
-      console.error("Error response:", error?.response);
-      console.error("Error data:", error?.response?.data);
-      setErrorMessage(error?.response?.data?.message || "تعذر إرسال الطلب للمدرسة.");
+      console.error("Failed to send request:", error);
+      setErrorMessage(error?.response?.data?.message || "تعذر إرسال الطلب.");
     } finally {
       setSendingToSchoolId(null);
     }
@@ -239,15 +138,15 @@ const OfficialLetters = () => {
   return (
     <>
       <div className="content-header">
-        <h1 className="page-title">الكتب الرسمية</h1>
+        <h1 className="page-title">الكتب الرسمية — {directorateName}</h1>
         <p className="page-subtitle">
-          متابعة الكتب الرسمية، اعتمادها، تحديث حالتها، وإرسالها إلى المدارس.
+          {pageSubtitle}
         </p>
       </div>
 
       {/* Incoming Requests - Need Decision */}
       <div className="section-card mt-3">
-        <h4>📥 طلبات التدريب الواردة من المنسق (بانتظار القرار)</h4>
+        <h4>{incomingTitle}</h4>
         <div className="table-wrapper">
           <table className="table-custom">
             <thead>
@@ -331,7 +230,7 @@ const OfficialLetters = () => {
 
       {/* Approved Requests - Ready to Send to School */}
       <div className="section-card mt-3">
-        <h4>✅ الطلبات المعتمدة (جاهزة للإرسال إلى المدرسة)</h4>
+        <h4>{approvedTitle}</h4>
         <div className="table-wrapper">
           <table className="table-custom">
             <thead>
@@ -398,7 +297,7 @@ const OfficialLetters = () => {
                     >
                       {sendingToSchoolId === request.id
                         ? "⏳ جاري الإرسال..."
-                        : "📤 إرسال لمدير المدرسة"}
+                        : sendButtonLabel}
                     </button>
                   </td>
                 </tr>

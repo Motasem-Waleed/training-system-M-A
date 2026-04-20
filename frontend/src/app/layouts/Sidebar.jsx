@@ -154,13 +154,12 @@ const menus = {
 
   health_directorate: [
     { name: "الرئيسية", path: "/health/dashboard" },
-    { name: "طلبات التدريب", path: "/health/training-requests" },
     { name: "أماكن التدريب", path: "/health/training-sites" },
+    { name: "الكتب الرسمية", path: "/health/official-letters" },
   ],
 
   education_directorate: [
     { name: "الرئيسية", path: "/education/dashboard" },
-    { name: "طلبات التدريب", path: "/education/training-requests" },
     { name: "أماكن التدريب", path: "/education/training-sites" },
     { name: "الكتب الرسمية", path: "/education/official-letters" },
   ],

@@ -18,13 +18,17 @@ export const ROLES = {
 export const siteLabels = (siteType = "school") => {
   const isHealth = siteType === "health_center";
   return {
-    siteName: isHealth ? "المركز النفسي" : "المدرسة",
+    siteName: isHealth ? "المركز" : "المدرسة",
+    siteNameFull: isHealth ? "المركز النفسي" : "المدرسة",
     mentorLabel: isHealth ? "الأخصائي النفسي المرشد" : "المعلم المرشد",
-    managerLabel: isHealth ? "مدير المركز النفسي" : "مدير المدرسة",
+    managerLabel: isHealth ? "مدير المركز" : "مدير المدرسة",
+    managerLabelFull: isHealth ? "مدير المركز النفسي" : "مدير المدرسة",
     requestTitle: isHealth ? "طلبات التدريب — مراجعة وتعيين الأخصائي" : "طلبات التدريب — مراجعة وتعيين المرشد",
     approveBtn: isHealth ? "قبول وتعيين الأخصائيين" : "قبول وتعيين المرشدين",
     mentorSelect: isHealth ? "اختر الأخصائي النفسي المرشد" : "اختر المعلم المرشد",
     mentorCol: isHealth ? "الأخصائي النفسي المرشد" : "المعلم المرشد",
     traineeTitle: isHealth ? "المتدربون في المركز" : "الطلبة المتدربون",
+    governingBody: isHealth ? "health_directorate" : "directorate_of_education",
+    directorateName: isHealth ? "مديرية الصحة" : "مديرية التربية",
   };
 };
