@@ -52,6 +52,9 @@ export default function Login() {
         case "principal":
           navigate("/principal/dashboard");
           break;
+        case "psychology_center_manager":
+          navigate("/psychology-center/dashboard");
+          break;
         case "education_directorate":
           navigate("/education/dashboard");
           break;

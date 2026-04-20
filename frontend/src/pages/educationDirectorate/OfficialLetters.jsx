@@ -33,7 +33,8 @@ const OfficialLetters = () => {
   const [decisionMap, setDecisionMap] = useState({});
   const [reasonMap, setReasonMap] = useState({});
   const [savingId, setSavingId] = useState(null);
-  const [requests, setRequests] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [approvedRequests, setApprovedRequests] = useState([]);
   const [requestDecision, setRequestDecision] = useState({});
   const [requestReason, setRequestReason] = useState({});
   const [requestSavingId, setRequestSavingId] = useState(null);
@@ -69,9 +70,12 @@ const OfficialLetters = () => {
 
   const fetchTrainingRequests = async () => {
     try {
-      const data = await getTrainingRequests({ per_page: 100 });
-      const list = Array.isArray(data?.data) ? data.data : [];
-      setRequests(list);
+      const [incomingRes, approvedRes] = await Promise.all([
+        getTrainingRequests({ book_status: "sent_to_directorate", governing_body: "directorate_of_education", per_page: 100 }),
+        getTrainingRequests({ book_status: "directorate_approved", governing_body: "directorate_of_education", per_page: 100 }),
+      ]);
+      setIncomingRequests(Array.isArray(incomingRes?.data) ? incomingRes.data : []);
+      setApprovedRequests(Array.isArray(approvedRes?.data) ? approvedRes.data : []);
     } catch (error) {
       console.error("Failed to load training requests:", error);
     }
@@ -189,20 +193,43 @@ const OfficialLetters = () => {
 
   const handleSendToSchool = async (request) => {
     const form = sendFormMap[request.id] || {};
-    if (!form.letter_number || !form.letter_date || !form.content) {
-      setErrorMessage("يرجى تعبئة رقم الكتاب وتاريخه ومحتواه قبل الإرسال للمدرسة.");
+    
+    // Validation
+    const errors = [];
+    if (!form.letter_number?.trim()) errors.push("رقم الكتاب");
+    if (!form.letter_date) errors.push("تاريخ الكتاب");
+    if (!form.content?.trim()) errors.push("محتوى الكتاب");
+    
+    if (errors.length > 0) {
+      setErrorMessage(`يرجى تعبئة: ${errors.join("، ")}`);
       return;
     }
+
+    console.log("Sending to school:", {
+      requestId: request.id,
+      letter_number: form.letter_number,
+      letter_date: form.letter_date,
+      content: form.content?.substring(0, 50) + "..."
+    });
 
     try {
       setSendingToSchoolId(request.id);
       setSavedMessage("");
       setErrorMessage("");
-      await sendToSchool(request.id, form);
+      
+      const response = await sendToSchool(request.id, {
+        letter_number: form.letter_number.trim(),
+        letter_date: form.letter_date,
+        content: form.content.trim()
+      });
+      
+      console.log("Send to school response:", response);
       setSavedMessage("تم إرسال الطلب إلى مدراء المدارس بنجاح.");
       await fetchTrainingRequests();
     } catch (error) {
       console.error("Failed to send request to school:", error);
+      console.error("Error response:", error?.response);
+      console.error("Error data:", error?.response?.data);
       setErrorMessage(error?.response?.data?.message || "تعذر إرسال الطلب للمدرسة.");
     } finally {
       setSendingToSchoolId(null);
@@ -218,221 +245,168 @@ const OfficialLetters = () => {
         </p>
       </div>
 
-      <div className="section-card">
-        <h4>إدارة الكتب الرسمية</h4>
-
-        {loading ? (
-          <div className="alert-custom alert-info">جاري تحميل الكتب الرسمية...</div>
-        ) : (
-          <>
-            <div className="table-wrapper">
-              <table className="table-custom">
-                <thead>
-                  <tr>
-                    <th>عنوان الكتاب</th>
-                    <th>الجهة المستلمة</th>
-                    <th>التاريخ</th>
-                    <th>الحالة الحالية</th>
-                    <th>القرار</th>
-                    <th>سبب الرفض</th>
-                    <th>إجراء</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {letters.map((letter) => (
-                    <tr key={letter.id}>
-                      <td>{letter.title}</td>
-                      <td>{letter.receiver}</td>
-                      <td>{letter.date}</td>
-                      <td>
-                        <span className={getBadgeClass(letter.status)}>
-                          {letter.status_label}
-                        </span>
-                      </td>
-                      <td>
-                        <select
-                          className="form-select-custom"
-                          value={decisionMap[letter.id] || ""}
-                          onChange={(e) =>
-                            handleDecisionChange(letter.id, e.target.value)
-                          }
-                        >
-                          <option value="">اختر القرار</option>
-                          <option value="approved">موافقة</option>
-                          <option value="rejected">رفض</option>
-                        </select>
-                      </td>
-                      <td>
-                        <textarea
-                          className="form-textarea-custom"
-                          value={reasonMap[letter.id] || letter.rejection_reason || ""}
-                          onChange={(e) =>
-                            handleReasonChange(letter.id, e.target.value)
-                          }
-                          placeholder="اكتب سبب الرفض عند الحاجة"
-                          disabled={(decisionMap[letter.id] || "") !== "rejected"}
-                        />
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="btn-primary-custom btn-sm-custom"
-                          onClick={() => handleApprove(letter)}
-                          disabled={savingId === letter.id}
-                        >
-                          {savingId === letter.id ? "جاري الحفظ..." : "حفظ"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {letters.length === 0 && (
-                    <tr>
-                      <td colSpan="7" className="text-center">
-                        لا توجد كتب رسمية مسجلة حاليًا
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {savedMessage && (
-              <div className="alert-custom alert-success mt-3">
-                {savedMessage}
-              </div>
-            )}
-
-            {errorMessage && (
-              <div className="alert-custom alert-danger mt-3">
-                {errorMessage}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
+      {/* Incoming Requests - Need Decision */}
       <div className="section-card mt-3">
-        <h4>طلبات التدريب الواردة من المنسق</h4>
+        <h4>📥 طلبات التدريب الواردة من المنسق (بانتظار القرار)</h4>
         <div className="table-wrapper">
           <table className="table-custom">
             <thead>
               <tr>
                 <th>رقم الطلب</th>
                 <th>الموقع التدريبي</th>
+                <th>الطالب</th>
+                <th>المساق</th>
                 <th>حالة الكتاب</th>
-                <th>سبب الرفض</th>
                 <th>قرار المديرية</th>
-                <th>إرسال للمدرسة</th>
+                <th>سبب الرفض</th>
+                <th>إجراء</th>
               </tr>
             </thead>
             <tbody>
-              {requests.map((request) => (
+              {incomingRequests.map((request) => (
                 <tr key={request.id}>
                   <td>{request.letter_number || `#${request.id}`}</td>
                   <td>{request.training_site?.data?.name || request.training_site?.name || "—"}</td>
+                  <td>{request.training_request_students?.[0]?.user?.name || "—"}</td>
+                  <td>{request.training_request_students?.[0]?.course?.name || "—"}</td>
                   <td>
                     <span className={getRequestStatusClass(request.book_status)}>
                       {request.book_status_label || request.book_status}
                     </span>
                   </td>
-                  <td>{request.rejection_reason || "—"}</td>
                   <td>
-                    {canBeDecided(request.book_status) ? (
-                      <>
-                        <select
-                          className="form-select-custom mb-2"
-                          value={requestDecision[request.id] || ""}
-                          onChange={(e) =>
-                            setRequestDecision((prev) => ({
-                              ...prev,
-                              [request.id]: e.target.value,
-                            }))
-                          }
-                        >
-                          <option value="">اختر القرار</option>
-                          <option value="approved">قبول</option>
-                          <option value="rejected">رفض</option>
-                        </select>
-                        <textarea
-                          className="form-textarea-custom mb-2"
-                          placeholder="سبب الرفض (إجباري عند الرفض)"
-                          value={requestReason[request.id] || ""}
-                          onChange={(e) =>
-                            setRequestReason((prev) => ({
-                              ...prev,
-                              [request.id]: e.target.value,
-                            }))
-                          }
-                          disabled={(requestDecision[request.id] || "") !== "rejected"}
-                        />
-                        <button
-                          type="button"
-                          className="btn-primary-custom btn-sm-custom"
-                          onClick={() => handleRequestDecision(request.id)}
-                          disabled={requestSavingId === request.id}
-                        >
-                          {requestSavingId === request.id ? "جاري الحفظ..." : "حفظ القرار"}
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-muted">تم اتخاذ القرار مسبقًا</span>
-                    )}
+                    <select
+                      className="form-select-custom mb-2"
+                      value={requestDecision[request.id] || ""}
+                      onChange={(e) =>
+                        setRequestDecision((prev) => ({
+                          ...prev,
+                          [request.id]: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">اختر القرار</option>
+                      <option value="approved">✅ قبول</option>
+                      <option value="rejected">❌ رفض</option>
+                    </select>
                   </td>
                   <td>
-                    {request.book_status === "directorate_approved" ? (
-                      <>
-                        <input
-                          type="text"
-                          className="form-control-custom mb-2"
-                          placeholder="رقم كتاب الإرسال للمدرسة"
-                          value={sendFormMap[request.id]?.letter_number || ""}
-                          onChange={(e) =>
-                            handleSendFieldChange(request.id, "letter_number", e.target.value)
-                          }
-                        />
-                        <input
-                          type="date"
-                          className="form-control-custom mb-2"
-                          value={
-                            sendFormMap[request.id]?.letter_date ||
-                            new Date().toISOString().slice(0, 10)
-                          }
-                          onChange={(e) =>
-                            handleSendFieldChange(request.id, "letter_date", e.target.value)
-                          }
-                        />
-                        <textarea
-                          className="form-textarea-custom mb-2"
-                          placeholder="محتوى كتاب الإرسال للمدرسة"
-                          value={sendFormMap[request.id]?.content || ""}
-                          onChange={(e) =>
-                            handleSendFieldChange(request.id, "content", e.target.value)
-                          }
-                        />
-                        <button
-                          type="button"
-                          className="btn-secondary-custom btn-sm-custom"
-                          onClick={() => handleSendToSchool(request)}
-                          disabled={sendingToSchoolId === request.id}
-                        >
-                          {sendingToSchoolId === request.id
-                            ? "جاري الإرسال..."
-                            : "إرسال لمدير المدرسة"}
-                        </button>
-                      </>
-                    ) : request.book_status === "sent_to_school" ? (
-                      <span className="text-success">تم الإرسال</span>
-                    ) : (
-                      <span className="text-muted">متاح بعد قبول المديرية</span>
-                    )}
+                    <textarea
+                      className="form-textarea-custom"
+                      placeholder="سبب الرفض (إجباري عند الرفض)"
+                      value={requestReason[request.id] || ""}
+                      onChange={(e) =>
+                        setRequestReason((prev) => ({
+                          ...prev,
+                          [request.id]: e.target.value,
+                        }))
+                      }
+                      disabled={(requestDecision[request.id] || "") !== "rejected"}
+                      rows={2}
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn-primary-custom btn-sm-custom"
+                      onClick={() => handleRequestDecision(request.id)}
+                      disabled={requestSavingId === request.id}
+                    >
+                      {requestSavingId === request.id ? "جاري الحفظ..." : "💾 حفظ القرار"}
+                    </button>
                   </td>
                 </tr>
               ))}
-              {requests.length === 0 && (
+              {incomingRequests.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="text-center">
-                    لا توجد طلبات تدريب واردة حاليًا
+                  <td colSpan="8" className="text-center text-muted">
+                    لا توجد طلبات واردة بانتظار القرار حاليًا
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Approved Requests - Ready to Send to School */}
+      <div className="section-card mt-3">
+        <h4>✅ الطلبات المعتمدة (جاهزة للإرسال إلى المدرسة)</h4>
+        <div className="table-wrapper">
+          <table className="table-custom">
+            <thead>
+              <tr>
+                <th>رقم الطلب</th>
+                <th>الموقع التدريبي</th>
+                <th>الطالب</th>
+                <th>المساق</th>
+                <th>تاريخ الموافقة</th>
+                <th>بيانات كتاب الإرسال</th>
+                <th>إجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              {approvedRequests.map((request) => (
+                <tr key={request.id}>
+                  <td>{request.letter_number || `#${request.id}`}</td>
+                  <td>{request.training_site?.data?.name || request.training_site?.name || "—"}</td>
+                  <td>{request.training_request_students?.[0]?.user?.name || "—"}</td>
+                  <td>{request.training_request_students?.[0]?.course?.name || "—"}</td>
+                  <td>{request.directorate_approved_at ? new Date(request.directorate_approved_at).toLocaleDateString('ar-SA') : "—"}</td>
+                  <td>
+                    <input
+                      type="text"
+                      className="form-control-custom mb-2"
+                      placeholder="رقم كتاب الإرسال"
+                      value={sendFormMap[request.id]?.letter_number || ""}
+                      onChange={(e) =>
+                        handleSendFieldChange(request.id, "letter_number", e.target.value)
+                      }
+                    />
+                    <input
+                      type="date"
+                      className="form-control-custom mb-2"
+                      value={
+                        sendFormMap[request.id]?.letter_date ||
+                        new Date().toISOString().slice(0, 10)
+                      }
+                      onChange={(e) =>
+                        handleSendFieldChange(request.id, "letter_date", e.target.value)
+                      }
+                    />
+                    <textarea
+                      className="form-textarea-custom mb-2"
+                      placeholder="محتوى كتاب الإرسال"
+                      value={sendFormMap[request.id]?.content || ""}
+                      onChange={(e) =>
+                        handleSendFieldChange(request.id, "content", e.target.value)
+                      }
+                      rows={2}
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn-success-custom btn-sm-custom"
+                      onClick={() => {
+                        console.log("Button clicked! request.id:", request.id);
+                        console.log("Form data:", sendFormMap[request.id]);
+                        handleSendToSchool(request);
+                      }}
+                      disabled={sendingToSchoolId === request.id}
+                      style={{ cursor: sendingToSchoolId === request.id ? "not-allowed" : "pointer" }}
+                    >
+                      {sendingToSchoolId === request.id
+                        ? "⏳ جاري الإرسال..."
+                        : "📤 إرسال لمدير المدرسة"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {approvedRequests.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="text-center text-muted">
+                    لا توجد طلبات معتمدة جاهزة للإرسال حاليًا
                   </td>
                 </tr>
               )}

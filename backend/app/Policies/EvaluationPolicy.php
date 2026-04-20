@@ -14,6 +14,7 @@ class EvaluationPolicy
             'academic_supervisor',
             'teacher',
             'school_manager',
+            'psychology_center_manager',
             'student',
         ], true);
     }
@@ -30,7 +31,7 @@ class EvaluationPolicy
 
     public function create(User $user): bool
     {
-        return in_array($user->role?->name, ['teacher', 'academic_supervisor', 'school_manager']);
+        return in_array($user->role?->name, ['teacher', 'academic_supervisor', 'school_manager', 'psychology_center_manager']);
     }
 
     public function update(User $user, Evaluation $evaluation): bool

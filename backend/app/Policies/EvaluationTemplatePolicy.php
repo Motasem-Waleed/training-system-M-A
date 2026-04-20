@@ -15,6 +15,7 @@ class EvaluationTemplatePolicy
             'academic_supervisor',
             'teacher',
             'school_manager',
+            'psychology_center_manager',
         ]);
     }
 

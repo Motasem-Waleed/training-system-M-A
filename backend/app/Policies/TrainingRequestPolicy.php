@@ -17,6 +17,7 @@ class TrainingRequestPolicy
             'health_directorate',
             'ministry_of_health',
             'school_manager',
+            'psychology_center_manager',
             'academic_supervisor',
             'head_of_department',
         ], true);
@@ -56,7 +57,7 @@ class TrainingRequestPolicy
             return true;
         }
 
-        if ($user->role?->name === 'school_manager') {
+        if (in_array($user->role?->name, ['school_manager', 'psychology_center_manager'], true)) {
             $sameSite = ! $user->training_site_id
                 || (int) $trainingRequest->training_site_id === (int) $user->training_site_id;
             $inSchoolFlow = in_array($trainingRequest->book_status, [
@@ -150,7 +151,7 @@ class TrainingRequestPolicy
 
     public function approveBySchool(User $user, TrainingRequest $trainingRequest): bool
     {
-        if ($user->role?->name !== 'school_manager') {
+        if (! in_array($user->role?->name, ['school_manager', 'psychology_center_manager'], true)) {
             return false;
         }
 

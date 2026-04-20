@@ -198,10 +198,16 @@ export default function AppRouter() {
           <Route path="/coordinator/statistics" element={<CoordinatorStatistics />} />
 
           {/* Principal */}
-          <Route path="/principal/dashboard" element={<PrincipalDashboard />} />
+          <Route path="/principal/dashboard" element={<PrincipalDashboard siteType="school" />} />
           <Route path="/principal/profile" element={<PrincipalProfile />} />
-          <Route path="/principal/mentor-assignment" element={<MentorAssignment />} />
-          <Route path="/principal/trainee-students" element={<TraineeStudents />} />
+          <Route path="/principal/mentor-assignment" element={<MentorAssignment siteType="school" />} />
+          <Route path="/principal/trainee-students" element={<TraineeStudents siteType="school" />} />
+
+          {/* Psychology Center */}
+          <Route path="/psychology-center/dashboard" element={<PrincipalDashboard siteType="health_center" />} />
+          <Route path="/psychology-center/profile" element={<PrincipalProfile siteType="health_center" />} />
+          <Route path="/psychology-center/mentor-assignment" element={<MentorAssignment siteType="health_center" />} />
+          <Route path="/psychology-center/trainee-students" element={<TraineeStudents siteType="health_center" />} />
 
           {/* Health */}
           <Route path="/health/dashboard" element={<HealthDirectorateDashboard />} />

@@ -13,7 +13,7 @@ class UpdateTrainingSiteRequest extends FormRequest
         if (in_array($role, ['admin', 'education_directorate', 'ministry_of_health'], true)) {
             return true;
         }
-        if ($role === 'school_manager') {
+        if (in_array($role, ['school_manager', 'psychology_center_manager'])) {
             $site = $this->route('training_site');
 
             return $site
@@ -29,7 +29,7 @@ class UpdateTrainingSiteRequest extends FormRequest
         $trainingSite = $this->route('training_site');
         $role = $this->user()->role?->name;
 
-        if ($role === 'school_manager') {
+        if (in_array($role, ['school_manager', 'psychology_center_manager'])) {
             return [
                 'name' => [
                     'sometimes',

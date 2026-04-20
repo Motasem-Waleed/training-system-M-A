@@ -75,7 +75,7 @@ class TrainingRequestController extends Controller
             });
         }
 
-        if ($request->user()->role?->name === 'school_manager' && $request->user()->training_site_id) {
+        if (in_array($request->user()->role?->name, ['school_manager', 'psychology_center_manager'], true) && $request->user()->training_site_id) {
             $query->where('training_site_id', $request->user()->training_site_id);
         }
 
@@ -381,7 +381,7 @@ class TrainingRequestController extends Controller
     {
         $user = $request->user();
 
-        if (!in_array($user->role?->name, ['school_manager', 'principal'], true)) {
+        if (!in_array($user->role?->name, ['school_manager', 'principal', 'psychology_center_manager'], true)) {
             abort(403, 'هذه الخدمة متاحة فقط لمدير جهة التدريب.');
         }
 
@@ -416,12 +416,15 @@ class TrainingRequestController extends Controller
     {
         $user = $request->user();
 
-        if (!in_array($user->role?->name, ['school_manager', 'principal'], true)) {
+        if (!in_array($user->role?->name, ['school_manager', 'principal', 'psychology_center_manager'], true)) {
             abort(403, 'هذه الخدمة متاحة فقط لمدير جهة التدريب.');
         }
 
+        // للمركز النفسي: نبحث عن أخصائيين نفسيين بدلاً من معلمين
+        $targetRole = $user->role?->name === 'psychology_center_manager' ? 'psychologist' : 'teacher';
+
         $teachers = User::where('status', 'active')
-            ->whereHas('role', fn($q) => $q->where('name', 'teacher'))
+            ->whereHas('role', fn($q) => $q->where('name', $targetRole))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->search) . '%';
                 $q->where(function ($sub) use ($term) {

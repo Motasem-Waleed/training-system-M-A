@@ -13,7 +13,7 @@ class OfficialLetterPolicy
         if ($user->id === $letter->sent_by) return true;
         if ($user->id === $letter->received_by) return true;
         if ($user->role?->name === 'education_directorate' && $letter->type === 'to_directorate') return true;
-        if ($user->role?->name === 'school_manager' && $letter->type === 'to_school') {
+        if (in_array($user->role?->name, ['school_manager', 'psychology_center_manager']) && $letter->type === 'to_school') {
             if (! $user->training_site_id || ! $letter->training_site_id) {
                 return true;
             }
@@ -39,7 +39,7 @@ class OfficialLetterPolicy
             return false;
         }
 
-        if ($user->role?->name === 'school_manager' && $letter->type === 'to_school') {
+        if (in_array($user->role?->name, ['school_manager', 'psychology_center_manager']) && $letter->type === 'to_school') {
             return true;
         }
 

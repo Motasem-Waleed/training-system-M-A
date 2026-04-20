@@ -8,7 +8,7 @@ class ApproveOfficialLetterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()->role?->name, ['education_directorate', 'school_manager']);
+        return in_array($this->user()->role?->name, ['education_directorate', 'school_manager', 'psychology_center_manager']);
     }
 
     public function rules(): array

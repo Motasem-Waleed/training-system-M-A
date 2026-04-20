@@ -6,8 +6,10 @@ import {
   getTrainingRequests,
   itemsFromPagedResponse,
 } from "../../services/api";
+import { siteLabels } from "../../utils/roles";
 
-const PrincipalDashboard = () => {
+const PrincipalDashboard = ({ siteType = "school" }) => {
+  const labels = siteLabels(siteType);
   const [loading, setLoading] = useState(true);
   const [principalInfo, setPrincipalInfo] = useState({
     principalName: "—",
@@ -120,17 +122,17 @@ const PrincipalDashboard = () => {
           .flatMap((request) => request.students || [])
           .filter((student) => student.status === "approved").length
       ),
-      desc: "عدد الطلبة المقبولين داخل المدرسة",
+      desc: `عدد الطلبة المقبولين داخل ${labels.siteName}`,
       className: "primary",
     },
     {
-      title: "المعلمون المرشدون",
+      title: labels.mentorCol,
       value: String(
         requests
           .flatMap((request) => request.students || [])
           .filter((student) => student.assigned_teacher).length
       ),
-      desc: "تم تعيينهم لمتابعة الطلبة",
+      desc: `تم تعيينهم لمتابعة الطلبة`,
       className: "success",
     },
     {
@@ -142,14 +144,14 @@ const PrincipalDashboard = () => {
   ];
 
   return (
-    <>
+    <div className="principal-dashboard">
       {loading ? (
         <div className="alert-custom alert-info">جاري تحميل لوحة المدير...</div>
       ) : null}
       <div className="content-header">
-        <h1 className="page-title">الرئيسية - مدير المدرسة</h1>
+        <h1 className="page-title">الرئيسية - {labels.managerLabel}</h1>
         <p className="page-subtitle">
-          لوحة متابعة طلبات التدريب والمرشدين والكتب الرسمية داخل المدرسة.
+          لوحة متابعة طلبات التدريب والمرشدين والكتب الرسمية داخل {labels.siteName}.
         </p>
       </div>
 
@@ -158,12 +160,12 @@ const PrincipalDashboard = () => {
         <div className="summary-grid">
           <div className="kpi-box">
             <strong>{principalInfo.principalName}</strong>
-            <span>اسم المدير</span>
+            <span>{labels.managerLabel}</span>
           </div>
 
           <div className="kpi-box">
             <strong>{principalInfo.schoolName}</strong>
-            <span>اسم المدرسة</span>
+            <span>اسم {labels.siteName}</span>
           </div>
 
           <div className="kpi-box">
@@ -173,7 +175,7 @@ const PrincipalDashboard = () => {
 
           <div className="kpi-box">
             <strong>{principalInfo.schoolType}</strong>
-            <span>نوع المدرسة</span>
+            <span>نوع {labels.siteName}</span>
           </div>
 
           <div className="kpi-box">
@@ -265,7 +267,7 @@ const PrincipalDashboard = () => {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

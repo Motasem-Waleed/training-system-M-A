@@ -8,7 +8,7 @@ class ApproveTrainingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()->role?->name, ['education_directorate', 'school_manager']);
+        return in_array($this->user()->role?->name, ['education_directorate', 'school_manager', 'psychology_center_manager']);
     }
 
     public function rules(): array
@@ -17,7 +17,7 @@ class ApproveTrainingRequest extends FormRequest
             'status' => 'required|in:approved,rejected',
             'rejection_reason' => 'required_if:status,rejected|nullable|string',
             // للمدرسة فقط: يمكن تعيين معلمين لكل طالب في كتاب منفصل
-            'students' => 'required_if:role,school_manager|array',
+            'students' => 'required_if:role,school_manager|required_if:role,psychology_center_manager|array',
             'students.*.id' => 'required_with:students|exists:training_request_students,id',
             'students.*.assigned_teacher_id' => 'required_with:students|exists:users,id',
         ];

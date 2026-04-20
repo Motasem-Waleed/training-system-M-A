@@ -5,8 +5,10 @@ import {
   getEvaluationTemplates,
   getTrainingAssignments,
 } from "../../services/api";
+import { siteLabels } from "../../utils/roles";
 
-const TraineeStudents = () => {
+const TraineeStudents = ({ siteType = "school" }) => {
+  const labels = siteLabels(siteType);
   const [studentsData, setStudentsData] = useState([]);
   const [template, setTemplate] = useState(null);
   const [scoresByStudent, setScoresByStudent] = useState({});
@@ -96,7 +98,7 @@ const TraineeStudents = () => {
         location: trainingSite.location || "—",
       });
       if (!students.length) {
-        setErrorMessage("لا يوجد طلبة متدربون معتمدون في المدرسة حاليًا.");
+        setErrorMessage(`لا يوجد طلبة متدربون معتمدون في ${labels.siteName} حاليًا.`);
       } else {
         setErrorMessage("");
       }
@@ -188,9 +190,9 @@ const TraineeStudents = () => {
   return (
     <div className="trainee-students-page">
       <div className="content-header">
-        <h1 className="page-title">الطلبة المتدربون وتقييمهم</h1>
+        <h1 className="page-title">{labels.traineeTitle} وتقييمهم</h1>
         <p className="page-subtitle">
-          عرض بيانات الطلبة المتدربين داخل المدرسة وتعبئة نموذج التقييم.
+          عرض بيانات المتدربين داخل {labels.siteName} وتعبئة نموذج التقييم.
         </p>
       </div>
 
@@ -241,13 +243,13 @@ const TraineeStudents = () => {
                   <td>{selectedStudent.semester}</td>
                 </tr>
                 <tr>
-                  <th>اسم المعلم المقيم</th>
+                  <th>{labels.mentorLabel}</th>
                   <td>{selectedStudent.mentorName}</td>
-                  <th>اسم المدرسة</th>
+                  <th>اسم {labels.siteName}</th>
                   <td>{schoolInfo.name || selectedStudent.schoolName}</td>
                   <th>المديرية</th>
                   <td>{schoolInfo.directorate || selectedStudent.directorate}</td>
-                  <th>عنوان المدرسة</th>
+                  <th>عنوان {labels.siteName}</th>
                   <td>{schoolInfo.location || selectedStudent.schoolAddress}</td>
                 </tr>
               </tbody>

@@ -43,8 +43,8 @@ class TrainingSitePolicy
         if (in_array($user->role?->name, $allowedRoles, true)) {
             return true;
         }
-        // مدير المدرسة يعدّل موقع التدريب المرتبط بحسابه فقط
-        if ($user->role?->name === 'school_manager' && $user->training_site_id) {
+        // مدير المدرسة أو المركز النفسي يعدّل موقع التدريب المرتبط بحسابه فقط
+        if (in_array($user->role?->name, ['school_manager', 'psychology_center_manager']) && $user->training_site_id) {
             return (int) $user->training_site_id === (int) $trainingSite->id;
         }
 

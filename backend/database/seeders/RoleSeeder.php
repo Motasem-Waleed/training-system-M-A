@@ -14,6 +14,7 @@ class RoleSeeder extends Seeder
             'student',                    // الطالب المتدرب
             'teacher',                    // المعلم المرشد
             'school_manager',             // مدير المدرسة
+            'psychology_center_manager',  // مدير المركز النفسي
             'adviser',                    // المرشد التربوي
             'psychologist',               // أخصائي نفسي
             'academic_supervisor',        // المشرف الأكاديمي

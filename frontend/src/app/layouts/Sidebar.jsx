@@ -9,8 +9,9 @@ const roleLabels = {
   teacher: "المعلم المرشد",
   mentor: "المشرف الميداني",
   psychologist: "الأخصائي النفسي",
-  principal: "مدير جهة التدريب",
-  school_manager: "مدير جهة التدريب",
+  principal: "مدير المدرسة",
+  school_manager: "مدير المدرسة",
+  psychology_center_manager: "مدير المركز النفسي",
   health_directorate: "مديرية الصحة",
   education_directorate: "مديرية التربية والتعليم",
   student: "الطالب المتدرب",
@@ -109,6 +110,13 @@ const menus = {
     { name: "الطلبة المتدربون", path: "/principal/trainee-students" },
   ],
 
+  psychology_center_manager: [
+    { name: "الرئيسية", path: "/psychology-center/dashboard" },
+    { name: "الملف الشخصي", path: "/psychology-center/profile" },
+    { name: "طلبات التدريب", path: "/psychology-center/mentor-assignment" },
+    { name: "المتدربون في المركز", path: "/psychology-center/trainee-students" },
+  ],
+
   health_directorate: [
     { name: "الرئيسية", path: "/health/dashboard" },
     { name: "أماكن التدريب", path: "/health/training-sites" },
@@ -130,7 +138,9 @@ export default function Sidebar({ isOpen, onClose }) {
       ? "coordinator"
       : rawRole === "teacher"
         ? "mentor"
-        : rawRole;
+        : rawRole === "psychology_center_manager"
+          ? "psychology_center_manager"
+          : rawRole;
   const userName = savedUser?.name || "مستخدم تجريبي";
 const roleName = roleLabels[rawRole] || roleLabels[role] || "مستخدم النظام";
 const menu = menus[role] || [];

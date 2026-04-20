@@ -13,6 +13,7 @@ class AttendancePolicy
             'admin',
             'teacher',
             'school_manager',
+            'psychology_center_manager',
             'academic_supervisor',
             'student',
         ], true);

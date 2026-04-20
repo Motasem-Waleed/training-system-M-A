@@ -142,5 +142,20 @@ class UsersSeeder extends Seeder
                 'status' => 'active',
             ]
         );
+
+        // 11. مدير المركز النفسي
+        $psychCenterManagerRole = Role::where('name', 'psychology_center_manager')->first();
+        $healthSite = TrainingSite::where('site_type', 'health_center')->first();
+        User::firstOrCreate(
+            ['email' => 'psychcentermanager@hebron.edu'],
+            [
+                'name' => 'أ. أحمد مدير المركز النفسي',
+                'university_id' => 'PCM001',
+                'password' => Hash::make('password'),
+                'role_id' => $psychCenterManagerRole?->id,
+                'status' => 'active',
+                'training_site_id' => $healthSite?->id,
+            ]
+        );
     }
 }

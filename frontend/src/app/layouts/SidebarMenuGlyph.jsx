@@ -63,6 +63,11 @@ const ROUTE_ICON = {
   "/principal/mentor-assignment": "fileText",
   "/principal/trainee-students": "graduation",
 
+  "/psychology-center/dashboard": "home",
+  "/psychology-center/profile": "user",
+  "/psychology-center/mentor-assignment": "fileText",
+  "/psychology-center/trainee-students": "graduation",
+
   "/health/dashboard": "home",
   "/health/training-sites": "mapPin",
 

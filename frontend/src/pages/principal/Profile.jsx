@@ -4,6 +4,7 @@ import {
   updateUser,
   updateTrainingSite,
 } from "../../services/api";
+import { siteLabels } from "../../utils/roles";
 
 const empty = (v) => (v && v !== "—" ? String(v).trim() : "");
 
@@ -19,9 +20,11 @@ const SCHOOL_TYPES = [
   { value: "private", label: "مدرسة خاصة" },
 ];
 
-const Profile = () => {
+const Profile = ({ siteType: propSiteType = "school" }) => {
   const [userId, setUserId] = useState(null);
   const [trainingSiteId, setTrainingSiteId] = useState(null);
+  const [siteType, setSiteType] = useState(propSiteType);
+  const [labels, setLabels] = useState(siteLabels(propSiteType));
 
   const [profileData, setProfileData] = useState({
     principalName: "",
@@ -48,6 +51,13 @@ const Profile = () => {
       const userRes = await getCurrentUser();
       const user = userRes?.data || userRes || {};
       const trainingSite = user.training_site?.data || user.training_site || {};
+
+      // Use prop siteType or determine from user role/training site
+      const currentSiteType = propSiteType || (user.role?.name === 'psychology_center_manager' ? 'health_center' : 
+                            (trainingSite.site_type || 'school'));
+      
+      setSiteType(currentSiteType);
+      setLabels(siteLabels(currentSiteType));
 
       setUserId(user.id ?? null);
       setTrainingSiteId(user.training_site_id ?? trainingSite.id ?? null);
@@ -134,12 +144,12 @@ const Profile = () => {
       <div className="content-header">
         <h1 className="page-title">الملف الشخصي</h1>
         <p className="page-subtitle">
-          تعديل بيانات مدير المدرسة وبيانات المدرسة ثم الضغط على حفظ.
+          تعديل بيانات {labels.managerLabel} وبيانات {labels.siteName} ثم الضغط على حفظ.
         </p>
       </div>
 
       <div className="section-card">
-        <h4>بيانات المدير والمدرسة</h4>
+        <h4>بيانات {labels.managerLabel} و{labels.siteName}</h4>
         {loading ? (
           <div className="alert-custom alert-info">جاري تحميل البيانات...</div>
         ) : null}
@@ -156,7 +166,7 @@ const Profile = () => {
         <form onSubmit={handleSubmit}>
           <div className="row g-3">
             <div className="col-md-6">
-              <label className="form-label-custom">اسم المدير</label>
+              <label className="form-label-custom">اسم {labels.managerLabel}</label>
               <input
                 type="text"
                 name="principalName"
@@ -169,7 +179,7 @@ const Profile = () => {
             </div>
 
             <div className="col-md-6">
-              <label className="form-label-custom">اسم المدرسة / جهة التدريب</label>
+              <label className="form-label-custom">اسم {labels.siteName}</label>
               <input
                 type="text"
                 name="schoolName"
@@ -198,6 +208,7 @@ const Profile = () => {
               </select>
             </div>
 
+            {siteType === 'school' && (
             <div className="col-md-6">
               <label className="form-label-custom">نوع المدرسة</label>
               <select
@@ -214,6 +225,7 @@ const Profile = () => {
                 ))}
               </select>
             </div>
+            )}
 
             <div className="col-md-6">
               <label className="form-label-custom">رقم الهاتف</label>

@@ -5,6 +5,7 @@ import {
   itemsFromPagedResponse,
   schoolManagerApproveRequest,
 } from "../../services/api";
+import { siteLabels } from "../../utils/roles";
 
 const teacherId = (user) =>
   user?.id ?? user?.data?.id ?? null;
@@ -29,7 +30,8 @@ const normalizeRowsFromRequest = (request) =>
     };
   });
 
-export default function MentorAssignment() {
+export default function MentorAssignment({ siteType = "school" }) {
+  const labels = siteLabels(siteType);
   const [requests, setRequests] = useState([]);
   const [rows, setRows] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -99,7 +101,7 @@ export default function MentorAssignment() {
 
     const hasUnassigned = requestRows.some((row) => !row.mentorId);
     if (hasUnassigned) {
-      setErrorMessage("يجب تعيين معلم مرشد لكل طالب قبل اعتماد الطلب.");
+      setErrorMessage(`يجب تعيين ${labels.mentorLabel} لكل طالب قبل اعتماد الطلب.`);
       return;
     }
 
@@ -114,7 +116,7 @@ export default function MentorAssignment() {
           assigned_teacher_id: Number(row.mentorId),
         })),
       });
-      setSavedMessage("تم اعتماد الطلب وتعيين المعلمين المرشدين بنجاح.");
+      setSavedMessage(`تم اعتماد الطلب وتعيين ${siteType === "health_center" ? "الأخصائيين" : "المعلمين"} المرشدين بنجاح.`);
       await fetchData();
     } catch (error) {
       console.error("Failed to approve request:", error);
@@ -147,12 +149,12 @@ export default function MentorAssignment() {
   };
 
   return (
-    <>
+    <div className="mentor-assignment-page">
       <div className="content-header">
-        <h1 className="page-title">طلبات التدريب — مراجعة وتعيين المرشد</h1>
+        <h1 className="page-title">{labels.requestTitle}</h1>
         <p className="page-subtitle">
-          تظهر هنا الطلبات المرسلة إلى جهة التدريب التابعة لك. راجع بيانات كل طالب، عيّن المعلم
-          المرشد، ثم اعتمد الطلب أو ارفضه مع توضيح السبب.
+          تظهر هنا الطلبات المرسلة إلى {labels.siteName} التابعة لك. راجع بيانات كل طالب، عيّن
+          {" "}{labels.mentorLabel}، ثم اعتمد الطلب أو ارفضه مع توضيح السبب.
         </p>
       </div>
 
@@ -161,7 +163,7 @@ export default function MentorAssignment() {
           <div className="alert-custom alert-info">جاري تحميل البيانات...</div>
         ) : requests.length === 0 ? (
           <div className="alert-custom alert-info">
-            لا توجد طلبات بحالة «مرسل إلى جهة التدريب» حالياً. عند وصول كتاب من المديرية أو الجهة
+            لا توجد طلبات بحالة «مرسل إلى {labels.siteName}» حالياً. عند وصول كتاب من المديرية أو الجهة
             الصحية سيظهر الطلب هنا.
           </div>
         ) : (
@@ -211,7 +213,7 @@ export default function MentorAssignment() {
                       disabled={savingRequestId === req.id}
                       onClick={() => handleRequestApprove(req.id)}
                     >
-                      قبول وتعيين المرشدين
+                      {labels.approveBtn}
                     </button>
                     <button
                       type="button"
@@ -232,7 +234,7 @@ export default function MentorAssignment() {
                         <th>الرقم الجامعي</th>
                         <th>المساق</th>
                         <th>حالة السجل</th>
-                        <th>المعلم المرشد</th>
+                        <th>{labels.mentorCol}</th>
                         <th>ملاحظات</th>
                       </tr>
                     </thead>
@@ -260,7 +262,7 @@ export default function MentorAssignment() {
                                 }
                                 className="form-select-custom"
                               >
-                                <option value="">اختر المعلم المرشد</option>
+                                <option value="">{labels.mentorSelect}</option>
                                 {teachers.map((mentor) => (
                                   <option key={mentor.id} value={mentor.id}>
                                     {mentor.name}
@@ -297,6 +299,6 @@ export default function MentorAssignment() {
           <div className="alert-custom alert-danger mt-3">{errorMessage}</div>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }

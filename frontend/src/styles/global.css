@@ -668,58 +668,230 @@ p {
 
 /* Principal - Trainee Students */
 .trainee-students-page .trainee-card {
-  border-radius: 12px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
 }
 
 .trainee-table-wrapper {
-  border-radius: 0;
-  border: 1px solid #303030;
-  box-shadow: none;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  background: var(--bg-paper);
+  overflow: hidden;
 }
 
 .trainee-info-table,
 .trainee-evaluation-table {
   min-width: 820px;
   border-collapse: collapse;
+  width: 100%;
 }
 
 .trainee-info-table th,
 .trainee-info-table td,
 .trainee-evaluation-table th,
 .trainee-evaluation-table td {
-  border: 1px solid #303030;
-  background: #f0f0f0;
-  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-paper);
+  padding: 12px 16px;
   font-size: 0.93rem;
+  text-align: right;
 }
 
 .trainee-evaluation-table thead th,
 .trainee-info-table thead th {
-  background: #e6e6e6;
-  color: #1f1f1f;
-  font-weight: 700;
+  background: linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 100%);
+  color: var(--text);
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-strong);
+}
+
+.trainee-info-table tbody tr:nth-child(even),
+.trainee-evaluation-table tbody tr:nth-child(even) {
+  background: var(--bg-soft);
 }
 
 .trainee-evaluation-table tbody tr:hover,
 .trainee-info-table tbody tr:hover {
-  background: transparent;
+  background: rgba(158, 115, 70, 0.08);
+  transition: var(--transition);
 }
 
 .evaluation-score-cell .form-control-custom {
-  background: #fff;
-  border-color: #5a5a5a;
-  border-radius: 0;
+  background: var(--bg-paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.evaluation-score-cell .form-control-custom:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(20, 42, 66, 0.1);
 }
 
 .trainee-evaluation-table .form-textarea-custom {
-  min-height: 74px;
-  border-radius: 0;
-  background: #fff;
-  border-color: #5a5a5a;
+  min-height: 80px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-paper);
+  border: 1px solid var(--border);
+  transition: var(--transition);
 }
 
-.evaluation-na,
+.trainee-evaluation-table .form-textarea-custom:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(20, 42, 66, 0.1);
+}
+
+.evaluation-na {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
 .evaluation-hint {
-  color: #555;
-  font-size: 0.87rem;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+}
+
+/* Principal - Mentor Assignment */
+.mentor-assignment-page .section-card {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-paper);
+}
+
+.mentor-assignment-page .panel-header {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.mentor-assignment-page .panel-title {
+  color: var(--secondary);
+  font-weight: 700;
+  margin: 0;
+}
+
+.mentor-assignment-page .panel-subtitle {
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  margin: 4px 0 0 0;
+}
+
+.mentor-assignment-page .table-custom {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.mentor-assignment-page .table-custom th {
+  background: linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 100%);
+  color: var(--text);
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-strong);
+}
+
+.mentor-assignment-page .table-custom tbody tr:nth-child(even) {
+  background: var(--bg-soft);
+}
+
+.mentor-assignment-page .table-custom tbody tr:hover {
+  background: rgba(158, 115, 70, 0.08);
+  transition: var(--transition);
+}
+
+.mentor-assignment-page .form-select-custom {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-paper);
+  transition: var(--transition);
+}
+
+.mentor-assignment-page .form-select-custom:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(20, 42, 66, 0.1);
+}
+
+/* Principal - Dashboard */
+.principal-dashboard .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.principal-dashboard .kpi-box {
+  background: var(--bg-paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.principal-dashboard .kpi-box:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.principal-dashboard .kpi-box strong {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin-bottom: 8px;
+}
+
+.principal-dashboard .kpi-box span {
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.principal-dashboard .dashboard-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.principal-dashboard .activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.principal-dashboard .activity-item {
+  padding: 12px;
+  background: var(--bg-soft);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+}
+
+.principal-dashboard .activity-item h6 {
+  margin: 0 0 4px 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.principal-dashboard .activity-item p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .principal-dashboard .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .principal-dashboard .dashboard-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .trainee-info-table,
+  .trainee-evaluation-table {
+    min-width: 600px;
+  }
 }
