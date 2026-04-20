@@ -42,6 +42,7 @@ import Portfolio from "../pages/student/Portfolio";
 import TrainingLog from "../pages/student/TrainingLog";
 import Assignments from "../pages/student/Assignments";
 import NotificationsUpdates from "../pages/student/NotificationsUpdates";
+import StudentAttendance from "../pages/student/Attendance";
 
 // Common
 import Profile from "../pages/common/Profile";
@@ -164,6 +165,7 @@ export default function AppRouter() {
           <Route path="/student/training-log" element={<TrainingLog />} />
           <Route path="/student/assignments" element={<Assignments />} />
           <Route path="/student/training-request" element={<TrainingRequest />} />
+          <Route path="/student/attendance" element={<StudentAttendance />} />
           <Route path="/student/notifications-updates" element={<NotificationsUpdates />} />
 
           {/* Supervisor */}

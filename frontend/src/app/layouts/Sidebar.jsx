@@ -81,6 +81,7 @@ const menus = {
     { name: "الرئيسية", path: "/student/dashboard" },
     { name: "طلب التدريب", path: "/student/training-request" },
     { name: "برنامج التدريب", path: "/student/schedule" },
+    { name: "سجل الحضور والغياب", path: "/student/attendance" },
     { name: "سجل التدريب اليومي", path: "/student/training-log" },
     { name: "الملف الإنجازي", path: "/student/portfolio" },
     { name: "التكليفات", path: "/student/assignments" },

@@ -32,7 +32,8 @@ use App\Http\Controllers\Api\{
     WeeklyScheduleController,
     FeatureFlagController,
     PortfolioEntryController,
-    TaskSubmissionController
+    TaskSubmissionController,
+    StudentAttendanceController
 };
 
 // Routes publiques
@@ -183,6 +184,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/mentor-requests', [TrainingRequestController::class, 'schoolManagerMentorRequests']);
         Route::get('/teachers', [TrainingRequestController::class, 'schoolManagerTeachers']);
         Route::post('/mentor-requests/{training_request}/approve', [TrainingRequestController::class, 'schoolManagerApprove']);
+    });
+
+    // ========== ROUTES سجل حضور الطالب ==========
+    Route::prefix('student')->group(function () {
+        Route::get('/attendance', [StudentAttendanceController::class, 'index']);
+        Route::post('/attendance', [StudentAttendanceController::class, 'store']);
+        Route::get('/attendance/{attendance}', [StudentAttendanceController::class, 'show']);
+        Route::put('/attendance/{attendance}', [StudentAttendanceController::class, 'update']);
+        Route::delete('/attendance/{attendance}', [StudentAttendanceController::class, 'destroy']);
+        Route::get('/attendance/statistics/summary', [StudentAttendanceController::class, 'statistics']);
+        Route::post('/attendance/{attendance}/approve', [StudentAttendanceController::class, 'approve']);
     });
 
     // Portfolio personnel

@@ -403,6 +403,27 @@ export const schoolManagerApproveRequest = async (id, data) => {
   return apiClient.post(`/school-manager/mentor-requests/${id}/approve`, data);
 };
 
+// ==================== Student Attendance ====================
+export const getStudentAttendances = async (params = {}) => {
+  const response = await apiClient.get("/student/attendance", { params });
+  return response.data;
+};
+
+export const createAttendance = async (data) => {
+  const response = await apiClient.post("/student/attendance", data);
+  return response.data;
+};
+
+export const updateAttendance = async (id, data) => {
+  const response = await apiClient.put(`/student/attendance/${id}`, data);
+  return response.data;
+};
+
+export const deleteAttendance = async (id) => {
+  const response = await apiClient.delete(`/student/attendance/${id}`);
+  return response.data;
+};
+
 // ==================== System Notifications ====================
 export const getNotifications = (params = {}) =>
   apiClient.get("/notifications", { params }).then((res) => res.data);
