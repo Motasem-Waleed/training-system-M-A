@@ -19,23 +19,46 @@ class TrainingSiteController extends Controller
     public function index(Request $request)
     {
         $query = TrainingSite::query();
-        if ($request->has('site_type')) $query->where('site_type', $request->site_type);
-        if ($request->has('governing_body')) $query->where('governing_body', $request->governing_body);
-        if ($request->has('directorate')) {
-            $query->where('directorate', $request->directorate);
+        if ($request->filled('site_type')) {
+            $query->where('site_type', trim((string) $request->site_type));
+        }
+        if ($request->filled('governing_body')) {
+            $query->where('governing_body', trim((string) $request->governing_body));
+        }
+        if ($request->filled('directorate')) {
+            $directorate = trim((string) $request->directorate);
+            $query->where(function ($subQuery) use ($directorate) {
+                $subQuery->where('directorate', $directorate)
+                    ->orWhere('directorate', 'like', '%' . $directorate . '%');
+            });
         }
         // منطقة / بلدة / نص يطابق عمود الموقع فقط
         if ($request->filled('location')) {
-            $loc = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->location) . '%';
+            $loc = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim((string) $request->location)) . '%';
             $query->where('location', 'like', $loc);
         }
-        // بحث في اسم جهة التدريب (يُدمج مع location بـ AND عند استخدامهما معاً)
+        // بحث عام: يطابق اسم الجهة أو الموقع (البلدة/المنطقة).
         if ($request->filled('search')) {
-            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->search) . '%';
-            $query->where('name', 'like', $term);
+            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim((string) $request->search)) . '%';
+            $query->where(function ($subQuery) use ($term) {
+                $subQuery->where('name', 'like', $term)
+                    ->orWhere('location', 'like', $term);
+            });
         }
         if ($request->has('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
+        }
+        if ($request->boolean('has_manager_account')) {
+            $query->whereIn('id', function ($sub) {
+                $sub->select('training_site_id')
+                    ->from('users')
+                    ->whereNotNull('training_site_id')
+                    ->whereIn('role_id', function ($roleSub) {
+                        $roleSub->select('id')
+                            ->from('roles')
+                            ->whereIn('name', ['school_manager', 'principal', 'psychology_center_manager']);
+                    });
+            });
         }
         
         $sites = $query->latest()->paginate($request->per_page ?? 15);

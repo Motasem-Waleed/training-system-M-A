@@ -10,6 +10,7 @@ use App\Http\Requests\UpdatePortfolioEntryRequest;
 use App\Http\Resources\StudentPortfolioResource;
 use App\Models\StudentPortfolio;
 use App\Models\PortfolioEntry;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class StudentPortfolioController extends Controller
@@ -26,12 +27,35 @@ class StudentPortfolioController extends Controller
     public function getMyPortfolio(Request $request)
     {
         $user = $request->user();
-
         $portfolio = StudentPortfolio::with('entries')
-            ->firstOrCreate(
-                ['user_id' => $user->id],
-                ['training_assignment_id' => null]
-            );
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $portfolio) {
+            $assignmentId = $user->currentTrainingAssignment()?->id;
+            try {
+                $portfolio = StudentPortfolio::create([
+                    'user_id' => $user->id,
+                    'training_assignment_id' => $assignmentId,
+                ])->load('entries');
+            } catch (QueryException $exception) {
+                if ($assignmentId === null) {
+                    return response()->json([
+                        'data' => [
+                            'id' => null,
+                            'user' => null,
+                            'training_assignment' => null,
+                            'entries' => [],
+                            'created_at' => null,
+                            'updated_at' => null,
+                        ],
+                        'message' => 'لا يمكن إنشاء ملف الإنجاز قبل وجود تعيين تدريبي للطالب.',
+                    ]);
+                }
+
+                throw $exception;
+            }
+        }
 
         $this->authorize('view', $portfolio);
 

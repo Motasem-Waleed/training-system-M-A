@@ -13,7 +13,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'university_id', 'name', 'email', 'password', 'status',
-        'department_id', 'role_id', 'phone', 'training_site_id',
+        'department_id', 'role_id', 'phone', 'training_site_id', 'directorate',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -140,6 +140,42 @@ public function enrollments()
 {
     return $this->hasMany(Enrollment::class);
 }
+
+    /**
+     * آخر تسجيل شعبة للطالب مع العلاقات اللازمة.
+     */
+    public function currentEnrollment(): ?Enrollment
+    {
+        return $this->enrollments()
+            ->with(['section.course'])
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * تحديد مسار الطالب بناءً على role + section/course/department.
+     */
+    public function resolveStudentTrack(): ?string
+    {
+        if ($this->role?->name !== 'student') {
+            return null;
+        }
+
+        $enrollment = $this->currentEnrollment();
+        $courseCode = strtolower((string) data_get($enrollment, 'section.course.code', ''));
+        $courseName = strtolower((string) data_get($enrollment, 'section.course.name', ''));
+        $departmentName = strtolower((string) data_get($this, 'department.name', ''));
+
+        if (str_contains($courseCode, 'psyc') || str_contains($courseName, 'نفسي') || str_contains($departmentName, 'psych')) {
+            return 'psychology';
+        }
+
+        if (str_contains($courseCode, 'educ') || str_contains($courseName, 'تربية') || str_contains($departmentName, 'usool') || str_contains($departmentName, 'tarb')) {
+            return 'education';
+        }
+
+        return null;
+    }
 
     /** أحدث تعيين تدريبي مرتبط بتسجيل الطالب (للجدول، السجل، المهام). */
     public function currentTrainingAssignment(): ?TrainingAssignment

@@ -24,15 +24,28 @@ class OfficialLetterController extends Controller
 
     public function index(Request $request)
     {
+        $user = $request->user();
         $query = OfficialLetter::with(['trainingRequest', 'sentBy', 'receivedBy', 'trainingSite']);
-        
+
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
-        
+
+        if (in_array($user?->role?->name, ['school_manager', 'psychology_center_manager', 'principal'], true)) {
+            $query->where('type', 'to_school');
+            if (! empty($user->training_site_id)) {
+                $query->where('training_site_id', $user->training_site_id);
+            }
+        }
+        if ($user?->role?->name === 'education_directorate' && !empty($user->directorate)) {
+            $query->whereHas('trainingRequest.trainingSite', function ($sq) use ($user) {
+                $sq->where('directorate', $user->directorate);
+            });
+        }
+
         $letters = $query->latest()->paginate($request->per_page ?? 15);
         return OfficialLetterResource::collection($letters);
     }

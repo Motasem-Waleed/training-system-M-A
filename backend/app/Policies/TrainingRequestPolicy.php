@@ -49,6 +49,10 @@ class TrainingRequestPolicy
 
         if ($user->role?->name === 'education_directorate'
             && in_array($trainingRequest->book_status, ['sent_to_directorate', 'directorate_approved', 'sent_to_school', 'school_approved', 'rejected'], true)) {
+            if (!empty($user->directorate)) {
+                $siteDirectorate = (string) data_get($trainingRequest, 'trainingSite.directorate', '');
+                return trim($siteDirectorate) === trim((string) $user->directorate);
+            }
             return true;
         }
 
@@ -93,7 +97,25 @@ class TrainingRequestPolicy
     {
         return $user->role?->name === 'student'
             && (int) $trainingRequest->requested_by === (int) $user->id
-            && $trainingRequest->book_status === 'needs_edit';
+            && in_array($trainingRequest->book_status, ['needs_edit', 'rejected', 'coordinator_rejected'], true);
+    }
+
+    /**
+     * حذف الطالب لطلبه (طالما لم يصل لمرحلة القبول النهائي).
+     */
+    public function deleteAsStudent(User $user, TrainingRequest $trainingRequest): bool
+    {
+        if ($user->role?->name !== 'student' || (int) $trainingRequest->requested_by !== (int) $user->id) {
+            return false;
+        }
+
+        return in_array($trainingRequest->book_status, [
+            'sent_to_coordinator',
+            'needs_edit',
+            'rejected',
+            'coordinator_rejected',
+            'prelim_approved',
+        ], true);
     }
 
     /**
@@ -102,6 +124,11 @@ class TrainingRequestPolicy
     public function coordinateReview(User $user, TrainingRequest $trainingRequest): bool
     {
         if (! in_array($user->role?->name, ['training_coordinator', 'coordinator'], true)) {
+            return false;
+        }
+
+        $requestOwnerDepartmentId = data_get($trainingRequest, 'requestedBy.department_id');
+        if ($requestOwnerDepartmentId && (int) $user->department_id !== (int) $requestOwnerDepartmentId) {
             return false;
         }
 
@@ -127,6 +154,12 @@ class TrainingRequestPolicy
     {
         if ($user->role?->name === 'education_directorate'
             && $trainingRequest->book_status === 'sent_to_directorate') {
+            if (!empty($user->directorate)) {
+                $siteDirectorate = (string) data_get($trainingRequest, 'trainingSite.directorate', '');
+                if (trim($siteDirectorate) !== trim((string) $user->directorate)) {
+                    return false;
+                }
+            }
             return true;
         }
 
@@ -142,6 +175,12 @@ class TrainingRequestPolicy
 
         if ($user->role?->name === 'education_directorate'
             && $trainingRequest->governing_body === 'directorate_of_education') {
+            if (!empty($user->directorate)) {
+                $siteDirectorate = (string) data_get($trainingRequest, 'trainingSite.directorate', '');
+                if (trim($siteDirectorate) !== trim((string) $user->directorate)) {
+                    return false;
+                }
+            }
             return true;
         }
 

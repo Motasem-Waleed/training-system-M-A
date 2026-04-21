@@ -8,6 +8,7 @@ use App\Http\Requests\UpdatePortfolioEntryRequest;
 use App\Http\Resources\PortfolioEntryResource;
 use App\Models\PortfolioEntry;
 use App\Models\StudentPortfolio;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -41,10 +42,28 @@ class PortfolioEntryController extends Controller
     {
         $data = $request->validated();
 
-        $portfolio = StudentPortfolio::query()->firstOrCreate(
-            ['user_id' => $request->user()->id],
-            ['training_assignment_id' => null]
-        );
+        $portfolio = StudentPortfolio::query()
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (! $portfolio) {
+            $assignmentId = $request->user()->currentTrainingAssignment()?->id;
+            try {
+                $portfolio = StudentPortfolio::create([
+                    'user_id' => $request->user()->id,
+                    'training_assignment_id' => $assignmentId,
+                ]);
+            } catch (QueryException $exception) {
+                if ($assignmentId === null) {
+                    return response()->json([
+                        'message' => 'لا يمكن إضافة مدخل قبل وجود تعيين تدريبي للطالب.',
+                    ], 422);
+                }
+
+                throw $exception;
+            }
+        }
+
         $data['student_portfolio_id'] = $portfolio->id;
 
         if ($request->hasFile('file')) {

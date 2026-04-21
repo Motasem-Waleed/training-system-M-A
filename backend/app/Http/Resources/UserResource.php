@@ -21,6 +21,7 @@ class UserResource extends JsonResource
             'role_id' => $this->role_id,
             'department_id' => $this->department_id,
             'training_site_id' => $this->training_site_id,
+            'directorate' => $this->directorate,
             // لا تُمرَّر علاقة null إلى JsonResource — يُسبب 500 عند عدم وجود دور/قسم/موقع
             'training_site' => $this->when(
                 $this->relationLoaded('trainingSite') && $this->trainingSite !== null,
@@ -35,6 +36,19 @@ class UserResource extends JsonResource
                 fn () => new RoleResource($this->role)
             ),
             'field_supervisor_profile' => $this->whenLoaded('fieldSupervisorProfile'),
+            'current_section' => $this->when(
+                $this->role?->name === 'student',
+                function () {
+                    $enrollment = $this->currentEnrollment();
+                    return [
+                        'section_id' => data_get($enrollment, 'section.id'),
+                        'section_name' => data_get($enrollment, 'section.name'),
+                        'course_code' => data_get($enrollment, 'section.course.code'),
+                        'course_name' => data_get($enrollment, 'section.course.name'),
+                        'track' => $this->resolveStudentTrack(),
+                    ];
+                }
+            ),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
             'deleted_at' => $this->deleted_at?->toDateTimeString(),

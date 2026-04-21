@@ -30,7 +30,7 @@ export default function CoordinatorTrainingRequests() {
     try {
       await apiClient.post(`/training-requests/${id}/coordinator-review`, {
         decision,
-        reason: decision !== "approved" ? reason : undefined
+        reason: decision !== "prelim_approved" ? reason : undefined
       });
       alert("تمت المراجعة بنجاح");
       setSelectedRequest(null);
@@ -111,12 +111,12 @@ export default function CoordinatorTrainingRequests() {
                   <label className="form-label">القرار</label>
                   <select className="form-select" value={decision} onChange={(e) => setDecision(e.target.value)}>
                     <option value="">اختر القرار...</option>
-                    <option value="approved">اعتماد مبدئي</option>
+                    <option value="prelim_approved">اعتماد مبدئي</option>
                     <option value="needs_edit">يحتاج تعديل</option>
                     <option value="rejected">رفض</option>
                   </select>
                 </div>
-                {decision !== "approved" && decision !== "" && (
+                {decision !== "prelim_approved" && decision !== "" && (
                   <div className="mb-3">
                     <label className="form-label">السبب</label>
                     <textarea className="form-control" rows="3" value={reason} onChange={(e) => setReason(e.target.value)} />

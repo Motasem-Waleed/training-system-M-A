@@ -11,6 +11,36 @@ use Illuminate\Support\Facades\Hash;
 
 class UsersSeeder extends Seeder
 {
+    private function normalizeDirectorate(string $value): string
+    {
+        $v = trim($value);
+        $v = str_replace(['مديرية', 'مديرية ', '  '], ['', '', ' '], $v);
+        return trim($v);
+    }
+
+    private function resolveSchoolSiteIdForDirectorate(string $directorate): ?int
+    {
+        $normalized = $this->normalizeDirectorate($directorate);
+
+        $siteId = TrainingSite::query()
+            ->where('site_type', 'school')
+            ->where('directorate', $normalized)
+            ->orderBy('id')
+            ->value('id');
+
+        if ($siteId) {
+            return (int) $siteId;
+        }
+
+        $siteId = TrainingSite::query()
+            ->where('site_type', 'school')
+            ->where('directorate', 'like', '%' . $normalized . '%')
+            ->orderBy('id')
+            ->value('id');
+
+        return $siteId ? (int) $siteId : null;
+    }
+
     public function run()
     {
         // 1. مدير النظام
@@ -80,7 +110,8 @@ class UsersSeeder extends Seeder
 
         // 6. مدير مدرسة (يرتبط بأول موقع تدريب لاستلام الطلبات المرسلة للمدرسة)
         $schoolManagerRole = Role::where('name', 'school_manager')->first();
-        $defaultSchoolSiteId = TrainingSite::query()->orderBy('id')->value('id');
+        $defaultSchoolSiteId = $this->resolveSchoolSiteIdForDirectorate('وسط')
+            ?? TrainingSite::query()->where('site_type', 'school')->orderBy('id')->value('id');
         $sm = User::firstOrCreate(
             ['email' => 'schoolmanager@hebron.edu'],
             [
@@ -90,8 +121,34 @@ class UsersSeeder extends Seeder
                 'status' => 'active',
             ]
         );
-        if ($defaultSchoolSiteId && ! $sm->training_site_id) {
+        if ($defaultSchoolSiteId && (int) $sm->training_site_id !== (int) $defaultSchoolSiteId) {
             $sm->update(['training_site_id' => $defaultSchoolSiteId]);
+        }
+
+        // حسابات مديري مدارس للفحص (كل حساب ثابت لمديرية محددة)
+        $schoolManagerAccounts = [
+            ['email' => 'schoolmanager.1@hebron.edu', 'name' => 'مدير مدرسة - وسط', 'directorate' => 'وسط'],
+            ['email' => 'schoolmanager.2@hebron.edu', 'name' => 'مدير مدرسة - شمال', 'directorate' => 'شمال'],
+            ['email' => 'schoolmanager.3@hebron.edu', 'name' => 'مدير مدرسة - جنوب', 'directorate' => 'جنوب'],
+            ['email' => 'schoolmanager.4@hebron.edu', 'name' => 'مدير مدرسة - يطا', 'directorate' => 'يطا'],
+        ];
+        foreach ($schoolManagerAccounts as $account) {
+            $siteId = $this->resolveSchoolSiteIdForDirectorate($account['directorate']);
+
+            if (! $siteId) {
+                continue;
+            }
+
+            User::updateOrCreate(
+                ['email' => $account['email']],
+                [
+                    'name' => $account['name'],
+                    'password' => Hash::make('password'),
+                    'role_id' => $schoolManagerRole->id,
+                    'status' => 'active',
+                    'training_site_id' => $siteId,
+                ]
+            );
         }
 
         // 7. أخصائي نفسي
@@ -129,6 +186,49 @@ class UsersSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role_id' => $eduDirectorateRole->id,
                 'status' => 'active',
+                'directorate' => 'وسط',
+            ]
+        );
+
+        // حسابات مديريات منفصلة للفحص الدقيق حسب المديرية
+        User::firstOrCreate(
+            ['email' => 'edudir.west@hebron.edu'],
+            [
+                'name' => 'مديرية التربية - وسط',
+                'password' => Hash::make('password'),
+                'role_id' => $eduDirectorateRole->id,
+                'status' => 'active',
+                'directorate' => 'وسط',
+            ]
+        );
+        User::firstOrCreate(
+            ['email' => 'edudir.north@hebron.edu'],
+            [
+                'name' => 'مديرية التربية - شمال',
+                'password' => Hash::make('password'),
+                'role_id' => $eduDirectorateRole->id,
+                'status' => 'active',
+                'directorate' => 'شمال',
+            ]
+        );
+        User::firstOrCreate(
+            ['email' => 'edudir.south@hebron.edu'],
+            [
+                'name' => 'مديرية التربية - جنوب',
+                'password' => Hash::make('password'),
+                'role_id' => $eduDirectorateRole->id,
+                'status' => 'active',
+                'directorate' => 'جنوب',
+            ]
+        );
+        User::firstOrCreate(
+            ['email' => 'edudir.yatta@hebron.edu'],
+            [
+                'name' => 'مديرية التربية - يطا',
+                'password' => Hash::make('password'),
+                'role_id' => $eduDirectorateRole->id,
+                'status' => 'active',
+                'directorate' => 'يطا',
             ]
         );
 

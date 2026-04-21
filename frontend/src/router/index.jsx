@@ -47,7 +47,6 @@ import EvaluationTemplateForm from "../pages/Admin/EvaluationTemplates/Evaluatio
 import ReportsDashboard from "../pages/reports/ReportsDashboard";
 
 // Student
-import TrainingRequest from "../pages/student/TrainingRequest";
 import StudentDashboard from "../pages/dashboard/StudentDashboard";
 import Schedule from "../pages/student/Schedule";
 import Portfolio from "../pages/student/Portfolio";
@@ -55,6 +54,9 @@ import TrainingLog from "../pages/student/TrainingLog";
 import Assignments from "../pages/student/Assignments";
 import NotificationsUpdates from "../pages/student/NotificationsUpdates";
 import StudentAttendance from "../pages/student/Attendance";
+import StudentDashboardRedirect from "../pages/student/StudentDashboardRedirect";
+import EForms from "../pages/student/EForms";
+import StudentTrainingRequestEntry from "../pages/student/StudentTrainingRequestEntry";
 
 // Common
 import Profile from "../pages/common/Profile";
@@ -192,12 +194,17 @@ export default function AppRouter() {
           <Route path="/reports" element={<ReportsDashboard />} />
 
           {/* Student */}
-          <Route path="/student/dashboard" element={<StudentDashboard />} />
+          <Route path="/student/dashboard" element={<StudentDashboardRedirect />} />
+          <Route path="/student/dashboard/education" element={<StudentDashboard forcedTrack="education" />} />
+          <Route path="/student/dashboard/psychology" element={<StudentDashboard forcedTrack="psychology" />} />
           <Route path="/student/schedule" element={<Schedule />} />
           <Route path="/student/portfolio" element={<Portfolio />} />
           <Route path="/student/training-log" element={<TrainingLog />} />
           <Route path="/student/assignments" element={<Assignments />} />
-          <Route path="/student/training-request" element={<TrainingRequest />} />
+          <Route path="/student/training-request" element={<StudentTrainingRequestEntry />} />
+          <Route path="/student/training-requests" element={<StudentTrainingRequestEntry />} />
+          <Route path="/student/training-request-status" element={<StudentTrainingRequestEntry />} />
+          <Route path="/student/e-forms" element={<EForms />} />
           <Route path="/student/attendance" element={<StudentAttendance />} />
           <Route path="/student/notifications-updates" element={<NotificationsUpdates />} />
 

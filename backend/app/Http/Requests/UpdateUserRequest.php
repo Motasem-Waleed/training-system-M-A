@@ -27,6 +27,7 @@ class UpdateUserRequest extends FormRequest
             'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($routeUserId)],
             'phone' => 'nullable|string|max:20',
             'department_id' => 'nullable|exists:departments,id',
+            'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
         ];
     }
 }

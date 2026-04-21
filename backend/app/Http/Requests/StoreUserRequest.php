@@ -23,6 +23,7 @@ class StoreUserRequest extends FormRequest
             'department_id' => 'nullable|exists:departments,id',
             'role_id' => 'required|exists:roles,id',
             'phone' => 'nullable|string|max:20',
+            'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
         ];
     }
 }

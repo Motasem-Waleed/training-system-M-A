@@ -35,7 +35,8 @@ use App\Http\Controllers\Api\{
     FeatureFlagController,
     PortfolioEntryController,
     TaskSubmissionController,
-    StudentAttendanceController
+    StudentAttendanceController,
+    StudentEFormController
 };
 
 // Routes publiques
@@ -67,9 +68,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('training-periods/{training_period}/set-active', [TrainingPeriodController::class, 'setActive']);
 
     // Demandes de stage
-    Route::apiResource('training-requests', TrainingRequestController::class)
-        ->middleware('feature:training_requests.create')
-        ->only(['store']);
+    Route::get('training-requests', [TrainingRequestController::class, 'index']);
+    Route::get('training-requests/{training_request}', [TrainingRequestController::class, 'show']);
+    Route::post('training-requests', [TrainingRequestController::class, 'store'])
+        ->middleware('feature:training_requests.create');
     Route::post('training-requests/{training_request}/send-to-directorate', [TrainingRequestController::class, 'sendToDirectorate']);
     Route::post('training-requests/{training_request}/directorate-approve', [TrainingRequestController::class, 'directorateApprove']);
     Route::post('training-requests/{training_request}/send-to-school', [TrainingRequestController::class, 'sendToSchool']);
@@ -227,6 +229,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/training-requests', [TrainingRequestController::class, 'studentStore'])
             ->middleware('feature:training_requests.create');
         Route::put('/training-requests/{training_request}', [TrainingRequestController::class, 'studentUpdate']);
+        Route::delete('/training-requests/{training_request}', [TrainingRequestController::class, 'studentDestroy']);
         Route::get('/schedule', [WeeklyScheduleController::class, 'studentSchedule']);
         
         // Training logs
@@ -248,6 +251,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Notifications étudiant
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+
+        // E-Forms étudiant
+        Route::get('/e-forms', [StudentEFormController::class, 'index']);
+        Route::post('/e-forms', [StudentEFormController::class, 'store']);
+        Route::post('/e-forms/{eform}/submit', [StudentEFormController::class, 'submit']);
     });
 
     // ========== ROUTES مدير جهة التدريب ==========

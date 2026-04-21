@@ -1,8 +1,10 @@
 // src/services/api.js
 import axios from "axios";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api").replace(/\/+$/, "");
+
 export const apiClient = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -375,6 +377,11 @@ export const updateStudentTrainingRequest = async (id, data) => {
     return response.data;
 };
 
+export const deleteStudentTrainingRequest = async (id) => {
+    const response = await apiClient.delete(`/student/training-requests/${id}`);
+    return response.data;
+};
+
 export const getStudentSchedule = async () => {
     const response = await apiClient.get('/student/schedule');
     return response.data;
@@ -439,6 +446,22 @@ export const getStudentNotifications = async (config = {}) => {
 export const markNotificationAsRead = async (id) => {
     const response = await apiClient.patch(`/student/notifications/${id}/read`);
     return response.data;
+};
+
+// ==================== Student E-Forms ====================
+export const getStudentEForms = async (params = {}) => {
+  const response = await apiClient.get("/student/e-forms", { params });
+  return response.data;
+};
+
+export const saveStudentEForm = async (data) => {
+  const response = await apiClient.post("/student/e-forms", data);
+  return response.data;
+};
+
+export const submitStudentEForm = async (id, data = {}) => {
+  const response = await apiClient.post(`/student/e-forms/${id}/submit`, data);
+  return response.data;
 };
 
 // ==================== School Manager specific ====================

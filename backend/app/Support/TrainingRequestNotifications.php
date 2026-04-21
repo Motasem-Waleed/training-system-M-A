@@ -8,6 +8,29 @@ use App\Models\User;
 
 class TrainingRequestNotifications
 {
+    public static function forCoordinatorsByDepartment(?int $departmentId, string $type, string $message, array $data = []): void
+    {
+        if (! $departmentId) {
+            return;
+        }
+
+        $ids = User::query()
+            ->where('department_id', $departmentId)
+            ->whereHas('role', fn ($q) => $q->whereIn('name', ['training_coordinator', 'coordinator']))
+            ->pluck('id');
+
+        foreach ($ids as $userId) {
+            Notification::query()->create([
+                'user_id' => $userId,
+                'type' => $type,
+                'message' => $message,
+                'notifiable_type' => TrainingRequest::class,
+                'notifiable_id' => (int) ($data['training_request_id'] ?? 0),
+                'data' => $data,
+            ]);
+        }
+    }
+
     public static function forCoordinators(string $type, string $message, array $data = []): void
     {
         $ids = User::query()
@@ -67,9 +90,14 @@ class TrainingRequestNotifications
             return;
         }
 
-        $ids = User::query()
-            ->whereHas('role', fn ($q) => $q->whereIn('name', $roles))
-            ->pluck('id');
+        $query = User::query()
+            ->whereHas('role', fn ($q) => $q->whereIn('name', $roles));
+
+        if ($governingBody === 'directorate_of_education' && !empty($data['directorate'])) {
+            $query->where('directorate', (string) $data['directorate']);
+        }
+
+        $ids = $query->pluck('id');
 
         foreach ($ids as $userId) {
             Notification::query()->create([

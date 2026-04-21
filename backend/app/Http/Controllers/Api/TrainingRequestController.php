@@ -16,14 +16,84 @@ use App\Http\Resources\TrainingRequestResource;
 use App\Models\TrainingRequest;
 use App\Models\TrainingRequestStudent;
 use App\Models\TrainingSite;
+use App\Models\TrainingPeriod;
+use App\Models\Course;
+use App\Models\OfficialLetter;
 use App\Models\User;
 use App\Services\TrainingRequestService;
 use App\Support\TrainingRequestNotifications;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TrainingRequestController extends Controller
 {
+    private function hasManagerAccountForSite(TrainingSite $site): bool
+    {
+        $managerRoles = $site->site_type === 'health_center'
+            ? ['psychology_center_manager']
+            : ['school_manager', 'principal'];
+
+        return User::query()
+            ->where('training_site_id', $site->id)
+            ->whereHas('role', fn ($q) => $q->whereIn('name', $managerRoles))
+            ->exists();
+    }
+
+    private function resolveAutoTrainingPeriodId(): ?int
+    {
+        $period = TrainingPeriod::query()
+            ->where('is_active', true)
+            ->latest('id')
+            ->first();
+
+        if (! $period) {
+            $period = TrainingPeriod::query()->latest('id')->first();
+        }
+
+        return $period?->id;
+    }
+
+    private function resolveAutoCourseIdForStudent($user): ?int
+    {
+        $enrollment = $user?->currentEnrollment();
+        $courseId = data_get($enrollment, 'section.course.id');
+        if ($courseId) {
+            return (int) $courseId;
+        }
+
+        $fallbackCourseId = Course::query()->orderBy('id')->value('id');
+        return $fallbackCourseId ? (int) $fallbackCourseId : null;
+    }
+
+    private function normalizeStudentDates(array $data): array
+    {
+        $activePeriod = TrainingPeriod::query()
+            ->where('is_active', true)
+            ->latest('id')
+            ->first()
+            ?? TrainingPeriod::query()->latest('id')->first();
+
+        $start = $data['start_date'] ?? $activePeriod?->start_date?->toDateString() ?? now()->toDateString();
+        $end = $data['end_date'] ?? $activePeriod?->end_date?->toDateString() ?? now()->addDay()->toDateString();
+
+        if ($end <= $start) {
+            $end = \Carbon\Carbon::parse($start)->addDay()->toDateString();
+        }
+
+        $data['start_date'] = $start;
+        $data['end_date'] = $end;
+
+        return $data;
+    }
+
+    private function normalizeDirectorate(?string $value): string
+    {
+        $v = trim((string) $value);
+        $v = str_replace(['مديرية', 'مديرية ', '  '], ['', '', ' '], $v);
+        return trim($v);
+    }
+
     protected $trainingRequestService;
 
     public function __construct(TrainingRequestService $trainingRequestService)
@@ -77,6 +147,16 @@ class TrainingRequestController extends Controller
 
         if (in_array($request->user()->role?->name, ['school_manager', 'psychology_center_manager'], true) && $request->user()->training_site_id) {
             $query->where('training_site_id', $request->user()->training_site_id);
+        }
+        if (in_array($request->user()->role?->name, ['coordinator', 'training_coordinator'], true) && $request->user()->department_id) {
+            $query->whereHas('requestedBy', function ($uq) use ($request) {
+                $uq->where('department_id', $request->user()->department_id);
+            });
+        }
+        if ($request->user()->role?->name === 'education_directorate' && !empty($request->user()->directorate)) {
+            $query->whereHas('trainingSite', function ($sq) use ($request) {
+                $sq->where('directorate', $request->user()->directorate);
+            });
         }
 
         $trainingRequests = $query->latest()->paginate($request->per_page ?? 15);
@@ -189,11 +269,26 @@ class TrainingRequestController extends Controller
             ]);
             $msg = 'تم رفض طلب التدريب من المنسق.';
         } else {
-            $trainingRequest->update([
-                'book_status' => 'prelim_approved',
-                'coordinator_reviewed_at' => now(),
-            ]);
-            $msg = 'تم اعتماد الطلب مبدئيًا وهو جاهز للتجميع في دفعة.';
+            DB::transaction(function () use ($trainingRequest) {
+                $trainingRequest->update([
+                    'book_status' => 'sent_to_directorate',
+                    'coordinator_reviewed_at' => now(),
+                    'sent_to_directorate_at' => now(),
+                ]);
+
+                OfficialLetter::query()->create([
+                    'training_request_id' => $trainingRequest->id,
+                    'training_site_id' => $trainingRequest->training_site_id,
+                    'letter_number' => 'AUTO-DIR-' . $trainingRequest->id,
+                    'letter_date' => now()->toDateString(),
+                    'type' => 'to_directorate',
+                    'content' => 'تحويل تلقائي لطلب التدريب إلى المديرية المختصة حسب مديرية المدرسة.',
+                    'sent_by' => request()->user()->id,
+                    'sent_at' => now(),
+                    'status' => 'sent_to_directorate',
+                ]);
+            });
+            $msg = 'تم اعتماد الطلب وتحويله تلقائيًا إلى المديرية المختصة.';
         }
 
         $trainingRequest->load([
@@ -215,6 +310,20 @@ class TrainingRequestController extends Controller
                 'decision' => $decision,
             ]
         );
+
+        if ($decision === 'prelim_approved') {
+            $siteDirectorate = trim((string) data_get($trainingRequest, 'trainingSite.directorate', ''));
+            TrainingRequestNotifications::forDirectorate(
+                $trainingRequest->governing_body,
+                'training_request_sent_to_directorate',
+                'تم إرسال طلب تدريب جديد للمديرية المختصة (' . $siteDirectorate . ').',
+                [
+                    'training_request_id' => $trainingRequest->id,
+                    'book_status' => $trainingRequest->book_status,
+                    'directorate' => $siteDirectorate,
+                ]
+            );
+        }
 
         return new TrainingRequestResource($trainingRequest);
     }
@@ -247,22 +356,75 @@ class TrainingRequestController extends Controller
     {
         $this->authorize('create', TrainingRequest::class);
 
+        $user = $request->user();
+        $existingRequest = TrainingRequest::query()
+            ->where(function ($q) use ($user) {
+                $q->where('requested_by', $user->id)
+                    ->orWhereHas('trainingRequestStudents', fn ($sq) => $sq->where('user_id', $user->id));
+            })
+            ->latest('id')
+            ->first();
+
+        if ($existingRequest) {
+            return response()->json([
+                'message' => 'مسموح للطالب بطلب تدريب واحد فقط. يرجى تعديل الطلب الحالي بدل إنشاء طلب جديد.',
+                'training_request_id' => $existingRequest->id,
+                'book_status' => $existingRequest->book_status,
+            ], 409);
+        }
+
         $data = $request->validate([
             'training_site_id' => 'required|exists:training_sites,id',
             'training_period_id' => 'nullable|exists:training_periods,id',
-            'course_id' => 'required|exists:courses,id',
+            'course_id' => 'nullable|exists:courses,id',
+            'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
             'notes' => 'nullable|string',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after:start_date',
             'attachment_path' => 'nullable|string|max:2048',
             'governing_body' => 'nullable|in:directorate_of_education,ministry_of_health',
         ]);
 
+        $data['training_period_id'] = $data['training_period_id'] ?? $this->resolveAutoTrainingPeriodId();
+        $data['course_id'] = $data['course_id'] ?? $this->resolveAutoCourseIdForStudent($request->user());
+        $data = $this->normalizeStudentDates($data);
+
+        if (empty($data['course_id'])) {
+            return response()->json([
+                'message' => 'تعذر تحديد المساق تلقائيًا. يرجى التأكد من تسجيل الطالب في شعبة مرتبطة بمساق.',
+            ], 422);
+        }
+
         $site = TrainingSite::findOrFail($data['training_site_id']);
+        $track = auth()->user()?->resolveStudentTrack();
+        if ($track === 'education' && $site->site_type !== 'school') {
+            return response()->json([
+                'message' => 'طالب أصول التربية يمكنه اختيار مدارس فقط.',
+            ], 422);
+        }
+        if ($track === 'education' && empty($data['directorate'])) {
+            return response()->json([
+                'message' => 'لطالب أصول التربية يجب اختيار المديرية أولاً.',
+            ], 422);
+        }
+        if (
+            $track === 'education'
+            && ! empty($data['directorate'])
+            && $this->normalizeDirectorate((string) $site->directorate) !== $this->normalizeDirectorate((string) $data['directorate'])
+        ) {
+            return response()->json([
+                'message' => 'المدرسة المختارة لا تتبع المديرية المحددة.',
+            ], 422);
+        }
 
         if (! empty($data['governing_body']) && $data['governing_body'] !== $site->governing_body) {
             return response()->json([
                 'message' => 'الجهة الرسمية المختارة لا تطابق نوع موقع التدريب.',
+            ], 422);
+        }
+        if (! $this->hasManagerAccountForSite($site)) {
+            return response()->json([
+                'message' => 'المدرسة/جهة التدريب المختارة غير مربوطة بحساب مدير. يرجى اختيار جهة أخرى أو مراجعة الإدارة.',
             ], 422);
         }
 
@@ -296,9 +458,10 @@ class TrainingRequestController extends Controller
             'trainingPeriod',
         ]);
 
-        TrainingRequestNotifications::forCoordinators(
-            'training_request_new_from_student',
-            'طلب تدريب جديد من طالب بانتظار المراجعة.',
+        TrainingRequestNotifications::forCoordinatorsByDepartment(
+            (int) auth()->user()->department_id,
+            'training_request_new_from_student_department',
+            'طلب تدريب جديد من طالب ضمن نفس القسم بانتظار المراجعة.',
             ['training_request_id' => $trainingRequest->id]
         );
 
@@ -312,14 +475,50 @@ class TrainingRequestController extends Controller
         $data = $request->validate([
             'training_site_id' => 'required|exists:training_sites,id',
             'training_period_id' => 'nullable|exists:training_periods,id',
-            'course_id' => 'required|exists:courses,id',
+            'course_id' => 'nullable|exists:courses,id',
+            'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
             'notes' => 'nullable|string',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after:start_date',
             'attachment_path' => 'nullable|string|max:2048',
         ]);
 
+        $data['training_period_id'] = $data['training_period_id'] ?? $this->resolveAutoTrainingPeriodId();
+        $data['course_id'] = $data['course_id'] ?? $this->resolveAutoCourseIdForStudent($request->user());
+        $data = $this->normalizeStudentDates($data);
+
+        if (empty($data['course_id'])) {
+            return response()->json([
+                'message' => 'تعذر تحديد المساق تلقائيًا. يرجى التأكد من تسجيل الطالب في شعبة مرتبطة بمساق.',
+            ], 422);
+        }
+
         $site = TrainingSite::findOrFail($data['training_site_id']);
+        $track = auth()->user()?->resolveStudentTrack();
+        if ($track === 'education' && $site->site_type !== 'school') {
+            return response()->json([
+                'message' => 'طالب أصول التربية يمكنه اختيار مدارس فقط.',
+            ], 422);
+        }
+        if ($track === 'education' && empty($data['directorate'])) {
+            return response()->json([
+                'message' => 'لطالب أصول التربية يجب اختيار المديرية أولاً.',
+            ], 422);
+        }
+        if (
+            $track === 'education'
+            && ! empty($data['directorate'])
+            && $this->normalizeDirectorate((string) $site->directorate) !== $this->normalizeDirectorate((string) $data['directorate'])
+        ) {
+            return response()->json([
+                'message' => 'المدرسة المختارة لا تتبع المديرية المحددة.',
+            ], 422);
+        }
+        if (! $this->hasManagerAccountForSite($site)) {
+            return response()->json([
+                'message' => 'المدرسة/جهة التدريب المختارة غير مربوطة بحساب مدير. يرجى اختيار جهة أخرى أو مراجعة الإدارة.',
+            ], 422);
+        }
 
         $trainingRequest->update([
             'training_site_id' => $data['training_site_id'],
@@ -370,6 +569,19 @@ class TrainingRequestController extends Controller
         );
 
         return new TrainingRequestResource($withRelations);
+    }
+
+    public function studentDestroy(TrainingRequest $trainingRequest)
+    {
+        $this->authorize('deleteAsStudent', $trainingRequest);
+
+        TrainingRequestStudent::query()
+            ->where('training_request_id', $trainingRequest->id)
+            ->delete();
+
+        $trainingRequest->delete();
+
+        return response()->json(['message' => 'تم حذف طلب التدريب بنجاح']);
     }
 
     // ========== School Manager Endpoints ==========
@@ -425,6 +637,7 @@ class TrainingRequestController extends Controller
 
         $teachers = User::where('status', 'active')
             ->whereHas('role', fn($q) => $q->where('name', $targetRole))
+            ->when($user->training_site_id, fn ($q) => $q->where('training_site_id', $user->training_site_id))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->search) . '%';
                 $q->where(function ($sub) use ($term) {

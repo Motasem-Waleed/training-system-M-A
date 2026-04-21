@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import {
   getCurrentUser,
   getStudentTrainingRequests,
@@ -8,8 +9,9 @@ import {
   getStudentNotifications,
   itemsFromPagedResponse,
 } from "../../services/api";
+import { getStudentDashboardPath, getStudentTrack } from "../../utils/studentSection";
 
-export default function StudentDashboard() {
+export default function StudentDashboard({ forcedTrack = null }) {
   const [studentInfo, setStudentInfo] = useState({
     name: "",
     universityId: "",
@@ -27,8 +29,17 @@ export default function StudentDashboard() {
     { title: "المهام", value: "0 مهمة متبقية", desc: "المهام التي تحتاج متابعة", className: "accent" },
   ]);
   const [latestItems, setLatestItems] = useState([]);
+  const [latestTasks, setLatestTasks] = useState([]);
+  const [latestLogs, setLatestLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const abortControllerRef = useRef(null);
+  const currentUser = useMemo(() => JSON.parse(localStorage.getItem("user") || "{}"), []);
+  const detectedTrack = getStudentTrack(currentUser);
+  const effectiveTrack = forcedTrack || detectedTrack || "education";
+
+  if (forcedTrack && forcedTrack !== detectedTrack && detectedTrack) {
+    return <Navigate to={getStudentDashboardPath(currentUser)} replace />;
+  }
 
   const fetchDashboardData = useCallback(async () => {
     // إلغاء أي طلب سابق قبل بدء طلب جديد
@@ -103,12 +114,16 @@ export default function StudentDashboard() {
 
       // 4. آخر الإشعارات
       const notifications = itemsFromPagedResponse(notifRes);
+      const tasks = itemsFromPagedResponse(tasksRes);
+      const logs = itemsFromPagedResponse(logsRes);
       const formattedNotif = notifications.slice(0, 5).map(notif => ({
         title: notif.type === "training_request_approved" ? "تم قبول طلب التدريب" : (notif.title || "تحديث جديد"),
         text: notif.message || notif.data?.message || "لا يوجد محتوى",
         type: notif.type === "warning" ? "إشعار" : "تحديث",
       }));
       setLatestItems(formattedNotif);
+      setLatestTasks(tasks.slice(0, 4));
+      setLatestLogs(logs.slice(0, 4));
     } catch (error) {
       if (error.name === "CanceledError" || error.code === "ERR_CANCELED") {
         console.log("تم إلغاء الطلب السابق");
@@ -146,7 +161,11 @@ export default function StudentDashboard() {
     <>
       <div className="content-header">
         <h1 className="page-title">الصفحة الرئيسية</h1>
-        <p className="page-subtitle">ملخص معلومات الطالب والتدريب وآخر الإشعارات.</p>
+        <p className="page-subtitle">
+          {effectiveTrack === "psychology"
+            ? "لوحة طالب علم النفس: الطلب، الجهة، المهام، السجل اليومي، الإشعارات."
+            : "لوحة طالب أصول التربية: الطلب، المدرسة، المهام، السجل اليومي، الإشعارات."}
+        </p>
       </div>
 
       <div className="section-card mb-3">
@@ -170,11 +189,11 @@ export default function StudentDashboard() {
           </div>
           <div className="kpi-box">
             <strong>{studentInfo.directorate || "—"}</strong>
-            <span>مديرية التربية</span>
+            <span>{effectiveTrack === "psychology" ? "الجهة/المديرية" : "مديرية التربية"}</span>
           </div>
           <div className="kpi-box">
             <strong>{studentInfo.school || "—"}</strong>
-            <span>المدرسة</span>
+            <span>{effectiveTrack === "psychology" ? "الجهة المعتمدة" : "المدرسة المعتمدة"}</span>
           </div>
           <div className="kpi-box">
             <strong>{studentInfo.status || "—"}</strong>
@@ -212,6 +231,38 @@ export default function StudentDashboard() {
                 </div>
                 <h6>{item.title}</h6>
                 <p>{item.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="section-card mt-3">
+        <h4>آخر المهام المطلوبة</h4>
+        {latestTasks.length === 0 ? (
+          <p>لا توجد مهام حديثة.</p>
+        ) : (
+          <div className="activity-list">
+            {latestTasks.map((task) => (
+              <div key={task.id} className="activity-item">
+                <h6>{task.title || "مهمة"}</h6>
+                <p>الموعد النهائي: {task.due_date || "—"} | الحالة: {task.status_label || task.status || "—"}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="section-card mt-3">
+        <h4>حالة السجل اليومي الأخيرة</h4>
+        {latestLogs.length === 0 ? (
+          <p>لا توجد سجلات يومية بعد.</p>
+        ) : (
+          <div className="activity-list">
+            {latestLogs.map((log) => (
+              <div key={log.id} className="activity-item">
+                <h6>{log.log_date || "سجل يومي"}</h6>
+                <p>الحالة: {log.status_label || log.status || "—"}</p>
               </div>
             ))}
           </div>

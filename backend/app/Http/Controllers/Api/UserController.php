@@ -187,7 +187,7 @@ class UserController extends Controller
         );
 
         return response()->json([
-            'user' => new UserResource($user->load(['role', 'department', 'trainingSite', 'fieldSupervisorProfile'])),
+            'user' => new UserResource($user->load(['role', 'department', 'trainingSite', 'fieldSupervisorProfile', 'enrollments.section.course'])),
             'access_token' => $token,
             'token_type' => 'Bearer',
         ]);
@@ -195,7 +195,7 @@ class UserController extends Controller
 
     public function currentUser(Request $request)
 {
-        return new UserResource($request->user()->load(['role', 'department', 'trainingSite']));
+        return new UserResource($request->user()->load(['role', 'department', 'trainingSite', 'enrollments.section.course']));
     }
 
     public function logout(Request $request)

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../../services/api";
 import myLogo from "../../assets/HU Logo.webp";
+import { getStudentDashboardPath } from "../../utils/studentSection";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -63,7 +64,7 @@ export default function Login() {
           navigate("/health/dashboard");
           break;
         case "student":
-          navigate("/student/dashboard");
+          navigate(getStudentDashboardPath(user));
           break;
         default:
           navigate("/");
