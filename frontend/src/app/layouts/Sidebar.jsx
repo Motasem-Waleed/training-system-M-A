@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import SidebarMenuGlyph from "./SidebarMenuGlyph";
+import { checkFeatureFlag } from "../../services/api";
 
 const roleLabels = {
   admin: "مدير النظام",
@@ -16,6 +18,12 @@ const roleLabels = {
   health_directorate: "مديرية الصحة",
   education_directorate: "مديرية التربية والتعليم",
   student: "الطالب المتدرب",
+};
+
+const menuFeatureMap = {
+  "/student/training-request": "training_requests.create",
+  "/field-staff/tasks": "tasks.create",
+  "/admin/announcements": "announcements.create",
 };
 
 /** القائمة الموحدة للكادر الميداني — نفس العناصر مع Conditional Rendering */
@@ -107,7 +115,6 @@ const menus = {
   mentor: buildFieldStaffMenu("mentor"),
   psychologist: buildFieldStaffMenu("psychologist"),
   supervisor: buildFieldStaffMenu("supervisor"),
-  principal: buildFieldStaffMenu("principal"),
   
   // المشرف الميداني — يستخدم نفس قائمة الكادر الميداني
   field_supervisor: buildFieldStaffMenu("field_supervisor"),
@@ -129,13 +136,6 @@ const menus = {
     { name: "طلبات التدريب", path: "/coordinator/training-requests" },
     { name: "التوزيع", path: "/coordinator/distribution" },
     { name: "الإحصائيات", path: "/coordinator/statistics" },
-  ],
-
-  school_manager: [
-    { name: "الرئيسية", path: "/principal/dashboard" },
-    { name: "الملف الشخصي", path: "/principal/profile" },
-    { name: "طلبات التدريب", path: "/principal/mentor-assignment" },
-    { name: "الطلبة المتدربون", path: "/principal/trainee-students" },
   ],
 
   principal: [
@@ -167,6 +167,7 @@ const menus = {
 
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
+  const [featureFlags, setFeatureFlags] = useState({});
   const savedUser = JSON.parse(localStorage.getItem("user")) || {};
   const rawRole = savedUser?.role?.name || savedUser?.role || "admin";
   const role =
@@ -183,7 +184,42 @@ export default function Sidebar({ isOpen, onClose }) {
               : rawRole;
   const userName = savedUser?.name || "مستخدم تجريبي";
 const roleName = roleLabels[rawRole] || roleLabels[role] || "مستخدم النظام";
-const menu = menus[role] || [];
+  const menu = menus[role] || [];
+
+  useEffect(() => {
+    let isMounted = true;
+    const featureNames = [...new Set(Object.values(menuFeatureMap))];
+    Promise.all(
+      featureNames.map((name) =>
+        checkFeatureFlag(name)
+          .then((res) => [name, Boolean(res?.is_open)])
+          .catch(() => [name, false])
+      )
+    )
+      .then((entries) => {
+        if (!isMounted) return;
+        const normalized = entries.reduce((acc, [name, isOpen]) => {
+          acc[name] = isOpen;
+          return acc;
+        }, {});
+        setFeatureFlags(normalized);
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const visibleMenu = useMemo(
+    () =>
+      menu.filter((item) => {
+        const featureName = menuFeatureMap[item.path];
+        if (!featureName) return true;
+        return featureFlags[featureName] === true;
+      }),
+    [menu, featureFlags]
+  );
 
   const getInitials = (name) => {
     if (!name) return "HU";
@@ -219,7 +255,7 @@ const menu = menus[role] || [];
       <div className="sidebar-menu">
         <div className="sidebar-section-title">القائمة الرئيسية</div>
 
-        {menu.map((item) => (
+        {visibleMenu.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

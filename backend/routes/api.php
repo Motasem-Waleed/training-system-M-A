@@ -67,7 +67,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::patch('training-periods/{training_period}/set-active', [TrainingPeriodController::class, 'setActive']);
 
     // Demandes de stage
-    Route::apiResource('training-requests', TrainingRequestController::class);
+    Route::apiResource('training-requests', TrainingRequestController::class)
+        ->middleware('feature:training_requests.create')
+        ->only(['store']);
     Route::post('training-requests/{training_request}/send-to-directorate', [TrainingRequestController::class, 'sendToDirectorate']);
     Route::post('training-requests/{training_request}/directorate-approve', [TrainingRequestController::class, 'directorateApprove']);
     Route::post('training-requests/{training_request}/send-to-school', [TrainingRequestController::class, 'sendToSchool']);
@@ -95,13 +97,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('training-logs/{training_log}/review', [TrainingLogController::class, 'review']);
 
     // Tâches
-    Route::apiResource('tasks', TaskController::class);
+    Route::apiResource('tasks', TaskController::class)
+        ->middleware('feature:tasks.create')
+        ->only(['store']);
     Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
     Route::apiResource('task-submissions', TaskSubmissionController::class);
     Route::post('task-submissions/{task_submission}/grade', [TaskSubmissionController::class, 'grade']);
 
     // Évaluations
-    Route::apiResource('evaluations', EvaluationController::class);
+    Route::apiResource('evaluations', EvaluationController::class)
+        ->middleware('feature:evaluations.create')
+        ->only(['store']);
     Route::apiResource('evaluation-templates', EvaluationTemplateController::class);
     Route::post('evaluation-templates/{evaluation_template}/items', [EvaluationTemplateController::class, 'addItem']);
     Route::put('evaluation-items/{item}', [EvaluationTemplateController::class, 'updateItem']);
@@ -128,7 +134,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('conversations/{conversation}/messages', [ConversationController::class, 'sendMessage']);
 
     // Annonces
-    Route::apiResource('announcements', AnnouncementController::class);
+    Route::apiResource('announcements', AnnouncementController::class)
+        ->middleware('feature:announcements.create')
+        ->only(['store']);
 
     // Notifications
     Route::get('notifications', [NotificationController::class, 'index']);
@@ -151,10 +159,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Sauvegardes
     Route::apiResource('backups', BackupController::class);
     Route::post('backups/{backup}/restore', [BackupController::class, 'restore']);
-    Route::get('backups/{id}', [BackupController::class, 'show']);
     Route::get('backups/{id}/table/{tableName}', [BackupController::class, 'getTableData']);
 
     // Logs d'activité
+    Route::post('activity-logs/page-visit', [ActivityLogController::class, 'trackPageVisit']);
     Route::apiResource('activity-logs', ActivityLogController::class);
 
     // ========== ROUTES SUPERVISOR WORKSPACE ==========
@@ -216,7 +224,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ========== ROUTES ÉTUDIANTS ==========
     Route::prefix('student')->group(function () {
         Route::get('/training-requests', [TrainingRequestController::class, 'studentIndex']);
-        Route::post('/training-requests', [TrainingRequestController::class, 'studentStore']);
+        Route::post('/training-requests', [TrainingRequestController::class, 'studentStore'])
+            ->middleware('feature:training_requests.create');
         Route::put('/training-requests/{training_request}', [TrainingRequestController::class, 'studentUpdate']);
         Route::get('/schedule', [WeeklyScheduleController::class, 'studentSchedule']);
         
@@ -251,7 +260,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // ========== ROUTES سجل حضور الطالب ==========
     Route::prefix('student')->group(function () {
         Route::get('/attendance', [StudentAttendanceController::class, 'index']);
-        Route::post('/attendance', [StudentAttendanceController::class, 'store']);
+        Route::post('/attendance', [StudentAttendanceController::class, 'store'])
+            ->middleware('feature:attendances.create');
         Route::get('/attendance/{attendance}', [StudentAttendanceController::class, 'show']);
         Route::put('/attendance/{attendance}', [StudentAttendanceController::class, 'update']);
         Route::delete('/attendance/{attendance}', [StudentAttendanceController::class, 'destroy']);

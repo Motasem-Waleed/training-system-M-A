@@ -62,24 +62,16 @@ import ChangePassword from "../pages/common/ChangePassword";
 import Notifications from "../pages/common/Notifications";
 
 // Supervisor
-import SupervisorDashboard from "../pages/dashboard/SupervisorDashboard";
 import SupervisorWorkspace from "../pages/supervisor/workspace/SupervisorWorkspace";
-import Tasks from "../pages/supervisor/Tasks";
 import FieldVisits from "../pages/supervisor/FieldVisits";
 import Sections from "../pages/supervisor/Sections";
-import Evaluations from "../pages/supervisor/Evaluations";
 import SupervisorReports from "../pages/supervisor/Reports";
 import Submissions from "../pages/supervisor/Submissions";
 
 
 // Mentor (المعلم المرشد — دور teacher) — legacy, kept for reference
-import MentorDashboard from "../pages/dashboard/MentorDashboard";
 import MentorAttendance from "../pages/mentor/Attendance";
-import MentorStudents from "../pages/mentor/MentorStudents";
 import MentorSchedule from "../pages/mentor/MentorSchedule";
-
-// Psychologist — legacy dashboard
-import PsychologistDashboard from "../pages/dashboard/PsychologistDashboard";
 
 // Unified Field Staff pages (mentor, supervisor, psychologist, principal)
 import FieldStaffDashboard from "../pages/fieldStaff/Dashboard";

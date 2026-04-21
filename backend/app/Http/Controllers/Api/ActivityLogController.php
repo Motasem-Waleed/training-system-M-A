@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ActivityLogger;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ActivityLogResource;
 use App\Models\ActivityLog;
@@ -17,10 +18,10 @@ class ActivityLogController extends Controller
     public function index(Request $request)
     {
         $query = ActivityLog::with('user');
-        if ($request->has('user_id')) $query->where('user_id', $request->user_id);
-        if ($request->has('action')) $query->where('action', $request->action);
-        if ($request->has('from_date')) $query->whereDate('created_at', '>=', $request->from_date);
-        if ($request->has('to_date')) $query->whereDate('created_at', '<=', $request->to_date);
+        if ($request->filled('user_id')) $query->where('user_id', $request->user_id);
+        if ($request->filled('action')) $query->where('action', $request->action);
+        if ($request->filled('from_date')) $query->whereDate('created_at', '>=', $request->from_date);
+        if ($request->filled('to_date')) $query->whereDate('created_at', '<=', $request->to_date);
         
         $logs = $query->latest()->paginate($request->per_page ?? 15);
         return ActivityLogResource::collection($logs);
@@ -35,5 +36,29 @@ class ActivityLogController extends Controller
     {
         $activityLog->delete();
         return response()->json(['message' => 'تم حذف السجل']);
+    }
+
+    public function trackPageVisit(Request $request)
+    {
+        $validated = $request->validate([
+            'path' => ['required', 'string', 'max:500'],
+            'title' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        ActivityLogger::log(
+            'ui',
+            'page_visit',
+            'User visited page',
+            null,
+            [
+                'new' => [
+                    'path' => $validated['path'],
+                    'title' => $validated['title'] ?? null,
+                ],
+            ],
+            $request->user()
+        );
+
+        return response()->json(['message' => 'Page visit logged']);
     }
 }

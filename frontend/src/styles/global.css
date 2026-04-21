@@ -664,6 +664,7 @@ p {
   .search-input {
     min-width: 100%;
   }
+}
 
 /* Principal - Trainee Students */
 .trainee-students-page .trainee-card {
@@ -899,6 +900,7 @@ p {
 .notification-bell-container {
   position: relative;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .notification-bell-btn {
@@ -942,9 +944,11 @@ p {
 .notification-dropdown {
   position: absolute;
   top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 360px;
+  left: 0;
+  right: auto;
+  transform: none;
+  width: min(420px, calc(100vw - 24px));
+  min-width: 320px;
   max-height: 480px;
   background: white;
   border: 1px solid var(--border);
@@ -954,6 +958,19 @@ p {
   margin-top: 8px;
   overflow: hidden;
   direction: rtl;
+}
+
+@media (max-width: 900px) {
+  .notification-dropdown {
+    position: fixed;
+    top: 74px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    min-width: 0;
+    max-height: calc(100dvh - 96px);
+    margin-top: 0;
+  }
 }
 
 .notification-dropdown-header {
@@ -996,7 +1013,7 @@ p {
 .notification-empty {
   padding: 32px 16px;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--text-soft);
   font-size: 0.9rem;
 }
 
@@ -1038,12 +1055,12 @@ p {
   font-weight: 600;
   font-size: 0.85rem;
   margin-bottom: 4px;
-  color: var(--text-primary);
+  color: var(--text);
 }
 
 .notification-message {
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--text-soft);
   margin-bottom: 4px;
   line-height: 1.4;
   overflow: hidden;
@@ -1055,7 +1072,7 @@ p {
 
 .notification-time {
   font-size: 0.7rem;
-  color: var(--text-muted);
+  color: var(--text-faint);
 }
 
 .mark-read-btn {
@@ -1097,9 +1114,10 @@ p {
 /* Responsive adjustments for notification dropdown */
 @media (max-width: 480px) {
   .notification-dropdown {
-    width: calc(100vw - 32px);
-    left: 16px;
-    right: 16px;
+    top: 68px;
+    left: 10px;
+    right: 10px;
+    width: auto;
     transform: none;
   }
 }

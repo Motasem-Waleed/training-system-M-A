@@ -253,20 +253,6 @@
     justify-content: center;
   }
   .sidebar-overlay {
-    display: none;
-  }
-
-  .sidebar-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(10, 20, 30, 0.45);
-    opacity: 0;
-    visibility: hidden;
-    transition: 0.25s ease;
-    z-index: 98;
-  }
-  .sidebar-overlay {
     display: block;
     position: fixed;
     inset: 0;
@@ -277,9 +263,8 @@
     z-index: 98;
   }
 
-
-
-
-  
-
+  .sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
 }

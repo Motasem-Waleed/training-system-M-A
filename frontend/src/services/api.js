@@ -186,8 +186,8 @@ export const deleteAnnouncement = (id) => apiClient.delete(`/announcements/${id}
 
 // ==================== Backups ====================
 export const getBackups = () => apiClient.get('/backups').then(res => res.data);
-export const getBackup = (id) => apiClient.get(`/backups/${id}`).then(res => res.data);
 export const getBackupDetails = (id) => apiClient.get(`/backups/${id}`).then(res => res.data);
+export const getBackup = (id) => getBackupDetails(id);
 export const getBackupTableData = (id, tableName) => apiClient.get(`/backups/${id}/table/${tableName}`).then(res => res.data);
 export const createBackup = (data) => apiClient.post('/backups', data).then(res => res.data);
 export const restoreBackup = (id) => apiClient.post(`/backups/${id}/restore`).then(res => res.data);
@@ -196,10 +196,13 @@ export const deleteBackup = (id) => apiClient.delete(`/backups/${id}`).then(res 
 // ==================== Activity Logs ====================
 export const getActivityLogs = (params) => apiClient.get('/activity-logs', { params }).then(res => res.data);
 export const deleteActivityLog = (id) => apiClient.delete(`/activity-logs/${id}`).then(res => res.data);
+export const trackPageVisit = (data) => apiClient.post('/activity-logs/page-visit', data).then(res => res.data);
 
 // ==================== Feature Flags ====================
 export const getFeatureFlags = () => apiClient.get('/feature-flags').then(res => res.data);
 export const updateFeatureFlag = (id, isOpen) => apiClient.patch(`/feature-flags/${id}`, { is_open: isOpen }).then(res => res.data);
+export const checkFeatureFlag = (name) =>
+  apiClient.get(`/feature-flags/check/${encodeURIComponent(name)}`).then((res) => res.data);
 
 // ==================== Evaluation Templates ====================
 export const getEvaluationTemplates = (params = {}) => apiClient.get('/evaluation-templates', { params }).then(res => res.data);
