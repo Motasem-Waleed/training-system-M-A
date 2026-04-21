@@ -61,7 +61,7 @@ class UpdateTrainingSiteRequest extends FormRequest
             'directorate' => 'sometimes|in:وسط,شمال,جنوب,يطا',
             'school_type' => 'sometimes|in:public,private',
             'site_type' => 'sometimes|in:school,health_center',
-            'governing_body' => 'sometimes|in:directorate_of_education,ministry_of_health',
+            'governing_body' => 'sometimes|in:directorate_of_education,ministry_of_health,health_directorate,education_directorate',
         ];
     }
 }

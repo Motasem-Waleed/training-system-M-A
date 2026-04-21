@@ -1,23 +1,113 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getBackups, createBackup, restoreBackup, deleteBackup } from "../../../services/api";
 
 export default function BackupsList() {
   const [backups, setBackups] = useState([]);
-  useEffect(() => { fetch(); }, []);
-  const fetch = async () => { const data = await getBackups(); setBackups(data.data || []); };
-  const handleCreate = async () => { await createBackup({ type: "full" }); fetch(); };
-  const handleRestore = async (id) => { if (confirm("استعادة النسخة؟")) { await restoreBackup(id); alert("تمت الاستعادة"); } };
-  const handleDelete = async (id) => { if (confirm("حذف النسخة؟")) { await deleteBackup(id); fetch(); } };
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    fetchBackups();
+  }, []);
+
+  const fetchBackups = async () => {
+    setLoading(true);
+    try {
+      const data = await getBackups();
+      setBackups(data.data || []);
+    } catch (err) {
+      console.error(err);
+      alert("فشل تحميل النسخ الاحتياطية");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!window.confirm("هل أنت متأكد من إنشاء نسخة احتياطية جديدة؟")) return;
+    setCreating(true);
+    try {
+      await createBackup({ type: "full" });
+      alert("تم إنشاء النسخة الاحتياطية بنجاح");
+      fetchBackups();
+    } catch (err) {
+      console.error(err);
+      alert("فشل إنشاء النسخة: " + (err.response?.data?.message || "خطأ غير معروف"));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleRestore = async (id) => {
+    if (!window.confirm("تحذير: استعادة النسخة ستؤدي إلى فقدان البيانات الحالية. هل أنت متأكد؟")) return;
+    try {
+      await restoreBackup(id);
+      alert("تمت استعادة النسخة بنجاح");
+      fetchBackups();
+    } catch (err) {
+      console.error(err);
+      alert("فشل استعادة النسخة");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذه النسخة؟")) return;
+    try {
+      await deleteBackup(id);
+      alert("تم حذف النسخة");
+      fetchBackups();
+    } catch (err) {
+      console.error(err);
+      alert("فشل حذف النسخة");
+    }
+  };
+
+  if (loading) return <div className="text-center">جاري التحميل...</div>;
+
   return (
     <div>
-      <div className="page-header"><h1>النسخ الاحتياطية</h1><button onClick={handleCreate} className="btn-primary">إنشاء نسخة جديدة</button></div>
-      <table className="data-table">
-        <thead><tr><th>الاسم</th><th>التاريخ</th><th>الحجم</th><th>إجراءات</th></tr></thead>
-        <tbody>{backups.map(b => (
-          <tr key={b.id}><td>{b.name}</td><td>{new Date(b.created_at).toLocaleString()}</td><td>{b.size} bytes</td>
-          <td><button onClick={() => handleRestore(b.id)} className="btn-sm">استعادة</button><button onClick={() => handleDelete(b.id)} className="btn-sm danger">حذف</button></td></tr>
-        ))}</tbody>
-      </table>
+      <div className="page-header">
+        <h1>النسخ الاحتياطية</h1>
+        <button onClick={handleCreate} disabled={creating} className="btn-primary">
+          {creating ? "جاري الإنشاء..." : "+ إنشاء نسخة جديدة"}
+        </button>
+      </div>
+
+      {backups.length === 0 ? (
+        <p>لا توجد نسخ احتياطية حتى الآن. قم بإنشاء نسخة جديدة.</p>
+      ) : (
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>اسم الملف</th>
+              <th>تاريخ الإنشاء</th>
+              <th>الحجم (بايت)</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {backups.map((backup) => (
+              <tr key={backup.id}>
+                <td>{backup.name}</td>
+                <td>{new Date(backup.created_at).toLocaleString()} </td>
+                <td>{backup.size?.toLocaleString() || "غير معروف"} bytes</td>
+                <td>
+                  <Link to={`/admin/backups/${backup.id}`} className="btn-sm">
+                    عرض التفاصيل
+                  </Link>
+                  <button onClick={() => handleRestore(backup.id)} className="btn-sm">
+                    استعادة
+                  </button>
+                  <button onClick={() => handleDelete(backup.id)} className="btn-sm danger">
+                    حذف
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

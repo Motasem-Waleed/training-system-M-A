@@ -30,14 +30,15 @@ export default function UsersList() {
         per_page: perPage,
       });
 
-      const usersData = response.data?.data ?? response.data ?? [];
-      setUsers(usersData);
+      const usersArray = response.data || [];
+      const meta = response.meta || {};
 
+      setUsers(usersArray);
       setPagination({
-        current_page: response.data?.current_page ?? response.current_page ?? 1,
-        last_page: response.data?.last_page ?? response.last_page ?? 1,
-        per_page: response.data?.per_page ?? response.per_page ?? perPage,
-        total: response.data?.total ?? response.total ?? 0,
+        current_page: meta.current_page || 1,
+        last_page: meta.last_page || 1,
+        per_page: meta.per_page || perPage,
+        total: meta.total || 0,
       });
       setError("");
     } catch (err) {
@@ -109,12 +110,12 @@ export default function UsersList() {
       <div className="page-header">
         <h1>إدارة المستخدمين</h1>
         <div className="add-buttons-group">
-          <button onClick={() => navigate("/admin/users/add/student")} className="btn-primary">+ إضافة طالب</button>
-          <button onClick={() => navigate("/admin/users/add/schoolmanager")} className="btn-primary">+ إضافة مدير مدرسة</button>
-          <button onClick={() => navigate("/admin/users/add/teacher")} className="btn-primary">+ إضافة معلم</button>
-          <button onClick={() => navigate("/admin/users/add/counselor")} className="btn-primary">+ إضافة مرشد</button>
-          <button onClick={() => navigate("/admin/users/add/psychologist")} className="btn-primary">+ إضافة أخصائي نفسي</button>
-          <button onClick={() => navigate("/admin/users/add/academic-supervisor")} className="btn-primary">+ إضافة مشرف أكاديمي</button>
+          <button onClick={() => navigate("/admin/users/add/student")} className="btn-add-student">+ إضافة طالب</button>
+          <button onClick={() => navigate("/admin/users/add/schoolmanager")} className="btn-add-admin">+ إضافة مدير مدرسة</button>
+          <button onClick={() => navigate("/admin/users/add/teacher")} className="btn-add-teacher">+ إضافة معلم</button>
+          <button onClick={() => navigate("/admin/users/add/counselor")} className="btn-add-counselor">+ إضافة مرشد</button>
+          <button onClick={() => navigate("/admin/users/add/psychologist")} className="btn-add-psychologist">+ إضافة أخصائي نفسي</button>
+          <button onClick={() => navigate("/admin/users/add/academic-supervisor")} className="btn-add-supervisor">+ إضافة مشرف أكاديمي</button>
         </div>
       </div>
 
@@ -122,11 +123,15 @@ export default function UsersList() {
       <div className="filters-bar">
         <input
           type="text"
+          id="filter-search"
+          name="search"
           placeholder="بحث بالاسم أو البريد..."
           value={filters.search}
           onChange={(e) => setFilters({ ...filters, search: e.target.value })}
         />
         <select
+          id="filter-role"
+          name="role_id"
           value={filters.role_id}
           onChange={(e) => setFilters({ ...filters, role_id: e.target.value })}
         >
@@ -144,6 +149,8 @@ export default function UsersList() {
           <option value="11">رئيس قسم</option>
         </select>
         <select
+          id="filter-status"
+          name="status"
           value={filters.status}
           onChange={(e) => setFilters({ ...filters, status: e.target.value })}
         >
@@ -151,6 +158,17 @@ export default function UsersList() {
           <option value="active">نشط</option>
           <option value="inactive">غير نشط</option>
           <option value="suspended">موقوف</option>
+        </select>
+
+        <select
+          value={perPage}
+          onChange={(e) => setPerPage(Number(e.target.value))}
+          style={{ width: "auto" }}
+        >
+          <option value="10">10 مستخدمين</option>
+          <option value="20">20 مستخدم</option>
+          <option value="50">50 مستخدم</option>
+          <option value="100">100 مستخدم</option>
         </select>
       </div>
 

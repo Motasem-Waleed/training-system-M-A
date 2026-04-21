@@ -99,13 +99,13 @@ export default function AddTeacher() {
 
   const formFields = () => (
     <>
-      <div className="form-group"><label>الاسم الكامل *</label><input type="text" name="name" value={form.name} onChange={handleChange} required />{errors.name && <span className="error">{errors.name[0]}</span>}</div>
-      <div className="form-group"><label>البريد الإلكتروني *</label><input type="email" name="email" value={form.email} onChange={handleChange} required />{errors.email && <span className="error">{errors.email[0]}</span>}</div>
-      <div className="form-group"><label>التخصص *</label><input type="text" name="major" value={form.major} onChange={handleChange} required />{errors.major && <span className="error">{errors.major[0]}</span>}</div>
-      <div className="form-group"><label>مكان التدريب</label><select name="training_site_id" value={form.training_site_id} onChange={handleChange}><option value="">اختر مكان التدريب</option>{trainingSites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{errors.training_site_id && <span className="error">{errors.training_site_id[0]}</span>}</div>
-      <div className="form-group"><label>الهاتف</label><input type="text" name="phone" value={form.phone} onChange={handleChange} />{errors.phone && <span className="error">{errors.phone[0]}</span>}</div>
-      <div className="form-group"><label>كلمة المرور {!isEditMode && "*"}</label><input type="password" name="password" value={form.password} onChange={handleChange} {...(!isEditMode && { required: true })} />{errors.password && <span className="error">{errors.password[0]}</span>}</div>
-      <div className="form-group"><label>تأكيد كلمة المرور {!isEditMode && "*"}</label><input type="password" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} {...(!isEditMode && { required: true })} /></div>
+      <div className="form-group"><label>الاسم الكامل *</label><input type="text" id="name" name="name" value={form.name} onChange={handleChange} required />{errors.name && <span className="error">{errors.name[0]}</span>}</div>
+      <div className="form-group"><label>البريد الإلكتروني *</label><input type="email" id="email" name="email" value={form.email} onChange={handleChange} required />{errors.email && <span className="error">{errors.email[0]}</span>}</div>
+      <div className="form-group"><label>التخصص *</label><input type="text" id="major" name="major" value={form.major} onChange={handleChange} required />{errors.major && <span className="error">{errors.major[0]}</span>}</div>
+      <div className="form-group"><label>مكان التدريب</label><select id="training_site_id" name="training_site_id" value={form.training_site_id} onChange={handleChange}><option value="">اختر مكان التدريب</option>{trainingSites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{errors.training_site_id && <span className="error">{errors.training_site_id[0]}</span>}</div>
+      <div className="form-group"><label>الهاتف</label><input type="text" id="phone" name="phone" value={form.phone} onChange={handleChange} />{errors.phone && <span className="error">{errors.phone[0]}</span>}</div>
+      <div className="form-group"><label>كلمة المرور {!isEditMode && "*"}</label><input type="password" id="password" name="password" value={form.password} onChange={handleChange} {...(!isEditMode && { required: true })} />{errors.password && <span className="error">{errors.password[0]}</span>}</div>
+      <div className="form-group"><label>تأكيد كلمة المرور {!isEditMode && "*"}</label><input type="password" id="password_confirmation" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} {...(!isEditMode && { required: true })} /></div>
     </>
   );
 
@@ -132,7 +132,7 @@ export default function AddTeacher() {
         <div className="bulk-section">
           <p>قم بتحميل ملف Excel يحتوي على الأعمدة التالية:</p>
           <ul><li><strong>الاسم الكامل</strong></li><li><strong>البريد الإلكتروني</strong></li><li><strong>التخصص</strong></li><li><strong>مكان التدريب / المدرسة</strong></li><li><strong>الهاتف</strong> (اختياري)</li><li><strong>كلمة المرور</strong> (اختياري)</li></ul>
-          <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
+          <input type="file" id="bulk-file" name="bulk_file" accept=".xlsx, .xls" onChange={handleFileChange} />
           <button onClick={processExcel} disabled={bulkLoading} className="btn-primary">{bulkLoading ? "جاري الرفع..." : "رفع والإضافة"}</button>
           {bulkResults.success.length > 0 && <div className="success-box">✅ تمت إضافة {bulkResults.success.length} معلم بنجاح</div>}
           {bulkResults.errors.length > 0 && <div className="error-box">❌ فشلت إضافة {bulkResults.errors.length} معلم<ul>{bulkResults.errors.map((e, i) => <li key={i}><strong>{e.email}</strong> : {e.error}</li>)}</ul></div>}

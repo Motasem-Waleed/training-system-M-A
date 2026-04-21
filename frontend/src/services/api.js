@@ -130,6 +130,7 @@ export const createUser = (data) => apiClient.post('/users', data).then(res => r
 export const updateUser = (id, data) => apiClient.put(`/users/${id}`, data).then(res => res.data);
 export const deleteUser = (id) => apiClient.delete(`/users/${id}`).then(res => res.data);
 export const changeUserStatus = (id, status) => apiClient.patch(`/users/${id}/status`, { status }).then(res => res.data);
+export const bulkAddUsers = (users) => apiClient.post('/users/bulk-add', { users }).then(res => res.data);
 
 // ==================== Roles & Permissions ====================
 export const getRoles = () => apiClient.get('/roles').then(res => res.data);
@@ -186,7 +187,8 @@ export const deleteAnnouncement = (id) => apiClient.delete(`/announcements/${id}
 // ==================== Backups ====================
 export const getBackups = () => apiClient.get('/backups').then(res => res.data);
 export const getBackup = (id) => apiClient.get(`/backups/${id}`).then(res => res.data);
-export const getBackupTableData = (id, tableName) => apiClient.get(`/backups/${id}/tables/${tableName}`).then(res => res.data);
+export const getBackupDetails = (id) => apiClient.get(`/backups/${id}`).then(res => res.data);
+export const getBackupTableData = (id, tableName) => apiClient.get(`/backups/${id}/table/${tableName}`).then(res => res.data);
 export const createBackup = (data) => apiClient.post('/backups', data).then(res => res.data);
 export const restoreBackup = (id) => apiClient.post(`/backups/${id}/restore`).then(res => res.data);
 export const deleteBackup = (id) => apiClient.delete(`/backups/${id}`).then(res => res.data);

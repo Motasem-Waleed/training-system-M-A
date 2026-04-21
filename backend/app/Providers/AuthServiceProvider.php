@@ -20,7 +20,9 @@ use App\Models\WeeklySchedule;
 use App\Models\Notification;
 use App\Models\ActivityLog;
 use App\Models\Note;
+use App\Models\Backup;
 use App\Policies\UserPolicy;
+use App\Policies\BackupPolicy;
 use App\Policies\ActivityLogPolicy;
 use App\Policies\TrainingRequestPolicy;
 use App\Policies\TrainingAssignmentPolicy;
@@ -62,6 +64,7 @@ class AuthServiceProvider extends ServiceProvider
         Notification::class => NotificationPolicy::class,
         ActivityLog::class => ActivityLogPolicy::class,
         Note::class => NotePolicy::class,
+        Backup::class => BackupPolicy::class,
     ];
 
     public function boot(): void

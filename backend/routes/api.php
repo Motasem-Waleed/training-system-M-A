@@ -51,6 +51,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Utilisateurs, rôles, départements
     Route::apiResource('users', UserController::class);
     Route::patch('users/{user}/status', [UserController::class, 'changeStatus']);
+    Route::post('users/bulk-add', [UserController::class, 'bulkAdd']);
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('permissions', PermissionController::class);
     Route::apiResource('departments', DepartmentController::class);
@@ -150,6 +151,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Sauvegardes
     Route::apiResource('backups', BackupController::class);
     Route::post('backups/{backup}/restore', [BackupController::class, 'restore']);
+    Route::get('backups/{id}', [BackupController::class, 'show']);
+    Route::get('backups/{id}/table/{tableName}', [BackupController::class, 'getTableData']);
 
     // Logs d'activité
     Route::apiResource('activity-logs', ActivityLogController::class);

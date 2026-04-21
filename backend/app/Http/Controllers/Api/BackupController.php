@@ -53,9 +53,73 @@ class BackupController extends Controller
         return response()->json($backup, 201);
     }
 
-    public function show(Backup $backup)
+    public function show($id)
     {
-        return response()->json($backup);
+        $backup = Backup::findOrFail($id);
+        $tables = [];
+
+        // Try to parse SQL file to extract table names (simplified)
+        if ($backup->file_path && Storage::exists($backup->file_path)) {
+            $content = Storage::get($backup->file_path);
+            // Extract CREATE TABLE statements
+            preg_match_all('/CREATE TABLE\s+[`\']?(\w+)[`\']?\s*\(/i', $content, $matches);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $tableName) {
+                    // Count INSERT statements for this table
+                    preg_match_all('/INSERT INTO\s+[`\']?' . preg_quote($tableName, '/') . '[`\']?\s*VALUES/i', $content, $insertMatches);
+                    $tables[] = [
+                        'name' => $tableName,
+                        'count' => count($insertMatches[0] ?? []),
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'id' => $backup->id,
+            'name' => $backup->name,
+            'created_at' => $backup->created_at,
+            'size' => $backup->size,
+            'type' => $backup->type,
+            'notes' => $backup->notes,
+            'tables' => $tables,
+        ]);
+    }
+
+    public function getTableData($id, $tableName)
+    {
+        $backup = Backup::findOrFail($id);
+
+        if (!$backup->file_path || !Storage::exists($backup->file_path)) {
+            return response()->json(['message' => 'ملف النسخة غير موجود'], 404);
+        }
+
+        $content = Storage::get($backup->file_path);
+
+        // Extract INSERT statements for this table and parse them
+        $pattern = '/INSERT INTO\s+[`\']?' . preg_quote($tableName, '/') . '[`\']?\s*VALUES\s*\(([^)]+)\)/i';
+        preg_match_all($pattern, $content, $matches);
+
+        $rows = [];
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $values) {
+                // Simple parsing - split by comma and clean values
+                $values = explode(',', $values);
+                $row = [];
+                foreach ($values as $idx => $val) {
+                    $val = trim($val);
+                    // Remove quotes
+                    $val = preg_replace('/^[\'"`]+|[\'"`]+$/', '', $val);
+                    $row['col_' . $idx] = $val;
+                }
+                $rows[] = $row;
+            }
+        }
+
+        return response()->json([
+            'data' => $rows,
+            'count' => count($rows),
+        ]);
     }
 
     public function destroy(Backup $backup)

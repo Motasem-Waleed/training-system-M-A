@@ -100,13 +100,13 @@ export default function UserForm() {
         <div className="form-row">
           <div className="form-group">
             <label>الاسم الكامل *</label>
-            <input type="text" name="name" value={form.name} onChange={handleChange} required />
+            <input type="text" id="name" name="name" value={form.name} onChange={handleChange} required />
             {errors.name && <span className="error">{errors.name[0]}</span>}
           </div>
 
           <div className="form-group">
             <label>البريد الإلكتروني *</label>
-            <input type="email" name="email" value={form.email} onChange={handleChange} required />
+            <input type="email" id="email" name="email" value={form.email} onChange={handleChange} required />
             {errors.email && <span className="error">{errors.email[0]}</span>}
           </div>
         </div>
@@ -114,19 +114,19 @@ export default function UserForm() {
         <div className="form-row">
           <div className="form-group">
             <label>الرقم الجامعي</label>
-            <input type="text" name="university_id" value={form.university_id} onChange={handleChange} />
+            <input type="text" id="university_id" name="university_id" value={form.university_id} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>رقم الهاتف</label>
-            <input type="text" name="phone" value={form.phone} onChange={handleChange} />
+            <input type="text" id="phone" name="phone" value={form.phone} onChange={handleChange} />
           </div>
         </div>
 
         <div className="form-row">
           <div className="form-group">
             <label>الدور *</label>
-            <select name="role_id" value={form.role_id} onChange={handleChange} required>
+            <select id="role_id" name="role_id" value={form.role_id} onChange={handleChange} required>
               <option value="">اختر الدور</option>
               {roles.map(role => (
                 <option key={role.id} value={role.id}>{role.name}</option>
@@ -137,7 +137,7 @@ export default function UserForm() {
 
           <div className="form-group">
             <label>القسم</label>
-            <select name="department_id" value={form.department_id} onChange={handleChange}>
+            <select id="department_id" name="department_id" value={form.department_id} onChange={handleChange}>
               <option value="">اختر القسم</option>
               {departments.map(dept => (
                 <option key={dept.id} value={dept.id}>{dept.name}</option>
@@ -149,19 +149,19 @@ export default function UserForm() {
         <div className="form-row">
           <div className="form-group">
             <label>كلمة المرور {!id && "*"}</label>
-            <input type="password" name="password" value={form.password} onChange={handleChange} required={!id} />
+            <input type="password" id="password" name="password" value={form.password} onChange={handleChange} required={!id} />
             {errors.password && <span className="error">{errors.password[0]}</span>}
           </div>
 
           <div className="form-group">
             <label>تأكيد كلمة المرور {!id && "*"}</label>
-            <input type="password" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} required={!id} />
+            <input type="password" id="password_confirmation" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} required={!id} />
           </div>
         </div>
 
         <div className="form-group">
           <label>الحالة</label>
-          <select name="status" value={form.status} onChange={handleChange}>
+          <select id="status" name="status" value={form.status} onChange={handleChange}>
             <option value="active">نشط</option>
             <option value="inactive">غير نشط</option>
             <option value="suspended">موقوف</option>

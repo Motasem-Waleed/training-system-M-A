@@ -27,7 +27,7 @@ class IndexTrainingRequestRequest extends FormRequest
             ],
             'training_site_id' => 'nullable|exists:training_sites,id',
             'training_period_id' => 'nullable|exists:training_periods,id',
-            'governing_body' => 'nullable|in:directorate_of_education,ministry_of_health',
+            'governing_body' => 'nullable|in:directorate_of_education,ministry_of_health,health_directorate,education_directorate',
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date|after_or_equal:from_date',
             'search' => 'nullable|string|max:255',

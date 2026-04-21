@@ -31,7 +31,7 @@ class StoreTrainingSiteRequest extends FormRequest
 
             // نخليهم اختياريين لأن الباك سيضعهم تلقائياً
             'site_type' => 'nullable|in:school,health_center',
-            'governing_body' => 'nullable|in:directorate_of_education,ministry_of_health',
+            'governing_body' => 'nullable|in:directorate_of_education,ministry_of_health,health_directorate,education_directorate',
         ];
     }
 }

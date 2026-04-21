@@ -178,13 +178,13 @@ export default function AddStudent() {
         </div>
         {statusMessage.text && <div className={`status-message ${statusMessage.type}`}>{statusMessage.text}</div>}
         <form onSubmit={handleSubmit} className="form">
-          <div className="form-group"><label>الاسم الكامل *</label><input type="text" name="name" value={form.name} onChange={handleChange} required />{errors.name && <span className="error">{errors.name[0]}</span>}</div>
-          <div className="form-group"><label>البريد الإلكتروني *</label><input type="email" name="email" value={form.email} onChange={handleChange} required />{errors.email && <span className="error">{errors.email[0]}</span>}</div>
-          <div className="form-group"><label>الرقم الجامعي</label><input type="text" name="university_id" value={form.university_id} onChange={handleChange} />{errors.university_id && <span className="error">{errors.university_id[0]}</span>}</div>
-          <div className="form-group"><label>القسم</label><select name="department_id" value={form.department_id} onChange={handleChange}><option value="">اختر القسم</option>{departments.map(dept => <option key={dept.id} value={dept.id}>{dept.name}</option>)}</select>{errors.department_id && <span className="error">{errors.department_id[0]}</span>}</div>
-          <div className="form-group"><label>التخصص</label><input type="text" name="major" value={form.major} onChange={handleChange} />{errors.major && <span className="error">{errors.major[0]}</span>}</div>
-          <div className="form-group"><label>كلمة المرور (اتركها فارغة إذا لم ترد التغيير)</label><input type="password" name="password" value={form.password} onChange={handleChange} />{errors.password && <span className="error">{errors.password[0]}</span>}</div>
-          <div className="form-group"><label>تأكيد كلمة المرور</label><input type="password" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} /></div>
+          <div className="form-group"><label>الاسم الكامل *</label><input type="text" id="name" name="name" value={form.name} onChange={handleChange} required />{errors.name && <span className="error">{errors.name[0]}</span>}</div>
+          <div className="form-group"><label>البريد الإلكتروني *</label><input type="email" id="email" name="email" value={form.email} onChange={handleChange} required />{errors.email && <span className="error">{errors.email[0]}</span>}</div>
+          <div className="form-group"><label>الرقم الجامعي</label><input type="text" id="university_id" name="university_id" value={form.university_id} onChange={handleChange} />{errors.university_id && <span className="error">{errors.university_id[0]}</span>}</div>
+          <div className="form-group"><label>القسم</label><select id="department_id" name="department_id" value={form.department_id} onChange={handleChange}><option value="">اختر القسم</option>{departments.map(dept => <option key={dept.id} value={dept.id}>{dept.name}</option>)}</select>{errors.department_id && <span className="error">{errors.department_id[0]}</span>}</div>
+          <div className="form-group"><label>التخصص</label><input type="text" id="major" name="major" value={form.major} onChange={handleChange} />{errors.major && <span className="error">{errors.major[0]}</span>}</div>
+          <div className="form-group"><label>كلمة المرور (اتركها فارغة إذا لم ترد التغيير)</label><input type="password" id="password" name="password" value={form.password} onChange={handleChange} />{errors.password && <span className="error">{errors.password[0]}</span>}</div>
+          <div className="form-group"><label>تأكيد كلمة المرور</label><input type="password" id="password_confirmation" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} /></div>
           <div className="form-actions"><button type="submit" disabled={loading}>{loading ? "جاري الحفظ..." : "تحديث"}</button><button type="button" onClick={() => navigate("/admin/users")}>إلغاء</button></div>
         </form>
       </div>
@@ -204,13 +204,13 @@ export default function AddStudent() {
       </div>
       {activeTab === "single" && (
         <form onSubmit={handleSubmit} className="form">
-          <div className="form-group"><label>الاسم الكامل *</label><input type="text" name="name" value={form.name} onChange={handleChange} required />{errors.name && <span className="error">{errors.name[0]}</span>}</div>
-          <div className="form-group"><label>البريد الإلكتروني *</label><input type="email" name="email" value={form.email} onChange={handleChange} required />{errors.email && <span className="error">{errors.email[0]}</span>}</div>
-          <div className="form-group"><label>الرقم الجامعي *</label><input type="text" name="university_id" value={form.university_id} onChange={handleChange} required />{errors.university_id && <span className="error">{errors.university_id[0]}</span>}</div>
-          <div className="form-group"><label>القسم *</label><select name="department_id" value={form.department_id} onChange={handleChange} required><option value="">اختر القسم</option>{departments.map(dept => <option key={dept.id} value={dept.id}>{dept.name}</option>)}</select>{errors.department_id && <span className="error">{errors.department_id[0]}</span>}</div>
-          <div className="form-group"><label>التخصص *</label><input type="text" name="major" value={form.major} onChange={handleChange} required />{errors.major && <span className="error">{errors.major[0]}</span>}</div>
-          <div className="form-group"><label>كلمة المرور *</label><input type="password" name="password" value={form.password} onChange={handleChange} required />{errors.password && <span className="error">{errors.password[0]}</span>}</div>
-          <div className="form-group"><label>تأكيد كلمة المرور *</label><input type="password" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} required /></div>
+          <div className="form-group"><label>الاسم الكامل *</label><input type="text" id="name" name="name" value={form.name} onChange={handleChange} required />{errors.name && <span className="error">{errors.name[0]}</span>}</div>
+          <div className="form-group"><label>البريد الإلكتروني *</label><input type="email" id="email" name="email" value={form.email} onChange={handleChange} required />{errors.email && <span className="error">{errors.email[0]}</span>}</div>
+          <div className="form-group"><label>الرقم الجامعي *</label><input type="text" id="university_id" name="university_id" value={form.university_id} onChange={handleChange} required />{errors.university_id && <span className="error">{errors.university_id[0]}</span>}</div>
+          <div className="form-group"><label>القسم *</label><select id="department_id" name="department_id" value={form.department_id} onChange={handleChange} required><option value="">اختر القسم</option>{departments.map(dept => <option key={dept.id} value={dept.id}>{dept.name}</option>)}</select>{errors.department_id && <span className="error">{errors.department_id[0]}</span>}</div>
+          <div className="form-group"><label>التخصص *</label><input type="text" id="major" name="major" value={form.major} onChange={handleChange} required />{errors.major && <span className="error">{errors.major[0]}</span>}</div>
+          <div className="form-group"><label>كلمة المرور *</label><input type="password" id="password" name="password" value={form.password} onChange={handleChange} required />{errors.password && <span className="error">{errors.password[0]}</span>}</div>
+          <div className="form-group"><label>تأكيد كلمة المرور *</label><input type="password" id="password_confirmation" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} required /></div>
           <div className="form-actions"><button type="submit" disabled={loading}>{loading ? "جاري الحفظ..." : "إضافة"}</button><button type="button" onClick={() => navigate("/admin/users")}>إلغاء</button></div>
         </form>
       )}
@@ -225,7 +225,7 @@ export default function AddStudent() {
             <li><strong>التخصص</strong> (مطلوب)</li>
             <li><strong>كلمة المرور</strong> (اختياري، افتراضي 12345678)</li>
           </ul>
-          <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
+          <input type="file" id="bulk-file" name="bulk_file" accept=".xlsx, .xls" onChange={handleFileChange} />
           <button onClick={processExcel} disabled={bulkLoading} className="btn-primary">{bulkLoading ? "جاري الرفع..." : "رفع والإضافة"}</button>
           {bulkResults.success.length > 0 && <div className="success-box">✅ تمت إضافة {bulkResults.success.length} طالب بنجاح</div>}
           {bulkResults.errors.length > 0 && <div className="error-box">❌ فشلت إضافة {bulkResults.errors.length} طالب<ul>{bulkResults.errors.map((e, idx) => <li key={idx}><strong>{e.email}</strong> : {e.error}</li>)}</ul></div>}
