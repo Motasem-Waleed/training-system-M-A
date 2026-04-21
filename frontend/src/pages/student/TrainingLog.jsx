@@ -185,6 +185,66 @@ export default function TrainingLog() {
         </form>
       </div>
 
+      {/* Weekly Training Schedule */}
+      <div className="section-card mb-3">
+        <h4>برنامج التدريب الأسبوعي</h4>
+        <p className="text-muted mb-3">حدد الأنشطة المقررة لكل حصة خلال أيام التدريب</p>
+        <div className="table-wrapper">
+          <table className="table-custom training-schedule-table">
+            <thead>
+              <tr>
+                <th style={{ minWidth: 100 }}>اليوم / الحصة</th>
+                <th>الأولى</th>
+                <th>الثانية</th>
+                <th>الثالثة</th>
+                <th>الرابعة</th>
+                <th>الخامسة</th>
+                <th>السادسة</th>
+                <th>السابعة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { day: "الأحد", key: "sunday" },
+                { day: "الاثنين", key: "monday" },
+                { day: "الثلاثاء", key: "tuesday" },
+                { day: "الأربعاء", key: "wednesday" },
+                { day: "الخميس", key: "thursday" },
+              ].map((row) => (
+                <tr key={row.key}>
+                  <td className="day-cell">{row.day}</td>
+                  {[1, 2, 3, 4, 5, 6, 7].map((period) => (
+                    <td key={period} className="schedule-cell">
+                      <textarea
+                        className="form-control-custom schedule-input"
+                        rows={2}
+                        placeholder={`حصة ${period}`}
+                        style={{
+                          minWidth: 80,
+                          fontSize: "0.85rem",
+                          resize: "vertical",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 6,
+                          padding: 6,
+                        }}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 d-flex gap-2">
+          <button type="button" className="btn-primary-custom">
+            حفظ البرنامج
+          </button>
+          <button type="button" className="btn-outline-custom">
+            طباعة البرنامج
+          </button>
+        </div>
+      </div>
+
       <div className="section-card">
         <h4>سجلاتك</h4>
         {loading ? (

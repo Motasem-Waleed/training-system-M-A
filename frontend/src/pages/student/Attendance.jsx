@@ -1,5 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getStudentAttendances, createAttendance, updateAttendance, deleteAttendance } from "../../services/api";
+import {
+  CalendarCheck,
+  Clock,
+  BookOpen,
+  AlertCircle,
+  CheckCircle2,
+  Trash2,
+  Plus,
+  ClipboardList,
+  Info,
+} from "lucide-react";
 
 const DAYS = ["السبت", "الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس"];
 
@@ -21,7 +32,6 @@ export default function StudentAttendance() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [studentInfo, setStudentInfo] = useState({ name: "", school: "" });
 
   const [formData, setFormData] = useState({
     day: DAYS[0],
@@ -36,17 +46,27 @@ export default function StudentAttendance() {
     fetchData();
   }, []);
 
+  const stats = useMemo(() => {
+    const total = records.length;
+    const totalLessons = records.reduce((sum, r) => sum + (r.lessons_count || 0), 0);
+    const totalHours = records.reduce((sum, r) => {
+      if (r.check_in && r.check_out) {
+        const [hIn, mIn] = r.check_in.split(":").map(Number);
+        const [hOut, mOut] = r.check_out.split(":").map(Number);
+        if (!isNaN(hIn) && !isNaN(mIn) && !isNaN(hOut) && !isNaN(mOut)) {
+          return sum + (hOut + mOut / 60) - (hIn + mIn / 60);
+        }
+      }
+      return sum;
+    }, 0);
+    return { total, totalLessons, totalHours: Math.round(totalHours * 10) / 10 };
+  }, [records]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
       const res = await getStudentAttendances();
       setRecords(res?.data || []);
-      // Try to get student info from first record or localStorage
-      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-      setStudentInfo({
-        name: savedUser?.name || "",
-        school: res?.training_site?.name || savedUser?.training_site?.name || "",
-      });
     } catch (err) {
       console.error("Failed to load attendance:", err);
       setError("تعذر تحميل سجل الحضور.");
@@ -117,260 +137,262 @@ export default function StudentAttendance() {
         </p>
       </div>
 
-      <div className="section-card">
-        {/* نموذج رقم (2) - الهيدر */}
-        <div
-          style={{
-            border: "2px solid #333",
-            padding: "16px 24px",
-            marginBottom: 24,
-            display: "flex",
-            gap: 40,
-            fontSize: 16,
-            fontWeight: 600,
-          }}
-        >
-          <div>
-            <span>اسم الطالب: </span>
-            <span style={{ borderBottom: "1px solid #333", minWidth: 180, display: "inline-block" }}>
-              {studentInfo.name || "_______________________"}
-            </span>
+      {/* بطاقات الإحصائيات */}
+      <div className="dashboard-grid" style={{ marginBottom: 20 }}>
+        <div className="stat-card primary">
+          <div className="stat-top">
+            <div>
+              <div className="stat-title">إجمالي أيام الحضور</div>
+              <div className="stat-value">{stats.total}</div>
+            </div>
+            <div className="stat-icon">
+              <CalendarCheck size={20} />
+            </div>
           </div>
-          <div>
-            <span>اسم المدرسة: </span>
-            <span style={{ borderBottom: "1px solid #333", minWidth: 200, display: "inline-block" }}>
-              {studentInfo.school || "_______________________"}
-            </span>
-          </div>
+          <div className="stat-meta">يوم تدريب مسجّل</div>
         </div>
 
-        {/* نموذج رقم (2) - الجدول */}
-        <div style={{ overflowX: "auto" }}>
-          <table
+        <div className="stat-card success">
+          <div className="stat-top">
+            <div>
+              <div className="stat-title">إجمالي ساعات التدريب</div>
+              <div className="stat-value">{stats.totalHours}</div>
+            </div>
+            <div className="stat-icon">
+              <Clock size={20} />
+            </div>
+          </div>
+          <div className="stat-meta">ساعة تدريب فعليّة</div>
+        </div>
+
+        <div className="stat-card info">
+          <div className="stat-top">
+            <div>
+              <div className="stat-title">إجمالي الحصص</div>
+              <div className="stat-value">{stats.totalLessons}</div>
+            </div>
+            <div className="stat-icon">
+              <BookOpen size={20} />
+            </div>
+          </div>
+          <div className="stat-meta">حصة تدريبيّة</div>
+        </div>
+      </div>
+
+      {/* نموذج إضافة سجل جديد */}
+      <div className="section-card" style={{ marginBottom: 20 }}>
+        <h4 style={{ margin: "0 0 16px", color: "var(--secondary)", fontSize: "1.05rem", fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+          <ClipboardList size={18} />
+          إضافة سجل حضور جديد
+        </h4>
+        <form onSubmit={handleAddRecord}>
+          <div
             style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              border: "2px solid #333",
-              fontSize: 14,
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: 14,
+              alignItems: "end",
             }}
           >
+            <div className="form-field">
+              <label className="field-label">اليوم</label>
+              <select
+                name="day"
+                value={formData.day}
+                onChange={handleInputChange}
+                className="form-select-custom"
+              >
+                {DAYS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-field">
+              <label className="field-label">التاريخ</label>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleInputChange}
+                className="form-input-custom"
+              />
+            </div>
+            <div className="form-field">
+              <label className="field-label">ساعة الحضور</label>
+              <input
+                type="time"
+                name="check_in"
+                value={formData.check_in}
+                onChange={handleInputChange}
+                className="form-input-custom"
+              />
+            </div>
+            <div className="form-field">
+              <label className="field-label">ساعة المغادرة</label>
+              <input
+                type="time"
+                name="check_out"
+                value={formData.check_out}
+                onChange={handleInputChange}
+                className="form-input-custom"
+              />
+            </div>
+            <div className="form-field">
+              <label className="field-label">عدد الحصص</label>
+              <input
+                type="number"
+                name="lessons_count"
+                min="0"
+                max="10"
+                value={formData.lessons_count}
+                onChange={handleInputChange}
+                placeholder="عدد"
+                className="form-input-custom"
+                style={{ textAlign: "center" }}
+              />
+            </div>
+            <div className="form-field">
+              <label className="field-label">ملاحظات</label>
+              <input
+                type="text"
+                name="notes"
+                value={formData.notes}
+                onChange={handleInputChange}
+                placeholder="أي ملاحظات..."
+                className="form-input-custom"
+              />
+            </div>
+          </div>
+          <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-primary-custom btn-sm-custom"
+              style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer" }}
+            >
+              <Plus size={16} />
+              {saving ? "جاري الحفظ..." : "إضافة سجل"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* رسائل التنبيه */}
+      {error && (
+        <div className="alert-custom alert-danger" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <AlertCircle size={18} />
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="alert-custom alert-success" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <CheckCircle2 size={18} />
+          {success}
+        </div>
+      )}
+
+      {/* جدول سجلات الحضور */}
+      <div className="section-card">
+        <h4 style={{ margin: "0 0 16px", color: "var(--secondary)", fontSize: "1.05rem", fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+          <CalendarCheck size={18} />
+          سجل الحضور والغياب — نموذج رقم (2)
+        </h4>
+
+        <div className="table-wrapper">
+          <table className="data-table">
             <thead>
-              <tr style={{ background: "#f0f0f0" }}>
-                <th
-                  style={{
-                    border: "1px solid #333",
-                    padding: "10px 8px",
-                    fontWeight: 700,
-                    width: "15%",
-                  }}
-                >
-                  اليوم والتاريخ
-                </th>
-                <th
-                  style={{
-                    border: "1px solid #333",
-                    padding: "10px 8px",
-                    fontWeight: 700,
-                    width: "15%",
-                  }}
-                >
-                  ساعة الحضور
-                </th>
-                <th
-                  style={{
-                    border: "1px solid #333",
-                    padding: "10px 8px",
-                    fontWeight: 700,
-                    width: "15%",
-                  }}
-                >
-                  ساعة المغادرة
-                </th>
-                <th
-                  style={{
-                    border: "1px solid #333",
-                    padding: "10px 8px",
-                    fontWeight: 700,
-                    width: "12%",
-                  }}
-                >
-                  عدد الحصص
-                </th>
-                <th
-                  style={{
-                    border: "1px solid #333",
-                    padding: "10px 8px",
-                    fontWeight: 700,
-                    width: "28%",
-                  }}
-                >
-                  ملاحظات
-                </th>
-                <th
-                  style={{
-                    border: "1px solid #333",
-                    padding: "10px 8px",
-                    fontWeight: 700,
-                    width: "15%",
-                  }}
-                >
-                  إجراءات
-                </th>
+              <tr>
+                <th style={{ width: "18%" }}>اليوم والتاريخ</th>
+                <th style={{ width: "14%" }}>ساعة الحضور</th>
+                <th style={{ width: "14%" }}>ساعة المغادرة</th>
+                <th style={{ width: "12%" }}>عدد الحصص</th>
+                <th style={{ width: "28%" }}>ملاحظات</th>
+                <th style={{ width: "14%" }}>إجراءات</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: 20 }}>
+                  <td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--text-faint)" }}>
                     جاري التحميل...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: 20, color: "#666" }}>
-                    لا توجد سجلات حضور مسجلة. استخدم النموذج أدناه لإضافة أول سجل.
+                  <td colSpan={6}>
+                    <div className="empty-state" style={{ border: "none", background: "transparent", padding: "32px 22px" }}>
+                      <CalendarCheck size={36} style={{ color: "var(--border-strong)", marginBottom: 10 }} />
+                      <h4 style={{ margin: "0 0 6px" }}>لا توجد سجلات حضور</h4>
+                      <p>استخدم النموذج أعلاه لإضافة أول سجل حضور.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                records.map((rec) => (
+                records.map((rec, idx) => (
                   <tr key={rec.id}>
-                    <td style={{ border: "1px solid #333", padding: "8px", textAlign: "center" }}>
-                      <div>{rec.day}</div>
-                      <div style={{ fontSize: 12, color: "#666" }}>{formatDate(rec.date)}</div>
+                    <td>
+                      <div style={{ fontWeight: 700, color: "var(--secondary)" }}>{rec.day}</div>
+                      <div style={{ fontSize: "0.82rem", color: "var(--text-faint)", marginTop: 2 }}>
+                        {formatDate(rec.date)}
+                      </div>
                     </td>
-                    <td style={{ border: "1px solid #333", padding: "8px", textAlign: "center" }}>
-                      {rec.check_in}
+                    <td style={{ textAlign: "center" }}>
+                      <span className="badge-custom badge-success" style={{ fontSize: "0.85rem" }}>
+                        {rec.check_in}
+                      </span>
                     </td>
-                    <td style={{ border: "1px solid #333", padding: "8px", textAlign: "center" }}>
-                      {rec.check_out}
+                    <td style={{ textAlign: "center" }}>
+                      <span className="badge-custom badge-info" style={{ fontSize: "0.85rem" }}>
+                        {rec.check_out}
+                      </span>
                     </td>
-                    <td style={{ border: "1px solid #333", padding: "8px", textAlign: "center" }}>
-                      {rec.lessons_count || "—"}
+                    <td style={{ textAlign: "center" }}>
+                      {rec.lessons_count ? (
+                        <span className="badge-custom badge-primary">{rec.lessons_count}</span>
+                      ) : (
+                        <span style={{ color: "var(--text-faint)" }}>—</span>
+                      )}
                     </td>
-                    <td style={{ border: "1px solid #333", padding: "8px" }}>{rec.notes || "—"}</td>
-                    <td style={{ border: "1px solid #333", padding: "8px", textAlign: "center" }}>
+                    <td>
+                      {rec.notes || <span style={{ color: "var(--text-faint)" }}>—</span>}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
                       <button
                         onClick={() => handleDelete(rec.id)}
-                        style={{
-                          background: "#dc2626",
-                          color: "#fff",
-                          border: "none",
-                          padding: "4px 12px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          fontSize: 12,
-                        }}
+                        className="btn-danger-custom btn-sm-custom"
+                        style={{ minHeight: 34, fontSize: "0.82rem" }}
                       >
+                        <Trash2 size={14} />
                         حذف
                       </button>
                     </td>
                   </tr>
                 ))
               )}
-
-              {/* صف إضافة سجل جديد */}
-              <tr style={{ background: "#fafafa" }}>
-                <td style={{ border: "1px solid #333", padding: "8px" }}>
-                  <select
-                    name="day"
-                    value={formData.day}
-                    onChange={handleInputChange}
-                    style={{ width: "100%", padding: "6px", fontSize: 13 }}
-                  >
-                    {DAYS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleInputChange}
-                    style={{ width: "100%", padding: "6px", fontSize: 13, marginTop: 6 }}
-                  />
-                </td>
-                <td style={{ border: "1px solid #333", padding: "8px" }}>
-                  <input
-                    type="time"
-                    name="check_in"
-                    value={formData.check_in}
-                    onChange={handleInputChange}
-                    placeholder="مثال: 08:00"
-                    style={{ width: "100%", padding: "6px", fontSize: 13 }}
-                  />
-                </td>
-                <td style={{ border: "1px solid #333", padding: "8px" }}>
-                  <input
-                    type="time"
-                    name="check_out"
-                    value={formData.check_out}
-                    onChange={handleInputChange}
-                    placeholder="مثال: 14:00"
-                    style={{ width: "100%", padding: "6px", fontSize: 13 }}
-                  />
-                </td>
-                <td style={{ border: "1px solid #333", padding: "8px" }}>
-                  <input
-                    type="number"
-                    name="lessons_count"
-                    min="0"
-                    max="10"
-                    value={formData.lessons_count}
-                    onChange={handleInputChange}
-                    placeholder="عدد"
-                    style={{ width: "100%", padding: "6px", fontSize: 13, textAlign: "center" }}
-                  />
-                </td>
-                <td style={{ border: "1px solid #333", padding: "8px" }}>
-                  <input
-                    type="text"
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    placeholder="أي ملاحظات..."
-                    style={{ width: "100%", padding: "6px", fontSize: 13 }}
-                  />
-                </td>
-                <td style={{ border: "1px solid #333", padding: "8px", textAlign: "center" }}>
-                  <button
-                    onClick={handleAddRecord}
-                    disabled={saving}
-                    style={{
-                      background: saving ? "#999" : "#2563eb",
-                      color: "#fff",
-                      border: "none",
-                      padding: "6px 16px",
-                      borderRadius: 4,
-                      cursor: saving ? "not-allowed" : "pointer",
-                      fontSize: 13,
-                    }}
-                  >
-                    {saving ? "جاري..." : "إضافة"}
-                  </button>
-                </td>
-              </tr>
             </tbody>
           </table>
         </div>
 
-        {/* رسائل التنبيه */}
-        {error && (
-          <div style={{ marginTop: 16, padding: "10px 16px", background: "#fee2e2", color: "#991b1b", borderRadius: 6 }}>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div style={{ marginTop: 16, padding: "10px 16px", background: "#dcfce7", color: "#166534", borderRadius: 6 }}>
-            {success}
-          </div>
-        )}
-
         {/* ملاحظات توضيحية */}
-        <div style={{ marginTop: 24, fontSize: 13, color: "#666", lineHeight: 1.8 }}>
-          <strong>تعليمات:</strong>
-          <ul style={{ marginTop: 8, paddingRight: 20 }}>
+        <div
+          style={{
+            marginTop: 22,
+            padding: "14px 18px",
+            background: "rgba(59,130,182,0.05)",
+            border: "1px solid rgba(59,130,182,0.12)",
+            borderRadius: "var(--radius-sm, 10px)",
+            fontSize: "0.88rem",
+            color: "var(--text-soft)",
+            lineHeight: 1.9,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontWeight: 800, color: "var(--info)" }}>
+            <Info size={16} />
+            تعليمات
+          </div>
+          <ul style={{ paddingRight: 20, listStyle: "disc" }}>
             <li>يجب تسجيل حضورك يومياً خلال فترة التدريب.</li>
             <li>تأكد من إدخال ساعة الحضور والمغادرة بالتنسيق 24 ساعة (مثال: 08:00 - 14:30).</li>
             <li>عدد الحصص يشير إلى عدد الدروس/الفصول التي حضرتها في ذلك اليوم.</li>

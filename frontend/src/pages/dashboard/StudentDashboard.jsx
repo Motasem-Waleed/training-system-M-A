@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import {
   getCurrentUser,
   getStudentTrainingRequests,
@@ -10,6 +10,24 @@ import {
   itemsFromPagedResponse,
 } from "../../services/api";
 import { getStudentDashboardPath, getStudentTrack } from "../../utils/studentSection";
+import {
+  User,
+  IdCard,
+  GraduationCap,
+  Building2,
+  School,
+  MapPin,
+  ClipboardList,
+  FileText,
+  Bell,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  BookOpen,
+  Award,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
 
 export default function StudentDashboard({ forcedTrack = null }) {
   const [studentInfo, setStudentInfo] = useState({
@@ -23,10 +41,10 @@ export default function StudentDashboard({ forcedTrack = null }) {
     trainingRequestStatus: "",
   });
   const [summaryCards, setSummaryCards] = useState([
-    { title: "طلب التدريب", value: "جاري التحميل...", desc: "حالة طلب التدريب الحالي", className: "warning" },
-    { title: "برنامج التدريب", value: "0 أيام مسجلة", desc: "عدد الأيام المضافة في البرنامج", className: "primary" },
-    { title: "ملف الإنجاز", value: "0 ملفات", desc: "عدد الملفات المرفوعة", className: "success" },
-    { title: "المهام", value: "0 مهمة متبقية", desc: "المهام التي تحتاج متابعة", className: "accent" },
+    { title: "طلب التدريب", value: "جاري التحميل...", desc: "حالة طلب التدريب الحالي", className: "warning", icon: ClipboardList, link: "/student/training-request" },
+    { title: "برنامج التدريب", value: "0 أيام مسجلة", desc: "عدد الأيام المضافة في البرنامج", className: "primary", icon: Calendar, link: "/student/training-logs" },
+    { title: "ملف الإنجاز", value: "0 ملفات", desc: "عدد الملفات المرفوعة", className: "success", icon: Award, link: "/student/portfolio" },
+    { title: "المهام", value: "0 مهمة متبقية", desc: "المهام التي تحتاج متابعة", className: "accent", icon: CheckCircle2, link: "/student/tasks" },
   ]);
   const [latestItems, setLatestItems] = useState([]);
   const [latestTasks, setLatestTasks] = useState([]);
@@ -154,68 +172,139 @@ export default function StudentDashboard({ forcedTrack = null }) {
   };
 
   if (loading) {
-    return <div className="text-center">جاري تحميل لوحة التحكم...</div>;
+    return (
+      <div className="d-flex flex-column align-items-center justify-content-center py-5">
+        <Loader2 size={40} className="animate-spin text-primary mb-3" />
+        <p className="text-muted">جاري تحميل لوحة التحكم...</p>
+      </div>
+    );
   }
 
   return (
     <>
-      <div className="content-header">
-        <h1 className="page-title">الصفحة الرئيسية</h1>
-        <p className="page-subtitle">
-          {effectiveTrack === "psychology"
-            ? "لوحة طالب علم النفس: الطلب، الجهة، المهام، السجل اليومي، الإشعارات."
-            : "لوحة طالب أصول التربية: الطلب، المدرسة، المهام، السجل اليومي، الإشعارات."}
-        </p>
-      </div>
-
-      <div className="section-card mb-3">
-        <h4>المعلومات الأساسية عن الطالب</h4>
-        <div className="summary-grid">
-          <div className="kpi-box">
-            <strong>{studentInfo.name || "—"}</strong>
-            <span>اسم الطالب</span>
+      {/* Hero Section */}
+      <div className="hero-section mb-4">
+        <div className="hero-content">
+          <div className="hero-icon">
+            <GraduationCap size={48} />
           </div>
-          <div className="kpi-box">
-            <strong>{studentInfo.universityId || "—"}</strong>
-            <span>الرقم الجامعي</span>
-          </div>
-          <div className="kpi-box">
-            <strong>{studentInfo.specialization}</strong>
-            <span>التخصص</span>
-          </div>
-          <div className="kpi-box">
-            <strong>{studentInfo.college}</strong>
-            <span>الكلية</span>
-          </div>
-          <div className="kpi-box">
-            <strong>{studentInfo.directorate || "—"}</strong>
-            <span>{effectiveTrack === "psychology" ? "الجهة/المديرية" : "مديرية التربية"}</span>
-          </div>
-          <div className="kpi-box">
-            <strong>{studentInfo.school || "—"}</strong>
-            <span>{effectiveTrack === "psychology" ? "الجهة المعتمدة" : "المدرسة المعتمدة"}</span>
-          </div>
-          <div className="kpi-box">
-            <strong>{studentInfo.status || "—"}</strong>
-            <span>الحالة</span>
-          </div>
-          <div className="kpi-box">
-            <strong>{studentInfo.trainingRequestStatus}</strong>
-            <span>حالة طلب التدريب</span>
+          <div className="hero-text">
+            <h1 className="hero-title">مرحباً، {studentInfo.name || "طالب"} 👋</h1>
+            <p className="hero-subtitle">
+              {effectiveTrack === "psychology"
+                ? "لوحة تحكم طالب علم النفس - تابع تقدمك في التدريب الميداني"
+                : "لوحة تحكم طالب أصول التربية - تابع تقدمك في التدريب الميداني"}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="dashboard-grid mb-3">
-        {summaryCards.map((card, index) => (
-          <div key={index} className={`stat-card ${card.className}`}>
-            <div>
-              <div className="stat-title">{card.title}</div>
-              <div className="stat-value">{card.value}</div>
-            </div>
-            <div className="stat-meta">{card.desc}</div>
+      {/* Student Info Cards */}
+      <div className="section-card mb-4">
+        <div className="d-flex align-items-center gap-2 mb-4">
+          <div className="section-icon">
+            <User size={20} />
           </div>
-        ))}
+          <h4 className="mb-0">المعلومات الأساسية</h4>
+        </div>
+        <div className="info-grid">
+          <div className="info-card">
+            <div className="info-icon-wrapper primary">
+              <User size={18} />
+            </div>
+            <div className="info-content">
+              <span className="info-label">اسم الطالب</span>
+              <strong className="info-value">{studentInfo.name || "—"}</strong>
+            </div>
+          </div>
+          <div className="info-card">
+            <div className="info-icon-wrapper accent">
+              <IdCard size={18} />
+            </div>
+            <div className="info-content">
+              <span className="info-label">الرقم الجامعي</span>
+              <strong className="info-value">{studentInfo.universityId || "—"}</strong>
+            </div>
+          </div>
+          <div className="info-card">
+            <div className="info-icon-wrapper success">
+              <BookOpen size={18} />
+            </div>
+            <div className="info-content">
+              <span className="info-label">التخصص</span>
+              <strong className="info-value">{studentInfo.specialization}</strong>
+            </div>
+          </div>
+          <div className="info-card">
+            <div className="info-icon-wrapper info">
+              <Building2 size={18} />
+            </div>
+            <div className="info-content">
+              <span className="info-label">الكلية</span>
+              <strong className="info-value">{studentInfo.college}</strong>
+            </div>
+          </div>
+          <div className="info-card">
+            <div className="info-icon-wrapper warning">
+              <MapPin size={18} />
+            </div>
+            <div className="info-content">
+              <span className="info-label">{effectiveTrack === "psychology" ? "الجهة/المديرية" : "مديرية التربية"}</span>
+              <strong className="info-value">{studentInfo.directorate || "—"}</strong>
+            </div>
+          </div>
+          <div className="info-card">
+            <div className="info-icon-wrapper primary">
+              <School size={18} />
+            </div>
+            <div className="info-content">
+              <span className="info-label">{effectiveTrack === "psychology" ? "الجهة المعتمدة" : "المدرسة المعتمدة"}</span>
+              <strong className="info-value">{studentInfo.school || "—"}</strong>
+            </div>
+          </div>
+          <div className="info-card">
+            <div className="info-icon-wrapper success">
+              <CheckCircle2 size={18} />
+            </div>
+            <div className="info-content">
+              <span className="info-label">الحالة</span>
+              <strong className="info-value">{studentInfo.status || "—"}</strong>
+            </div>
+          </div>
+          <div className="info-card highlight">
+            <div className="info-icon-wrapper danger">
+              <ClipboardList size={18} />
+            </div>
+            <div className="info-content">
+              <span className="info-label">حالة طلب التدريب</span>
+              <strong className="info-value">{studentInfo.trainingRequestStatus}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="dashboard-grid mb-4">
+        {summaryCards.map((card, index) => {
+          const IconComponent = card.icon;
+          return (
+            <Link key={index} to={card.link} className="stat-card-link">
+              <div className={`stat-card-modern ${card.className}`}>
+                <div className="stat-card-header">
+                  <div className={`stat-icon-modern ${card.className}`}>
+                    <IconComponent size={22} />
+                  </div>
+                  <ArrowLeft size={16} className="stat-arrow" />
+                </div>
+                <div className="stat-card-body">
+                  <div className="stat-value-modern">{card.value}</div>
+                  <div className="stat-title-modern">{card.title}</div>
+                </div>
+                <div className="stat-meta-modern">{card.desc}</div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="section-card">

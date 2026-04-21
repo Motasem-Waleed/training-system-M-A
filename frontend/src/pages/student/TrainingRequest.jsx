@@ -1,5 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  ClipboardList,
+  Building2,
+  MapPin,
+  School,
+  FileText,
+  Send,
+  Edit3,
+  Trash2,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Search,
+  ChevronDown,
+} from "lucide-react";
+import {
   createStudentTrainingRequest,
   deleteStudentTrainingRequest,
   getCourses,
@@ -178,11 +194,18 @@ export default function TrainingRequest() {
   const hasSubmittedRequest = useMemo(() => Boolean(latestRequest?.id), [latestRequest]);
   const canEditLatestRequest = useMemo(() => {
     if (!latestRequest) return false;
-    return ["needs_edit", "rejected", "coordinator_rejected"].includes(latestRequest.book_status);
+    // زر التعديل يظهر فقط عند الرفض (من المنسق أو مدير المدرسة)
+    return ["rejected", "coordinator_rejected"].includes(latestRequest.book_status);
   }, [latestRequest]);
   const canCancelLatestRequest = useMemo(() => {
     if (!latestRequest) return false;
+    // السماح بالإلغاء في أي مرحلة ما قبل القبول النهائي
     return [
+      "draft",
+      "sent_to_directorate",
+      "sent_to_school",
+      "school_approved",
+      "directorate_approved",
       "sent_to_coordinator",
       "needs_edit",
       "rejected",
@@ -226,9 +249,20 @@ export default function TrainingRequest() {
       };
 
       if (submitTargetRequestId) {
-        await updateStudentTrainingRequest(submitTargetRequestId, payload);
-        setEditingId(null);
-        setSuccess("تم حفظ التعديلات على الطلب بنجاح.");
+        try {
+          await updateStudentTrainingRequest(submitTargetRequestId, payload);
+          setEditingId(null);
+          setSuccess("تم حفظ التعديلات على الطلب بنجاح.");
+        } catch (updateErr) {
+          // إذا الطلب محذوف (404)، نعيد المحاولة كطلب جديد
+          if (updateErr?.response?.status === 404) {
+            setEditingId(null);
+            await createStudentTrainingRequest(payload);
+            setSuccess("تم إرسال الطلب بنجاح (طلب جديد).");
+          } else {
+            throw updateErr;
+          }
+        }
       } else {
         await createStudentTrainingRequest(payload);
         setSuccess("تم إرسال الطلب بنجاح.");
@@ -282,8 +316,13 @@ export default function TrainingRequest() {
       setEditingId(null);
       setFormData({ training_site_id: "", notes: "" });
       setSiteSearch("");
+      setFilters((prev) => ({
+        ...prev,
+        directorate: "",
+      }));
+      setSchools([]);
       await loadMyRequests();
-      setSuccess("تم إلغاء الطلب بنجاح.");
+      setSuccess("تم إلغاء الطلب بنجاح. يمكنك الآن إرسال طلب جديد.");
     } catch (e) {
       setError(e?.response?.data?.message || "تعذر إلغاء الطلب");
     } finally {
@@ -291,161 +330,228 @@ export default function TrainingRequest() {
     }
   };
 
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      draft: { class: "badge-info", icon: ClipboardList, text: "مسودة" },
+      sent_to_directorate: { class: "badge-info", icon: Send, text: "أُرسل للمديرية" },
+      sent_to_school: { class: "badge-info", icon: Send, text: "أُرسل للمدرسة" },
+      school_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة المدرسة" },
+      directorate_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة المديرية" },
+      sent_to_coordinator: { class: "badge-primary", icon: Send, text: "عند المنسق" },
+      prelim_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة أولية" },
+      approved: { class: "badge-success", icon: CheckCircle2, text: "مقبول" },
+      rejected: { class: "badge-danger", icon: XCircle, text: "مرفوض" },
+      coordinator_rejected: { class: "badge-danger", icon: XCircle, text: "مرفوض من المنسق" },
+      needs_edit: { class: "badge-warning", icon: AlertCircle, text: "يحتاج تعديل" },
+    };
+    
+    const config = statusConfig[status] || { class: "badge-soft", icon: Loader2, text: status || "قيد المعالجة" };
+    const Icon = config.icon;
+    
+    return (
+      <span className={`badge-custom ${config.class} d-inline-flex align-items-center gap-1`}>
+        <Icon size={14} />
+        {config.text}
+      </span>
+    );
+  };
+
   if (loading) {
-    return <div className="section-card">جاري تحميل البيانات...</div>;
+    return (
+      <div className="section-card">
+        <div className="text-center py-4">
+          <Loader2 size={32} className="animate-spin text-primary mb-2" />
+          <p className="text-muted mb-0">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <>
-      <style>{`
-        .tr-card {
-          background: #fff;
-          border: 1px solid #e9ecef;
-          border-radius: 14px;
-          padding: 22px;
-          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
-        }
-        .tr-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-          gap: 14px;
-        }
-        .tr-field {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-        .tr-label {
-          font-size: 0.88rem;
-          font-weight: 600;
-          color: #374151;
-        }
-        .tr-help {
-          margin: 0;
-          padding: 10px 12px;
-          border-radius: 10px;
-          background: #f8fafc;
-          color: #475569;
-          font-size: 0.86rem;
-          border: 1px solid #e2e8f0;
-        }
-      `}</style>
-
       <div className="content-header">
-        <h1 className="page-title">طلب التدريب الميداني</h1>
-        <p className="page-subtitle">الجهة الرسمية تظهر تلقائيًا حسب القسم، ثم اختر المديرية وجهة التدريب التابعة.</p>
+        <h1 className="page-title d-flex align-items-center gap-2">
+          <ClipboardList size={28} />
+          طلب التدريب الميداني
+        </h1>
+        <p className="page-subtitle">
+          <Building2 size={14} className="me-1" />
+          اختر المديرية ثم جهة التدريب التابعة لها لإرسال طلبك
+        </p>
       </div>
 
-      {error ? <div className="alert-custom alert-danger">{error}</div> : null}
-      {success ? <div className="alert-custom alert-success">{success}</div> : null}
+      {error && (
+        <div className="alert-custom alert-danger d-flex align-items-center gap-2">
+          <AlertCircle size={20} />
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="alert-custom alert-success d-flex align-items-center gap-2">
+          <CheckCircle2 size={20} />
+          {success}
+        </div>
+      )}
 
       {hasSubmittedRequest ? (
-        <div className="tr-card" style={{ marginBottom: "14px" }}>
-          <h3 className="panel-title mb-3">متابعة حالة الطلب</h3>
-          <>
-            <div className="tr-grid">
-              <div className="tr-field">
-                <span className="tr-label">حالة الطلب</span>
-                <strong>{latestRequest.book_status_label || latestRequest.book_status || "—"}</strong>
-              </div>
-              <div className="tr-field">
-                <span className="tr-label">الجهة المعتمدة</span>
-                <strong>{latestRequest.training_site?.name || "—"}</strong>
-              </div>
-              <div className="tr-field">
-                <span className="tr-label">المديرية</span>
-                <strong>{latestRequest.training_site?.directorate || "—"}</strong>
-              </div>
-              <div className="tr-field">
-                <span className="tr-label">المشرف/المرشد</span>
-                <strong>{latestRequest.students?.[0]?.assigned_teacher?.name || "غير محدد"}</strong>
+        <div className="section-card mb-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5 className="mb-0 d-flex align-items-center gap-2">
+              <Building2 size={20} className="text-primary" />
+              حالة الطلب الحالي
+            </h5>
+            {getStatusBadge(latestRequest.book_status)}
+          </div>
+
+          <div className="summary-grid">
+            <div className="stat-card primary">
+              <div>
+                <div className="stat-title">حالة الطلب</div>
+                <div className="stat-value fs-6">
+                  {getStatusBadge(latestRequest.book_status)}
+                </div>
               </div>
             </div>
-            {(latestRequest.rejection_reason ||
-              latestRequest.coordinator_rejection_reason ||
-              latestRequest.needs_edit_reason) && (
-              <div className="alert-custom alert-warning mt-3">
-                <strong>ملاحظات على الطلب:</strong>{" "}
-                {latestRequest.rejection_reason ||
-                  latestRequest.coordinator_rejection_reason ||
-                  latestRequest.needs_edit_reason}
+
+            <div className="stat-card success">
+              <div>
+                <div className="stat-title">الجهة المعتمدة</div>
+                <div className="stat-value fs-6">
+                  {latestRequest.training_site?.name || "—"}
+                </div>
               </div>
-            )}
-            <div className="mt-2 d-flex gap-2">
-              {canEditLatestRequest ? (
-                <button
-                  type="button"
-                  className="btn-primary-custom"
-                  onClick={() => startEdit(latestRequest)}
-                  disabled={saving}
-                >
-                  تعديل نفس الطلب
-                </button>
-              ) : null}
-              {canCancelLatestRequest ? (
-                <button
-                  type="button"
-                  className="btn-outline-custom"
-                  onClick={handleCancelLatestRequest}
-                  disabled={saving}
-                  style={{ borderColor: "#dc3545", color: "#dc3545" }}
-                >
-                  إلغاء الطلب
-                </button>
-              ) : null}
             </div>
-          </>
+
+            <div className="stat-card accent">
+              <div>
+                <div className="stat-title">المديرية</div>
+                <div className="stat-value fs-6">
+                  <MapPin size={14} className="me-1" />
+                  {latestRequest.training_site?.directorate || "—"}
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card warning">
+              <div>
+                <div className="stat-title">المشرف/المرشد</div>
+                <div className="stat-value fs-6">
+                  <School size={14} className="me-1" />
+                  {latestRequest.students?.[0]?.assigned_teacher?.name || "غير محدد"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {(latestRequest.rejection_reason ||
+            latestRequest.coordinator_rejection_reason ||
+            latestRequest.needs_edit_reason) && (
+            <div className="alert-custom alert-warning mt-3 d-flex align-items-start gap-2">
+              <AlertCircle size={20} className="mt-1 flex-shrink-0" />
+              <div>
+                <strong>ملاحظات على الطلب:</strong>
+                <p className="mb-0 mt-1">
+                  {latestRequest.rejection_reason ||
+                    latestRequest.coordinator_rejection_reason ||
+                    latestRequest.needs_edit_reason}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-3 d-flex gap-2">
+            {canEditLatestRequest ? (
+              <button
+                type="button"
+                className="btn-primary-custom d-inline-flex align-items-center gap-2"
+                onClick={() => startEdit(latestRequest)}
+                disabled={saving}
+              >
+                <Edit3 size={16} />
+                تعديل نفس الطلب
+              </button>
+            ) : null}
+            {canCancelLatestRequest ? (
+              <button
+                type="button"
+                className="btn-outline-custom d-inline-flex align-items-center gap-2"
+                onClick={handleCancelLatestRequest}
+                disabled={saving}
+                style={{ borderColor: "#dc3545", color: "#dc3545" }}
+              >
+                <Trash2 size={16} />
+                إلغاء الطلب
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
-      <div className="tr-card">
-        <h3 className="panel-title mb-3">
-          {editingId ? "تعديل الطلب" : hasSubmittedRequest ? "تم إرسال الطلب" : "إرسال طلب جديد"}
-        </h3>
-        <p className="tr-help">
+      {(!hasSubmittedRequest || editingId || canEditLatestRequest) && (
+      <div className="section-card">
+        <h5 className="mb-3 d-flex align-items-center gap-2">
+          <Send size={20} className="text-primary" />
+          {editingId ? "تعديل الطلب" : hasSubmittedRequest ? "إعادة إرسال الطلب" : "إرسال طلب جديد"}
+        </h5>
+        <div className="alert-custom alert-info mb-3 d-flex align-items-center gap-2">
+          <AlertCircle size={18} />
           {hasSubmittedRequest && !canEditLatestRequest
-            ? "تم إرسال طلبك مسبقًا. يمكنك فقط متابعة الحالة حتى يتم رفض الطلب وإعادته للتعديل."
-            : "المديرية أولاً ثم اختيار جهة التدريب التابعة لها."}
-        </p>
+            ? "تم إرسال طلبك مسبقًا. يمكنك فقط متابعة الحالة حتى يتم رفض الطلب."
+            : "اختر المديرية أولاً، ثم ابحث واختر جهة التدريب."}
+        </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="tr-grid">
-            <div className="tr-field">
-              <label className="tr-label" htmlFor="training-request-governing-body">الجهة الرسمية</label>
-              <input
-                id="training-request-governing-body"
-                name="training_request_governing_body"
-                className="form-input-custom"
-                value={governingBodyLabel}
-                readOnly
-              />
-            </div>
-
-            <div className="tr-field">
-              <label className="tr-label" htmlFor="training-request-directorate">المديرية</label>
-              <select
-                id="training-request-directorate"
-                name="training_request_directorate"
-                className={`form-select-custom ${validationErrors.directorate ? "is-invalid" : ""}`}
-                value={filters.directorate}
-                onChange={(e) => setFilters((prev) => ({ ...prev, directorate: e.target.value }))}
-                disabled={!filters.governing_body}
-              >
-                <option value="">اختر المديرية</option>
-                {directorates.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="tr-field">
-              <label className="tr-label" htmlFor="training-request-site-search">المدرسة / جهة التدريب</label>
-              <div style={{ position: "relative" }}>
+          <div className="row g-3">
+            <div className="col-md-4">
+              <div className="form-field">
+                <label className="form-label-custom d-flex align-items-center gap-1">
+                  <Building2 size={14} />
+                  الجهة الرسمية
+                </label>
                 <input
-                  id="training-request-site-search"
-                  name="training_request_site_search"
+                  id="training-request-governing-body"
+                  className="form-input-custom bg-light"
+                  value={governingBodyLabel}
+                  readOnly
+                />
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <div className="form-field">
+                <label className="form-label-custom d-flex align-items-center gap-1">
+                  <MapPin size={14} />
+                  المديرية
+                </label>
+                <select
+                  id="training-request-directorate"
+                  className={`form-select-custom ${validationErrors.directorate ? "is-invalid" : ""}`}
+                  value={filters.directorate}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, directorate: e.target.value }))}
+                  disabled={!filters.governing_body}
+                >
+                  <option value="">اختر المديرية</option>
+                  {directorates.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                {validationErrors.directorate && (
+                  <div className="invalid-feedback">{validationErrors.directorate}</div>
+                )}
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <div className="form-field">
+                <label className="form-label-custom d-flex align-items-center gap-1">
+                  <School size={14} />
+                  {isEducationFlow ? "المدرسة" : "جهة التدريب"}
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    id="training-request-site-search"
                   className={`form-input-custom ${validationErrors.training_site_id ? "is-invalid" : ""}`}
                   placeholder={!filters.directorate ? "اختر المديرية أولاً" : "اكتب للبحث ثم اختر الجهة"}
                   value={siteSearch}
@@ -542,45 +648,60 @@ export default function TrainingRequest() {
                 ) : null}
               </div>
             </div>
+            </div>
 
-            <div className="tr-field" style={{ gridColumn: "1 / -1" }}>
-              <label className="tr-label" htmlFor="training-request-notes">ملاحظات</label>
-              <textarea
-                id="training-request-notes"
-                name="training_request_notes"
-                rows={3}
-                className="form-textarea-custom"
-                value={formData.notes}
-                onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-              />
+            <div className="col-12">
+              <div className="form-field">
+                <label className="form-label-custom d-flex align-items-center gap-1">
+                  <FileText size={14} />
+                  ملاحظات (اختياري)
+                </label>
+                <textarea
+                  id="training-request-notes"
+                  rows={3}
+                  className="form-textarea-custom"
+                  value={formData.notes}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="أي ملاحظات إضافية تريد إرفاقها بالطلب..."
+                />
+              </div>
             </div>
           </div>
 
-          <div className="mt-3 d-flex gap-2">
+          <div className="mt-4 d-flex gap-2">
             <button
               type="submit"
-              className="btn-primary-custom"
+              className="btn-primary-custom d-inline-flex align-items-center gap-2"
               disabled={saving || Object.keys(validationErrors).length > 0 || (hasSubmittedRequest && !submitTargetRequestId)}
             >
+              {saving ? (
+                <Loader2 size={16} className="animate-spin me-1" />
+              ) : submitTargetRequestId ? (
+                <Edit3 size={16} className="me-1" />
+              ) : (
+                <Send size={16} className="me-1" />
+              )}
               {saving ? "جاري الحفظ..." : submitTargetRequestId ? "حفظ التعديلات" : "إرسال الطلب"}
             </button>
 
             {editingId ? (
               <button
                 type="button"
-                className="btn-outline-custom"
+                className="btn-outline-custom d-inline-flex align-items-center gap-2"
                 onClick={() => {
                   setEditingId(null);
                   setError("");
                   setSuccess("");
                 }}
               >
+                <XCircle size={16} />
                 إلغاء
               </button>
             ) : null}
           </div>
         </form>
       </div>
+      )}
     </>
   );
 }
