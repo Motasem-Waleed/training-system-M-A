@@ -190,12 +190,15 @@ export default function TrainingRequest() {
     });
     return [...starts, ...includes];
   }, [schools, siteSearch]);
-  const latestRequest = useMemo(() => myRequests[0] || null, [myRequests]);
+  const latestRequest = useMemo(() => {
+    const activeRequests = myRequests.filter(r => !r.deleted_at && !r.deletedAt);
+    return activeRequests[0] || null;
+  }, [myRequests]);
   const hasSubmittedRequest = useMemo(() => Boolean(latestRequest?.id), [latestRequest]);
   const canEditLatestRequest = useMemo(() => {
     if (!latestRequest) return false;
-    // زر التعديل يظهر فقط عند الرفض (من المنسق أو مدير المدرسة)
-    return ["rejected", "coordinator_rejected"].includes(latestRequest.book_status);
+    // زر التعديل يظهر عند الرفض أو طلب التعديل
+    return ["needs_edit", "rejected", "coordinator_rejected"].includes(latestRequest.book_status);
   }, [latestRequest]);
   const canCancelLatestRequest = useMemo(() => {
     if (!latestRequest) return false;
@@ -646,8 +649,8 @@ export default function TrainingRequest() {
                     )}
                   </div>
                 ) : null}
+                </div>
               </div>
-            </div>
             </div>
 
             <div className="col-12">
@@ -674,17 +677,12 @@ export default function TrainingRequest() {
               className="btn-primary-custom d-inline-flex align-items-center gap-2"
               disabled={saving || Object.keys(validationErrors).length > 0 || (hasSubmittedRequest && !submitTargetRequestId)}
             >
-              {saving ? (
-                <Loader2 size={16} className="animate-spin me-1" />
-              ) : submitTargetRequestId ? (
-                <Edit3 size={16} className="me-1" />
-              ) : (
-                <Send size={16} className="me-1" />
-              )}
+              {saving && <Loader2 size={16} className="animate-spin me-1" />}
+              {!saving && submitTargetRequestId && <Edit3 size={16} className="me-1" />}
+              {!saving && !submitTargetRequestId && <Send size={16} className="me-1" />}
               {saving ? "جاري الحفظ..." : submitTargetRequestId ? "حفظ التعديلات" : "إرسال الطلب"}
             </button>
-
-            {editingId ? (
+            {editingId && (
               <button
                 type="button"
                 className="btn-outline-custom d-inline-flex align-items-center gap-2"
@@ -697,11 +695,11 @@ export default function TrainingRequest() {
                 <XCircle size={16} />
                 إلغاء
               </button>
-            ) : null}
+            )}
           </div>
         </form>
       </div>
-      )}
+    )}
     </>
   );
 }
