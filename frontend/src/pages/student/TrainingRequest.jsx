@@ -484,7 +484,7 @@ export default function TrainingRequest() {
         </div>
       ) : null}
 
-      {(!hasSubmittedRequest || editingId || canEditLatestRequest) && (
+      {(!hasSubmittedRequest || editingId) && (
       <div className="section-card">
         <h5 className="mb-3 d-flex align-items-center gap-2">
           <Send size={20} className="text-primary" />

@@ -39,10 +39,13 @@ class TaskController extends Controller
             ], 401);
         }
 
-        // جلب المهام حسب علاقة التدريب
+        // جلب المهام حسب علاقة التدريب مع بيانات المُكلِّف والتسليمات
         $tasks = Task::whereHas('trainingAssignment.enrollment', function ($q) use ($user) {
             $q->where('user_id', $user->id);
         })
+        ->with(['assignedBy', 'submissions' => function ($q) use ($user) {
+            $q->where('user_id', $user->id)->latest();
+        }])
         ->latest()
         ->get();
 
@@ -58,7 +61,8 @@ class TaskController extends Controller
     {
         $query = Task::with([
             'trainingAssignment.enrollment.user',
-            'assignedBy'
+            'assignedBy',
+            'submissions.user'
         ]);
 
         if ($request->user()->role?->name === 'student') {

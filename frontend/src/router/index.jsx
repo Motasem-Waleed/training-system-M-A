@@ -56,7 +56,6 @@ import StudentAttendance from "../pages/student/Attendance";
 import StudentDashboardRedirect from "../pages/student/StudentDashboardRedirect";
 import EForms from "../pages/student/EForms";
 import StudentTrainingRequestEntry from "../pages/student/StudentTrainingRequestEntry";
-import EvaluationProgram from "../pages/student/EvaluationProgram";
 
 // Common
 import Profile from "../pages/common/Profile";
@@ -199,7 +198,7 @@ export default function AppRouter() {
           <Route path="/student/dashboard" element={<StudentDashboardRedirect />} />
           <Route path="/student/dashboard/education" element={<StudentDashboard forcedTrack="education" />} />
           <Route path="/student/dashboard/psychology" element={<StudentDashboard forcedTrack="psychology" />} />
-          <Route path="/student/schedule" element={<EvaluationProgram />} />
+          <Route path="/student/schedule" element={<Schedule />} />
           <Route path="/student/portfolio" element={<Portfolio />} />
           <Route path="/student/assignments" element={<Assignments />} />
           <Route path="/student/training-request" element={<StudentTrainingRequestEntry />} />

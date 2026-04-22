@@ -397,6 +397,11 @@ export const saveStudentTrainingProgram = async (schedule) => {
     return response.data;
 };
 
+export const submitFormToSupervisor = async (data) => {
+    const response = await apiClient.post('/student/forms/submit', data);
+    return response.data;
+};
+
 export const getStudentTrainingProgramById = async (studentId) => {
     const response = await apiClient.get(`/students/${studentId}/training-program`);
     return response.data;
@@ -450,6 +455,12 @@ export const getStudentTasks = async () => {
 /** data: JSON object أو FormData (لرفع ملف) */
 export const submitStudentTask = async (taskId, data) => {
   const response = await apiClient.post(`/student/tasks/${taskId}/submit`, data);
+  return response.data;
+};
+
+/** data: JSON object أو FormData (لإعادة التسليم) */
+export const updateStudentTaskSubmission = async (submissionId, data) => {
+  const response = await apiClient.put(`/student/task-submissions/${submissionId}`, data);
   return response.data;
 };
 

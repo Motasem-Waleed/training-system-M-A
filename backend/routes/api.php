@@ -254,6 +254,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Tâches étudiant
         Route::get('/tasks', [TaskController::class, 'studentIndex']);
         Route::post('/tasks/{task}/submit', [TaskSubmissionController::class, 'store']);
+        Route::put('/task-submissions/{task_submission}', [TaskSubmissionController::class, 'studentUpdate']);
         
         // Notifications étudiant
         Route::get('/notifications', [NotificationController::class, 'index']);

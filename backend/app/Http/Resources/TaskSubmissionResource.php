@@ -12,7 +12,10 @@ class TaskSubmissionResource extends JsonResource
         return [
             'id' => $this->id,
             'file_path' => $this->file_path,
+            'file_url' => $this->file_path ? \Storage::disk('public')->url($this->file_path) : null,
             'notes' => $this->notes,
+            'grade' => $this->grade,
+            'feedback' => $this->feedback,
             'submitted_at' => $this->submitted_at?->toDateTimeString(),
             'task' => new TaskResource($this->whenLoaded('task')),
             'user' => new UserResource($this->whenLoaded('user')),

@@ -124,7 +124,7 @@ const menus = {
     { name: "سجل الحضور والغياب", path: "/student/attendance" },
     { name: "الملف الإنجازي", path: "/student/portfolio" },
     { name: "التكليفات", path: "/student/assignments" },
-    { name: "النماذج الإلكترونية", path: "/student/e-forms" },
+    { name: "النماذج والتقارير", path: "/student/e-forms" },
   ],
 
   coordinator: [

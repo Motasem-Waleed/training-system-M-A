@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTaskSubmissionRequest;
 use App\Http\Requests\UpdateTaskSubmissionRequest;
 use App\Http\Requests\GradeTaskSubmissionRequest;
+use App\Http\Requests\StudentUpdateTaskSubmissionRequest;
 use App\Http\Resources\TaskSubmissionResource;
 use App\Models\TaskSubmission;
 use App\Models\Task;
@@ -81,6 +82,45 @@ class TaskSubmissionController extends Controller
     public function show(TaskSubmission $taskSubmission)
     {
         return new TaskSubmissionResource($taskSubmission->load(['task', 'user']));
+    }
+
+    /**
+     * تحديث تسليم الطالب (إعادة التسليم)
+     */
+    public function studentUpdate(UpdateTaskSubmissionRequest $request, TaskSubmission $taskSubmission)
+    {
+        // التأكد أن التسليم يخص الطالب الحالي
+        if ($request->user()->id !== $taskSubmission->user_id) {
+            abort(403, 'هذا التسليم لا يخصك.');
+        }
+
+        // لا يمكن تعديل التسليم بعد التقييم
+        if ($taskSubmission->grade !== null) {
+            abort(422, 'لا يمكن تعديل التسليم بعد التقييم.');
+        }
+
+        $data = $request->validated();
+
+        if ($request->hasFile('file')) {
+            // حذف الملف القديم إن وجد
+            if ($taskSubmission->file_path) {
+                Storage::disk('public')->delete($taskSubmission->file_path);
+            }
+            $data['file_path'] = $request->file('file')->store('task_submissions', 'public');
+        }
+
+        $taskSubmission->update([
+            'file_path' => $data['file_path'] ?? $taskSubmission->file_path,
+            'notes' => $data['notes'] ?? $taskSubmission->notes,
+            'submitted_at' => now(),
+        ]);
+
+        // تحديث حالة المهمة إلى submitted
+        if ($taskSubmission->task && in_array($taskSubmission->task->status, ['pending', 'in_progress'])) {
+            $taskSubmission->task->update(['status' => 'submitted']);
+        }
+
+        return new TaskSubmissionResource($taskSubmission);
     }
 
     /**
