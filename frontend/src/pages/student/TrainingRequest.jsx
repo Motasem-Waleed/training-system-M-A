@@ -671,6 +671,19 @@ export default function TrainingRequest() {
             </div>
           </div>
 
+          {(Object.keys(validationErrors).length > 0 || (hasSubmittedRequest && !submitTargetRequestId)) && (
+            <div className="alert-custom alert-warning mb-3 d-flex align-items-start gap-2">
+              <AlertCircle size={18} className="mt-1 flex-shrink-0" />
+              <div>
+                {validationErrors.directorate && <div>• {validationErrors.directorate}</div>}
+                {validationErrors.training_site_id && <div>• {validationErrors.training_site_id}</div>}
+                {hasSubmittedRequest && !submitTargetRequestId && (
+                  <div>• الطلب الحالي قيد المعالجة ولا يمكن تعديله حالياً</div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 d-flex gap-2">
             <button
               type="submit"
