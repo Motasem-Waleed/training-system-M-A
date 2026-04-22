@@ -43,14 +43,13 @@ import FeatureFlagsList from "../pages/Admin/FeatureFlags/FeatureFlagsList";
 import EvaluationTemplatesList from "../pages/Admin/EvaluationTemplates/EvaluationTemplatesList";
 import EvaluationTemplateForm from "../pages/Admin/EvaluationTemplates/EvaluationTemplateForm";
 
-// ✅ Reports (FIXED)
+// Reports (FIXED)
 import ReportsDashboard from "../pages/reports/ReportsDashboard";
 
 // Student
 import StudentDashboard from "../pages/dashboard/StudentDashboard";
 import Schedule from "../pages/student/Schedule";
 import Portfolio from "../pages/student/Portfolio";
-import TrainingLog from "../pages/student/TrainingLog";
 import Assignments from "../pages/student/Assignments";
 import NotificationsUpdates from "../pages/student/NotificationsUpdates";
 import StudentAttendance from "../pages/student/Attendance";
@@ -202,7 +201,6 @@ export default function AppRouter() {
           <Route path="/student/dashboard/psychology" element={<StudentDashboard forcedTrack="psychology" />} />
           <Route path="/student/schedule" element={<EvaluationProgram />} />
           <Route path="/student/portfolio" element={<Portfolio />} />
-          <Route path="/student/training-log" element={<TrainingLog />} />
           <Route path="/student/assignments" element={<Assignments />} />
           <Route path="/student/training-request" element={<StudentTrainingRequestEntry />} />
           <Route path="/student/training-requests" element={<StudentTrainingRequestEntry />} />

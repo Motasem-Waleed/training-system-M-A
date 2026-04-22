@@ -69,7 +69,6 @@ function buildFieldStaffMenu(roleKey) {
     );
   }
 
-  menu.push({ name: "الإشعارات", path: "/notifications" });
   return menu;
 }
 
@@ -107,7 +106,6 @@ const menus = {
     // صفحات مشتركة
     { name: "الملف الشخصي", path: "/profile" },
     { name: "تغيير كلمة المرور", path: "/change-password" },
-    { name: "الإشعارات", path: "/notifications" },
   ],
   
 
@@ -124,11 +122,9 @@ const menus = {
     { name: "طلب التدريب", path: "/student/training-request" },
     { name: "برنامج التدريب", path: "/student/schedule" },
     { name: "سجل الحضور والغياب", path: "/student/attendance" },
-    { name: "سجل التدريب اليومي", path: "/student/training-log" },
     { name: "الملف الإنجازي", path: "/student/portfolio" },
     { name: "التكليفات", path: "/student/assignments" },
     { name: "النماذج الإلكترونية", path: "/student/e-forms" },
-    { name: "الإشعارات", path: "/student/notifications-updates" },
   ],
 
   coordinator: [

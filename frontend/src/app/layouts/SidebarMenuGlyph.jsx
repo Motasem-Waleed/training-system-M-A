@@ -58,7 +58,6 @@ const ROUTE_ICON = {
   "/student/training-request": "fileText",
   "/student/schedule": "calendar",
   "/student/attendance": "clipboardCheck",
-  "/student/training-log": "journal",
   "/student/portfolio": "folder",
   "/student/assignments": "assignment",
   "/student/notifications-updates": "bell",

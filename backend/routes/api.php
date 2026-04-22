@@ -103,6 +103,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('tasks', TaskController::class)
         ->middleware('feature:tasks.create')
         ->only(['store']);
+    Route::apiResource('tasks', TaskController::class)
+        ->only(['index', 'show', 'update', 'destroy']);
     Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
     Route::apiResource('task-submissions', TaskSubmissionController::class);
     Route::post('task-submissions/{task_submission}/grade', [TaskSubmissionController::class, 'grade']);
@@ -111,6 +113,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('evaluations', EvaluationController::class)
         ->middleware('feature:evaluations.create')
         ->only(['store']);
+    Route::apiResource('evaluations', EvaluationController::class)
+        ->only(['index', 'show', 'update', 'destroy']);
     Route::apiResource('evaluation-templates', EvaluationTemplateController::class);
     Route::post('evaluation-templates/{evaluation_template}/items', [EvaluationTemplateController::class, 'addItem']);
     Route::put('evaluation-items/{item}', [EvaluationTemplateController::class, 'updateItem']);
@@ -140,6 +144,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('announcements', AnnouncementController::class)
         ->middleware('feature:announcements.create')
         ->only(['store']);
+    Route::apiResource('announcements', AnnouncementController::class)
+        ->only(['index', 'show', 'update', 'destroy']);
 
     // Notifications
     Route::get('notifications', [NotificationController::class, 'index']);

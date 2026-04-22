@@ -101,7 +101,7 @@ class TrainingRequestPolicy
     }
 
     /**
-     * حذف الطالب لطلبه (طالما لم يصل لمرحلة القبول النهائي).
+     * حذف الطالب لطلبه (فقط قبل موافقة المنسق؛ بعد الموافقة لا يمكن الإلغاء أبداً).
      */
     public function deleteAsStudent(User $user, TrainingRequest $trainingRequest): bool
     {
@@ -110,11 +110,10 @@ class TrainingRequestPolicy
         }
 
         return in_array($trainingRequest->book_status, [
+            'draft',
             'sent_to_coordinator',
+            'coordinator_under_review',
             'needs_edit',
-            'rejected',
-            'coordinator_rejected',
-            'prelim_approved',
         ], true);
     }
 

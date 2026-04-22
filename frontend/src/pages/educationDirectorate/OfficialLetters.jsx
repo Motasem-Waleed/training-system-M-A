@@ -62,27 +62,40 @@ const OfficialLetters = ({ siteType = "school" }) => {
 
   const handleRequestDecision = async (requestId) => {
     const decision = requestDecision[requestId];
+    console.log("handleRequestDecision called:", { requestId, decision, requestReason: requestReason[requestId] });
+
     if (!decision) {
       setErrorMessage("اختر القرار للطلب قبل الحفظ.");
       return;
     }
-    if (decision === "rejected" && !requestReason[requestId]?.trim()) {
-      setErrorMessage("سبب الرفض مطلوب عند رفض طلب التدريب.");
-      return;
+    if (decision === "rejected") {
+      const reason = requestReason[requestId]?.trim();
+      console.log("Rejection reason check:", { requestId, reason, fullState: requestReason });
+      if (!reason) {
+        setErrorMessage("سبب الرفض مطلوب عند رفض طلب التدريب.");
+        return;
+      }
     }
 
     try {
       setRequestSavingId(requestId);
       setSavedMessage("");
       setErrorMessage("");
-      await directorateApprove(requestId, {
+
+      const payload = {
         status: decision,
         rejection_reason: decision === "rejected" ? requestReason[requestId] : "",
-      });
+      };
+      console.log("Sending API request:", payload);
+
+      const response = await directorateApprove(requestId, payload);
+      console.log("API response:", response);
+
       setSavedMessage(`تم تحديث قرار ${directorateName} على الطلب.`);
       await fetchTrainingRequests();
     } catch (error) {
       console.error("Failed to decide training request:", error);
+      console.error("Error response:", error?.response?.data);
       setErrorMessage(error?.response?.data?.message || "تعذر حفظ القرار.");
     } finally {
       setRequestSavingId(null);

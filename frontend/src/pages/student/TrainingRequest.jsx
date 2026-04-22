@@ -202,18 +202,12 @@ export default function TrainingRequest() {
   }, [latestRequest]);
   const canCancelLatestRequest = useMemo(() => {
     if (!latestRequest) return false;
-    // السماح بالإلغاء في أي مرحلة ما قبل القبول النهائي
+    // الإلغاء مسموح فقط قبل موافقة المنسق؛ بعد الموافقة لا يمكن الإلغاء أبداً
     return [
       "draft",
-      "sent_to_directorate",
-      "sent_to_school",
-      "school_approved",
-      "directorate_approved",
       "sent_to_coordinator",
+      "coordinator_under_review",
       "needs_edit",
-      "rejected",
-      "coordinator_rejected",
-      "prelim_approved",
     ].includes(latestRequest.book_status);
   }, [latestRequest]);
   const submitTargetRequestId = useMemo(() => {
