@@ -28,11 +28,14 @@ class UserController extends Controller
 {
     $users = User::query();
 
-    // مدير المدرسة يُسمح له بجلب المعلمين فقط لاستخدامهم في التعيين.
+    // مدير المدرسة يُسمح له بجلب المعلمين من نفس المدرسة فقط لاستخدامهم في التعيين.
     if ($request->user()->role?->name === 'school_manager') {
         $users->whereHas('role', function ($q) {
             $q->where('name', 'teacher');
         });
+        if ($request->user()->training_site_id) {
+            $users->where('training_site_id', $request->user()->training_site_id);
+        }
     }
 
     // منسق التدريب والأخصائي النفسي يُسمح لهم بجلب الطلبة فقط (قائمة مرجعية).

@@ -10,14 +10,21 @@ class TrainingRequestNotifications
 {
     public static function forCoordinatorsByDepartment(?int $departmentId, string $type, string $message, array $data = []): void
     {
-        if (! $departmentId) {
-            return;
+        $ids = collect();
+
+        if ($departmentId) {
+            $ids = User::query()
+                ->where('department_id', $departmentId)
+                ->whereHas('role', fn ($q) => $q->whereIn('name', ['training_coordinator', 'coordinator']))
+                ->pluck('id');
         }
 
-        $ids = User::query()
-            ->where('department_id', $departmentId)
-            ->whereHas('role', fn ($q) => $q->whereIn('name', ['training_coordinator', 'coordinator']))
-            ->pluck('id');
+        // إذا لم يوجد منسق في قسم الطالب، أرسل لجميع المنسقين
+        if ($ids->isEmpty()) {
+            $ids = User::query()
+                ->whereHas('role', fn ($q) => $q->whereIn('name', ['training_coordinator', 'coordinator']))
+                ->pluck('id');
+        }
 
         foreach ($ids as $userId) {
             Notification::query()->create([

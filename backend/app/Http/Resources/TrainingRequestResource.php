@@ -32,6 +32,7 @@ class TrainingRequestResource extends JsonResource
             'batched_at' => $this->batched_at?->toDateTimeString(),
             'attachment_path' => $this->attachment_path,
             'governing_body' => $this->governing_body,
+            'directorate' => $this->directorate,
             'training_site' => new TrainingSiteResource($this->whenLoaded('trainingSite')),
             'students' => TrainingRequestStudentResource::collection($this->whenLoaded('trainingRequestStudents')),
             'created_at' => $this->created_at?->toDateTimeString(),

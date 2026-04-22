@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Department;
 use App\Models\TrainingSite;
 use App\Models\User;
 use App\Models\Role;
@@ -56,15 +57,31 @@ class UsersSeeder extends Seeder
             ]
         );
 
-        // 2. منسق التدريب
+        // 2. منسق التدريب — قسم أصول التربية
         $coordinatorRole = Role::where('name', 'training_coordinator')->first();
+        $usoolDeptId = Department::where('name', 'usool_tarbiah')->value('id');
         User::firstOrCreate(
-            ['email' => 'coordinator@hebron.edu'],
+            ['email' => 'coordinator.tarbiah@hebron.edu'],
             [
-                'name' => 'منسق التدريب',
+                'name' => 'منسق التدريب — أصول التربية',
                 'university_id' => 'COORD01',
                 'password' => Hash::make('password'),
                 'role_id' => $coordinatorRole->id,
+                'department_id' => $usoolDeptId,
+                'status' => 'active',
+            ]
+        );
+
+        // 2b. منسق التدريب — قسم علم النفس
+        $psychDeptId = Department::where('name', 'psychology')->value('id');
+        User::firstOrCreate(
+            ['email' => 'coordinator.psychology@hebron.edu'],
+            [
+                'name' => 'منسق التدريب — علم النفس',
+                'university_id' => 'COORD02',
+                'password' => Hash::make('password'),
+                'role_id' => $coordinatorRole->id,
+                'department_id' => $psychDeptId,
                 'status' => 'active',
             ]
         );
@@ -82,18 +99,31 @@ class UsersSeeder extends Seeder
             ]
         );
 
-        // 4. معلم مرشد
+        // 4. معلمين مرشدين — كل معلم مربوط بمدرسة واحدة
         $teacherRole = Role::where('name', 'teacher')->first();
-        User::firstOrCreate(
-            ['email' => 'teacher@hebron.edu'],
-            [
-                'name' => 'محمد المعلم',
-                'university_id' => 'TCH001',
-                'password' => Hash::make('password'),
-                'role_id' => $teacherRole->id,
-                'status' => 'active',
-            ]
-        );
+        $teachers = [
+            ['name' => 'محمد المعلم', 'email' => 'teacher@hebron.edu', 'university_id' => 'TCH001', 'training_site_id' => 1],
+            ['name' => 'فاطمة المرشدة', 'email' => 'teacher2@hebron.edu', 'university_id' => 'TCH002', 'training_site_id' => 2],
+            ['name' => 'أحمد المرشد', 'email' => 'teacher3@hebron.edu', 'university_id' => 'TCH003', 'training_site_id' => 3],
+            ['name' => 'سعاد المرشدة', 'email' => 'teacher4@hebron.edu', 'university_id' => 'TCH004', 'training_site_id' => 4],
+            ['name' => 'خالد المرشد', 'email' => 'teacher5@hebron.edu', 'university_id' => 'TCH005', 'training_site_id' => 7],
+            ['name' => 'نور المرشدة', 'email' => 'teacher6@hebron.edu', 'university_id' => 'TCH006', 'training_site_id' => 9],
+            ['name' => 'رنا المرشدة', 'email' => 'teacher7@hebron.edu', 'university_id' => 'TCH007', 'training_site_id' => 11],
+            ['name' => 'علي المرشد', 'email' => 'teacher8@hebron.edu', 'university_id' => 'TCH008', 'training_site_id' => 14],
+        ];
+        foreach ($teachers as $t) {
+            User::firstOrCreate(
+                ['email' => $t['email']],
+                [
+                    'name' => $t['name'],
+                    'university_id' => $t['university_id'],
+                    'password' => Hash::make('password'),
+                    'role_id' => $teacherRole->id,
+                    'training_site_id' => $t['training_site_id'],
+                    'status' => 'active',
+                ]
+            );
+        }
 
         // 5. طالب
         $studentRole = Role::where('name', 'student')->first();

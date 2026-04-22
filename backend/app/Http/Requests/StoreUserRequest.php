@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use App\Enums\UserStatus;
+use App\Models\Role;
 
 class StoreUserRequest extends FormRequest
 {
@@ -20,10 +21,15 @@ class StoreUserRequest extends FormRequest
             'email' => 'required|email|unique:users',
             'password' => 'required|string|min:8',
             'status' => 'required|in:active,inactive,suspended',
-            'department_id' => 'nullable|exists:departments,id',
+            'department_id' => 'required_if:role_id,' . $this->getStudentRoleId() . '|exists:departments,id',
             'role_id' => 'required|exists:roles,id',
             'phone' => 'nullable|string|max:20',
             'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
         ];
+    }
+
+    private function getStudentRoleId(): ?string
+    {
+        return (string) Role::where('name', 'student')->value('id');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -26,8 +27,13 @@ class UpdateUserRequest extends FormRequest
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($routeUserId)],
             'phone' => 'nullable|string|max:20',
-            'department_id' => 'nullable|exists:departments,id',
+            'department_id' => 'required_if:role_id,' . $this->getStudentRoleId() . '|exists:departments,id',
             'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
         ];
+    }
+
+    private function getStudentRoleId(): ?string
+    {
+        return (string) Role::where('name', 'student')->value('id');
     }
 }

@@ -148,14 +148,27 @@ class TrainingRequestController extends Controller
         if (in_array($request->user()->role?->name, ['school_manager', 'psychology_center_manager'], true) && $request->user()->training_site_id) {
             $query->where('training_site_id', $request->user()->training_site_id);
         }
-        if (in_array($request->user()->role?->name, ['coordinator', 'training_coordinator'], true) && $request->user()->department_id) {
-            $query->whereHas('requestedBy', function ($uq) use ($request) {
-                $uq->where('department_id', $request->user()->department_id);
-            });
+        if (in_array($request->user()->role?->name, ['coordinator', 'training_coordinator'], true)) {
+            $coordinatorDeptId = $request->user()->department_id;
+            if ($coordinatorDeptId) {
+                $query->where(function ($q) use ($coordinatorDeptId) {
+                    $q->whereHas('requestedBy', function ($uq) use ($coordinatorDeptId) {
+                        $uq->where('department_id', $coordinatorDeptId);
+                    })
+                    ->orWhereHas('trainingRequestStudents.user', function ($uq) use ($coordinatorDeptId) {
+                        $uq->where('department_id', $coordinatorDeptId);
+                    });
+                });
+            }
+            // إذا لم يكن للمنسق قسم، يرى جميع الطلبات بدون فلتر
         }
         if ($request->user()->role?->name === 'education_directorate' && !empty($request->user()->directorate)) {
-            $query->whereHas('trainingSite', function ($sq) use ($request) {
-                $sq->where('directorate', $request->user()->directorate);
+            $userDirectorate = $request->user()->directorate;
+            $query->where(function ($q) use ($userDirectorate) {
+                $q->where('directorate', $userDirectorate)
+                    ->orWhereHas('trainingSite', function ($sq) use ($userDirectorate) {
+                        $sq->where('directorate', $userDirectorate);
+                    });
             });
         }
 
@@ -312,15 +325,16 @@ class TrainingRequestController extends Controller
         );
 
         if ($decision === 'prelim_approved') {
-            $siteDirectorate = trim((string) data_get($trainingRequest, 'trainingSite.directorate', ''));
+            $requestDirectorate = $trainingRequest->directorate
+                ?? trim((string) data_get($trainingRequest, 'trainingSite.directorate', ''));
             TrainingRequestNotifications::forDirectorate(
                 $trainingRequest->governing_body,
                 'training_request_sent_to_directorate',
-                'تم إرسال طلب تدريب جديد للمديرية المختصة (' . $siteDirectorate . ').',
+                'تم إرسال طلب تدريب جديد للمديرية المختصة (' . $requestDirectorate . ').',
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => $trainingRequest->book_status,
-                    'directorate' => $siteDirectorate,
+                    'directorate' => $requestDirectorate,
                 ]
             );
         }
@@ -433,6 +447,7 @@ class TrainingRequestController extends Controller
             'training_site_id' => $data['training_site_id'],
             'training_period_id' => $data['training_period_id'] ?? null,
             'governing_body' => $site->governing_body,
+            'directorate' => $data['directorate'] ?? null,
             'status' => 'pending',
             'book_status' => 'sent_to_coordinator',
             'requested_at' => now(),
@@ -524,6 +539,7 @@ class TrainingRequestController extends Controller
             'training_site_id' => $data['training_site_id'],
             'training_period_id' => $data['training_period_id'] ?? null,
             'governing_body' => $site->governing_body,
+            'directorate' => $data['directorate'] ?? null,
             'attachment_path' => $data['attachment_path'] ?? $trainingRequest->attachment_path,
             'book_status' => 'sent_to_coordinator',
             'needs_edit_reason' => null,

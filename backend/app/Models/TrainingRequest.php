@@ -16,6 +16,7 @@ class TrainingRequest extends Model
         'status', 'requested_at' ,     'rejection_reason', 'letter_number',
         'letter_date',  'training_period_id',
         'governing_body',
+        'directorate',
         'attachment_path',
         'coordinator_reviewed_at',
         'needs_edit_reason',
