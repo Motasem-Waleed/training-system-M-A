@@ -107,6 +107,11 @@ class User extends Authenticatable
         return $this->hasOne(StudentPortfolio::class, 'user_id');
     }
 
+    public function trainingProgram()
+    {
+        return $this->hasOne(TrainingProgram::class, 'user_id');
+    }
+
     public function supervisorVisits()
     {
         return $this->hasMany(SupervisorVisit::class, 'supervisor_id');

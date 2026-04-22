@@ -57,6 +57,7 @@ import StudentAttendance from "../pages/student/Attendance";
 import StudentDashboardRedirect from "../pages/student/StudentDashboardRedirect";
 import EForms from "../pages/student/EForms";
 import StudentTrainingRequestEntry from "../pages/student/StudentTrainingRequestEntry";
+import EvaluationProgram from "../pages/student/EvaluationProgram";
 
 // Common
 import Profile from "../pages/common/Profile";
@@ -84,12 +85,14 @@ import FieldStaffDailyReports from "../pages/fieldStaff/DailyReports";
 import FieldStaffGuidance from "../pages/fieldStaff/Guidance";
 import FieldStaffTasks from "../pages/fieldStaff/Tasks";
 import FieldStaffFinalEvaluation from "../pages/fieldStaff/FinalEvaluation";
+import StudentTrainingProgram from "../pages/fieldStaff/StudentTrainingProgram";
 
 // Coordinator
 import CoordinatorDashboard from "../pages/dashboard/CoordinatorDashboard";
 import CoordinatorStudents from "../pages/coordinator/Students";
 import CoordinatorDistribution from "../pages/coordinator/Distribution";
 import CoordinatorStatistics from "../pages/coordinator/Statistics";
+import TrainingProgramControl from "../pages/coordinator/TrainingProgramControl";
 import CoordinatorTrainingRequests from "../pages/coordinator/TrainingRequests";
 
 // Principal
@@ -197,7 +200,7 @@ export default function AppRouter() {
           <Route path="/student/dashboard" element={<StudentDashboardRedirect />} />
           <Route path="/student/dashboard/education" element={<StudentDashboard forcedTrack="education" />} />
           <Route path="/student/dashboard/psychology" element={<StudentDashboard forcedTrack="psychology" />} />
-          <Route path="/student/schedule" element={<Schedule />} />
+          <Route path="/student/schedule" element={<EvaluationProgram />} />
           <Route path="/student/portfolio" element={<Portfolio />} />
           <Route path="/student/training-log" element={<TrainingLog />} />
           <Route path="/student/assignments" element={<Assignments />} />
@@ -223,6 +226,7 @@ export default function AppRouter() {
           <Route path="/supervisor/tasks" element={<FieldStaffTasks />} />
           <Route path="/supervisor/daily-reports" element={<FieldStaffDailyReports />} />
           <Route path="/supervisor/final-evaluation" element={<FieldStaffFinalEvaluation />} />
+          <Route path="/supervisor/students/:studentId/training-program" element={<StudentTrainingProgram />} />
           
           {/* صفحات خاصة بالمشرف الأكاديمي */}
           <Route path="/supervisor/field-visits" element={<FieldVisits />} />
@@ -246,6 +250,7 @@ export default function AppRouter() {
           <Route path="/field-staff/guidance" element={<FieldStaffGuidance />} />
           <Route path="/field-staff/tasks" element={<FieldStaffTasks />} />
           <Route path="/field-staff/final-evaluation" element={<FieldStaffFinalEvaluation />} />
+          <Route path="/field-staff/students/:studentId/training-program" element={<StudentTrainingProgram />} />
 
           {/* Legacy Mentor routes — redirect to unified field-staff */}
           <Route path="/mentor/dashboard" element={<FieldStaffDashboard />} />
@@ -258,6 +263,7 @@ export default function AppRouter() {
           <Route path="/mentor/daily-reports" element={<FieldStaffDailyReports />} />
           <Route path="/mentor/final-evaluation" element={<FieldStaffFinalEvaluation />} />
           <Route path="/mentor/notes" element={<FieldStaffNotes />} />
+          <Route path="/mentor/students/:studentId/training-program" element={<StudentTrainingProgram />} />
 
           {/* Legacy Psychologist routes — redirect to unified field-staff */}
           <Route path="/psychologist/dashboard" element={<FieldStaffDashboard />} />
@@ -271,6 +277,8 @@ export default function AppRouter() {
           <Route path="/coordinator/distribution" element={<CoordinatorDistribution />} />
           <Route path="/coordinator/statistics" element={<CoordinatorStatistics />} />
           <Route path="/coordinator/training-requests" element={<CoordinatorTrainingRequests />} />
+          <Route path="/coordinator/training-program-control" element={<TrainingProgramControl />} />
+          <Route path="/coordinator/students/:studentId/training-program" element={<StudentTrainingProgram />} />
 
           {/* Principal */}
           <Route path="/principal/dashboard" element={<PrincipalDashboard siteType="school" />} />

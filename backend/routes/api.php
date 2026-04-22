@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\{
     TrainingRequestController,
     TrainingRequestBatchController,
     TrainingAssignmentController,
+    TrainingProgramController,
     EvaluationController,
     UserController,
     AttendanceController,
@@ -256,6 +257,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/e-forms', [StudentEFormController::class, 'index']);
         Route::post('/e-forms', [StudentEFormController::class, 'store']);
         Route::post('/e-forms/{eform}/submit', [StudentEFormController::class, 'submit']);
+
+        // Training Program (برنامج التدريب)
+        Route::get('/training-program', [TrainingProgramController::class, 'show']);
+        Route::post('/training-program', [TrainingProgramController::class, 'store']);
     });
 
     // ========== ROUTES مدير جهة التدريب ==========
@@ -279,4 +284,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Portfolio personnel
     Route::get('/my-portfolio', [StudentPortfolioController::class, 'getMyPortfolio']);
+
+    // Training Program - view student program (mentor/supervisor/coordinator)
+    Route::get('/students/{studentId}/training-program', [TrainingProgramController::class, 'showForStudent']);
 });

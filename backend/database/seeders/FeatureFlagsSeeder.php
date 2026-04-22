@@ -46,6 +46,12 @@ class FeatureFlagsSeeder extends Seeder
                 'is_open' => true,
                 'description' => 'السماح بتصدير التقارير بصيغ مختلفة',
             ],
+            [
+                'name' => 'training_program.edit',
+                'display_name' => 'إدخال/تعديل برنامج التدريب',
+                'is_open' => false,
+                'description' => 'السماح للطلاب بإدخال أو تعديل جدول الحصص في برنامج التدريب (يتحكم به المنسق)',
+            ],
         ];
 
         foreach ($features as $feature) {

@@ -8,11 +8,6 @@ use Illuminate\Http\Request;
 
 class FeatureFlagController extends Controller
 {
-    public function __construct()
-    {
-        $this->authorizeResource(FeatureFlag::class, 'feature_flag');
-    }
-
     public function index(Request $request)
     {
         $flags = FeatureFlag::all();

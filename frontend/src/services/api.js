@@ -387,6 +387,21 @@ export const getStudentSchedule = async () => {
     return response.data;
 };
 
+export const getStudentTrainingProgram = async () => {
+    const response = await apiClient.get('/student/training-program');
+    return response.data;
+};
+
+export const saveStudentTrainingProgram = async (schedule) => {
+    const response = await apiClient.post('/student/training-program', { schedule });
+    return response.data;
+};
+
+export const getStudentTrainingProgramById = async (studentId) => {
+    const response = await apiClient.get(`/students/${studentId}/training-program`);
+    return response.data;
+};
+
 export const getStudentTrainingLogs = async () => {
     const response = await apiClient.get('/student/training-logs');
     return response.data;

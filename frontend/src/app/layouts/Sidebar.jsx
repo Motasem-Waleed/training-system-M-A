@@ -137,6 +137,7 @@ const menus = {
     { name: "طلبات التدريب", path: "/coordinator/training-requests" },
     { name: "التوزيع", path: "/coordinator/distribution" },
     { name: "الإحصائيات", path: "/coordinator/statistics" },
+    { name: "التحكم ببرنامج التدريب", path: "/coordinator/training-program-control" },
   ],
 
   principal: [
