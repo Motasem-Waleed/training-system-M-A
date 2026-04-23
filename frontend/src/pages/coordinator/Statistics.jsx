@@ -1,101 +1,67 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  getDashboardStats,
-  getTrainingRequests,
-  itemsFromPagedResponse,
-} from "../../services/api";
-
-const labelMap = {
-  draft: "مسودة",
-  sent_to_coordinator: "مرسل للمنسق",
-  coordinator_under_review: "قيد مراجعة المنسق",
-  needs_edit: "بحاجة تعديل",
-  coordinator_rejected: "مرفوض من المنسق",
-  prelim_approved: "معتمد مبدئيًا",
-  batched_pending_send: "مجمّع بانتظار الإرسال",
-  sent_to_directorate: "مرسل للمديرية",
-  directorate_approved: "موافقة المديرية",
-  sent_to_school: "مرسل للمدرسة",
-  rejected: "مرفوض",
-  school_approved: "موافقة المدرسة",
-  sent_to_health_ministry: "مرسل لوزارة الصحة",
-};
+import { RefreshCw } from "lucide-react";
+import useCoordinatorStatistics from "../../hooks/useCoordinatorStatistics";
+import { STATUS_LABELS, STATUS_COLORS } from "../../config/coordinator/statusLabels";
+import { BATCH_STATUS_LABELS } from "../../config/coordinator/statusLabels";
+import { getGoverningBodyLabel } from "../../config/coordinator/governingBodies";
+import EmptyState from "../../components/common/EmptyState";
 
 export default function CoordinatorStatistics() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [requests, setRequests] = useState([]);
-  const [sitesCount, setSitesCount] = useState(0);
-  const [studentsCount, setStudentsCount] = useState(0);
-
-  const byStatus = useMemo(() => {
-    const map = new Map();
-    for (const r of requests) {
-      const s = r?.book_status || "unknown";
-      map.set(s, (map.get(s) || 0) + 1);
-    }
-    return map;
-  }, [requests]);
-
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      setLoading(true);
-      setError("");
-      try {
-        const [reqRes, stats] = await Promise.all([
-          getTrainingRequests({ per_page: 200 }),
-          getDashboardStats(),
-        ]);
-
-        const reqArr = itemsFromPagedResponse(reqRes);
-
-        if (mounted) {
-          setRequests(reqArr);
-          setSitesCount(stats?.total_sites ?? 0);
-          setStudentsCount(stats?.total_students ?? 0);
-        }
-      } catch (e) {
-        if (mounted) setError(e?.response?.data?.message || "فشل تحميل الإحصائيات");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const {
+    loading,
+    error,
+    byStatus,
+    byDepartment,
+    bySite,
+    byGoverningBody,
+    batchStats,
+    totalStudents,
+    totalSites,
+    activeTrainings,
+    reload,
+  } = useCoordinatorStatistics();
 
   return (
     <div className="sections-list">
       <div className="page-header">
-        <div>
-          <h1>الإحصائيات</h1>
-          <p>ملخص سريع لحالة الكتب الرسمية والتوزيع.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h1>الإحصائيات</h1>
+            <p>ملخص سريع لحالة الكتب الرسمية والتوزيع.</p>
+          </div>
+          <button
+            className="btn-secondary"
+            onClick={reload}
+            disabled={loading}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <RefreshCw size={16} className={loading ? "spin" : ""} />
+            تحديث
+          </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="section-card">جاري التحميل...</div>
-      ) : error ? (
-        <div className="section-card">
+      {error && (
+        <div className="section-card" style={{ marginBottom: 12 }}>
           <p className="text-danger">{error}</p>
         </div>
+      )}
+
+      {loading ? (
+        <div className="section-card">جاري التحميل...</div>
       ) : (
         <>
           <div className="dashboard-grid">
             <div className="stat-card primary">
               <div className="stat-title">الطلبة</div>
-              <div className="stat-value">{studentsCount}</div>
+              <div className="stat-value">{totalStudents}</div>
             </div>
             <div className="stat-card accent">
               <div className="stat-title">جهات التدريب</div>
-              <div className="stat-value">{sitesCount}</div>
+              <div className="stat-value">{totalSites}</div>
             </div>
             <div className="stat-card success">
-              <div className="stat-title">الكتب الرسمية</div>
-              <div className="stat-value">{requests.length}</div>
+              <div className="stat-title">تدريبات جارية</div>
+              <div className="stat-value">{activeTrainings}</div>
             </div>
             <div className="stat-card info">
               <div className="stat-title">مرفوض</div>
@@ -103,25 +69,130 @@ export default function CoordinatorStatistics() {
             </div>
           </div>
 
-          <div className="section-card">
-            <h4>حسب حالة الكتاب</h4>
-            <div className="table-wrapper">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>الحالة</th>
-                    <th>العدد</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from(byStatus.entries()).map(([status, count]) => (
-                    <tr key={status}>
-                      <td>{labelMap[status] || status}</td>
-                      <td>{count}</td>
+          <div className="dashboard-row">
+            <div className="section-card">
+              <h4>حسب حالة الكتاب</h4>
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>الحالة</th>
+                      <th>العدد</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {Array.from(byStatus.entries()).map(([status, count]) => {
+                      const colors = STATUS_COLORS[status] || {
+                        bg: "#e9ecef",
+                        text: "#495057",
+                      };
+                      return (
+                        <tr key={status}>
+                          <td>
+                            <span
+                              style={{
+                                background: colors.bg,
+                                color: colors.text,
+                                padding: "3px 8px",
+                                borderRadius: 6,
+                                fontSize: "0.82rem",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {STATUS_LABELS[status] || status}
+                            </span>
+                          </td>
+                          <td>{count}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="section-card">
+              <h4>حسب الجهة الرسمية</h4>
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>الجهة</th>
+                      <th>العدد</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from(byGoverningBody.entries()).map(([gb, count]) => (
+                      <tr key={gb}>
+                        <td>{getGoverningBodyLabel(gb)}</td>
+                        <td>{count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="dashboard-row">
+            <div className="section-card">
+              <h4>حسب القسم</h4>
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>القسم</th>
+                      <th>العدد</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from(byDepartment.entries()).map(([dept, count]) => (
+                      <tr key={dept}>
+                        <td>{dept}</td>
+                        <td>{count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="section-card">
+              <h4>حسب جهة التدريب</h4>
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>جهة التدريب</th>
+                      <th>العدد</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from(bySite.entries()).map(([site, count]) => (
+                      <tr key={site}>
+                        <td>{site}</td>
+                        <td>{count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="section-card">
+            <h4>إحصائيات الدفعات</h4>
+            <div className="kpi-row" style={{ marginBottom: 16 }}>
+              <div className="kpi-box">
+                <strong>{batchStats.total}</strong>
+                <span>إجمالي الدفعات</span>
+              </div>
+              {Array.from(batchStats.byStatus.entries()).map(([status, count]) => (
+                <div className="kpi-box" key={status}>
+                  <strong>{count}</strong>
+                  <span>{BATCH_STATUS_LABELS[status] || status}</span>
+                </div>
+              ))}
             </div>
           </div>
         </>

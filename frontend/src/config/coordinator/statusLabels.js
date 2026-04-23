@@ -1,0 +1,61 @@
+export const STATUS_LABELS = {
+  draft: "مسودة",
+  sent_to_coordinator: "مرسل للمنسق",
+  coordinator_under_review: "قيد مراجعة المنسق",
+  needs_edit: "بحاجة تعديل",
+  coordinator_rejected: "مرفوض من المنسق",
+  prelim_approved: "معتمد مبدئيًا",
+  batched_pending_send: "مجمّع بانتظار الإرسال",
+  sent_to_directorate: "مرسل للمديرية",
+  directorate_approved: "موافقة المديرية",
+  directorate_rejected: "مرفوض من المديرية",
+  sent_to_school: "مرسل للمدرسة",
+  rejected: "مرفوض",
+  school_approved: "موافقة المدرسة",
+  school_rejected: "مرفوض من المدرسة",
+  sent_to_health_ministry: "مرسل لوزارة الصحة",
+  health_ministry_approved: "موافقة وزارة الصحة",
+  health_ministry_rejected: "مرفوض من وزارة الصحة",
+  delivered: "تم التسليم",
+  approved: "معتمد",
+};
+
+export const STATUS_COLORS = {
+  draft: { bg: "#e9ecef", text: "#495057" },
+  sent_to_coordinator: { bg: "#fff3cd", text: "#856404" },
+  coordinator_under_review: { bg: "#cce5ff", text: "#004085" },
+  needs_edit: { bg: "#d1ecf1", text: "#0c5460" },
+  coordinator_rejected: { bg: "#f8d7da", text: "#721c24" },
+  prelim_approved: { bg: "#d4edda", text: "#155724" },
+  batched_pending_send: { bg: "#e2d5f1", text: "#5b3a8c" },
+  sent_to_directorate: { bg: "#cce5ff", text: "#004085" },
+  directorate_approved: { bg: "#d4edda", text: "#155724" },
+  directorate_rejected: { bg: "#f8d7da", text: "#721c24" },
+  sent_to_school: { bg: "#cce5ff", text: "#004085" },
+  rejected: { bg: "#f8d7da", text: "#721c24" },
+  school_approved: { bg: "#d4edda", text: "#155724" },
+  school_rejected: { bg: "#f8d7da", text: "#721c24" },
+  sent_to_health_ministry: { bg: "#cce5ff", text: "#004085" },
+  health_ministry_approved: { bg: "#d4edda", text: "#155724" },
+  health_ministry_rejected: { bg: "#f8d7da", text: "#721c24" },
+  delivered: { bg: "#d4edda", text: "#155724" },
+  approved: { bg: "#d4edda", text: "#155724" },
+};
+
+export const BATCH_STATUS_LABELS = {
+  draft: "مسودة",
+  ready_to_send: "جاهز للإرسال",
+  sent: "مرسل",
+  delivered: "تم التسليم",
+  approved: "معتمد",
+  rejected: "مرفوض",
+};
+
+export const BATCH_STATUS_COLORS = {
+  draft: { bg: "#e9ecef", text: "#495057" },
+  ready_to_send: { bg: "#fff3cd", text: "#856404" },
+  sent: { bg: "#cce5ff", text: "#004085" },
+  delivered: { bg: "#d1ecf1", text: "#0c5460" },
+  approved: { bg: "#d4edda", text: "#155724" },
+  rejected: { bg: "#f8d7da", text: "#721c24" },
+};

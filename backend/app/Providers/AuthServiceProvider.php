@@ -21,7 +21,9 @@ use App\Models\Notification;
 use App\Models\ActivityLog;
 use App\Models\Note;
 use App\Models\Backup;
+use App\Models\Department;
 use App\Policies\UserPolicy;
+use App\Policies\DepartmentPolicy;
 use App\Policies\BackupPolicy;
 use App\Policies\ActivityLogPolicy;
 use App\Policies\TrainingRequestPolicy;
@@ -65,6 +67,7 @@ class AuthServiceProvider extends ServiceProvider
         ActivityLog::class => ActivityLogPolicy::class,
         Note::class => NotePolicy::class,
         Backup::class => BackupPolicy::class,
+        Department::class => DepartmentPolicy::class,
     ];
 
     public function boot(): void

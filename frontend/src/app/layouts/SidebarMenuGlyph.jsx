@@ -64,9 +64,11 @@ const ROUTE_ICON = {
 
   "/coordinator/dashboard": "home",
   "/coordinator/students": "users",
-  "/coordinator/training-requests": "fileText",
-  "/coordinator/distribution": "share",
+  "/coordinator/training-requests": "share",
+  "/coordinator/official-letters": "document",
+  "/coordinator/distribution-status": "mapPin",
   "/coordinator/statistics": "chart",
+  "/coordinator/training-program-control": "flag",
 
   "/principal/dashboard": "home",
   "/principal/profile": "user",

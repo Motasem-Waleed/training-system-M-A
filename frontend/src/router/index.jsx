@@ -92,6 +92,8 @@ import CoordinatorDistribution from "../pages/coordinator/Distribution";
 import CoordinatorStatistics from "../pages/coordinator/Statistics";
 import TrainingProgramControl from "../pages/coordinator/TrainingProgramControl";
 import CoordinatorTrainingRequests from "../pages/coordinator/TrainingRequests";
+import CoordinatorOfficialLetters from "../pages/coordinator/OfficialLetters";
+import CoordinatorDistributionStatus from "../pages/coordinator/DistributionStatus";
 
 // Principal
 import PrincipalDashboard from "../pages/dashboard/PrincipalDashboard";
@@ -274,6 +276,8 @@ export default function AppRouter() {
           <Route path="/coordinator/distribution" element={<CoordinatorDistribution />} />
           <Route path="/coordinator/statistics" element={<CoordinatorStatistics />} />
           <Route path="/coordinator/training-requests" element={<CoordinatorTrainingRequests />} />
+          <Route path="/coordinator/official-letters" element={<CoordinatorOfficialLetters />} />
+          <Route path="/coordinator/distribution-status" element={<CoordinatorDistributionStatus />} />
           <Route path="/coordinator/training-program-control" element={<TrainingProgramControl />} />
           <Route path="/coordinator/students/:studentId/training-program" element={<StudentTrainingProgram />} />
 

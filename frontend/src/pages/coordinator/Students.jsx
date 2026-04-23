@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { RefreshCw } from "lucide-react";
 import { getUsers, itemsFromPagedResponse } from "../../services/api";
+import EmptyState from "../../components/common/EmptyState";
 
 export default function CoordinatorStudents() {
   const [loading, setLoading] = useState(true);
@@ -13,36 +15,44 @@ export default function CoordinatorStudents() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await getUsers({
-          per_page: 100,
-          status: "active",
-          ...(debouncedSearch ? { search: debouncedSearch } : {}),
-        });
-        if (mounted) setItems(itemsFromPagedResponse(res));
-      } catch (e) {
-        if (mounted) setError(e?.response?.data?.message || "فشل تحميل الطلبة");
-      } finally {
-        if (mounted) setLoading(false);
-      }
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await getUsers({
+        per_page: 100,
+        status: "active",
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      });
+      setItems(itemsFromPagedResponse(res));
+    } catch (e) {
+      setError(e?.response?.data?.message || "فشل تحميل الطلبة");
+    } finally {
+      setLoading(false);
     }
-    load();
-    return () => {
-      mounted = false;
-    };
   }, [debouncedSearch]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <div className="users-list">
       <div className="page-header">
-        <div>
-          <h1>الطلبة</h1>
-          <p>قائمة الطلبة المتاحين للتوزيع على جهات التدريب.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h1>الطلبة</h1>
+            <p>قائمة الطلبة المتاحين للتوزيع على جهات التدريب.</p>
+          </div>
+          <button
+            className="btn-secondary"
+            onClick={load}
+            disabled={loading}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <RefreshCw size={16} className={loading ? "spin" : ""} />
+            تحديث
+          </button>
         </div>
       </div>
 
@@ -54,12 +64,16 @@ export default function CoordinatorStudents() {
         />
       </div>
 
-      {loading ? (
-        <div className="section-card">جاري التحميل...</div>
-      ) : error ? (
-        <div className="section-card">
+      {error && (
+        <div className="section-card" style={{ marginBottom: 12 }}>
           <p className="text-danger">{error}</p>
         </div>
+      )}
+
+      {loading ? (
+        <div className="section-card">جاري التحميل...</div>
+      ) : items.length === 0 ? (
+        <EmptyState title="لا يوجد طلبة" description="لا يوجد طلبة مطابقون للبحث." />
       ) : (
         <div className="table-wrapper">
           <table className="data-table">
@@ -73,23 +87,28 @@ export default function CoordinatorStudents() {
               </tr>
             </thead>
             <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: "center" }}>
-                    لا يوجد طلبة
+              {items.map((u) => (
+                <tr key={u.id}>
+                  <td>{u.name}</td>
+                  <td>{u.university_id || "—"}</td>
+                  <td>{u.department?.name || "—"}</td>
+                  <td>{u.email}</td>
+                  <td>
+                    <span
+                      style={{
+                        background: u.status === "active" ? "#d4edda" : "#e9ecef",
+                        color: u.status === "active" ? "#155724" : "#495057",
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        fontSize: "0.82rem",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {u.status === "active" ? "نشط" : u.status}
+                    </span>
                   </td>
                 </tr>
-              ) : (
-                items.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.name}</td>
-                    <td>{u.university_id || "—"}</td>
-                    <td>{u.department?.name || "—"}</td>
-                    <td>{u.email}</td>
-                    <td>{u.status === "active" ? "نشط" : u.status}</td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>

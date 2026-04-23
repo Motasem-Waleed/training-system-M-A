@@ -1,138 +1,288 @@
-import { useEffect, useState } from "react";
-import { apiClient } from "../../services/api";
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
+import useCoordinatorDistribution from "../../hooks/useCoordinatorDistribution";
+import {
+  RequestsTable,
+  RequestReviewDrawer,
+  BatchBuilder,
+  CoordinatorFilters,
+} from "../../components/coordinator";
+import { BATCH_STATUS_LABELS, BATCH_STATUS_COLORS } from "../../config/coordinator/statusLabels";
+import { getGoverningBodyLabel } from "../../config/coordinator/governingBodies";
+import { STATUS_LABELS } from "../../config/coordinator/statusLabels";
+import EmptyState from "../../components/common/EmptyState";
 
 export default function CoordinatorTrainingRequests() {
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    loading,
+    saving,
+    error,
+    success,
+    setSuccess,
+    batches,
+    incomingRequests,
+    prelimApproved,
+    coordinatorRejected,
+    prelimApprovedByGroup,
+    reviewDecision,
+    createBatchForGroup,
+    sendBatch,
+    reload,
+    sites,
+  } = useCoordinatorDistribution();
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [decision, setDecision] = useState("");
-  const [reason, setReason] = useState("");
+  const [batchSendForm, setBatchSendForm] = useState({});
+  const [filters, setFilters] = useState({
+    status: "",
+    search: "",
+  });
 
-  useEffect(() => {
-    fetchRequests();
-  }, []);
-
-  const fetchRequests = async () => {
-    setLoading(true);
-    try {
-      const res = await apiClient.get("/training-requests", {
-        params: { book_status: "sent_to_coordinator" }
-      });
-      setRequests(res.data?.data || []);
-    } catch (err) {
-      console.error("Error fetching requests:", err);
-    } finally {
-      setLoading(false);
-    }
+  const handleView = (req) => {
+    setSelectedRequest(req);
+    setDrawerOpen(true);
   };
 
-  const handleReview = async (id) => {
+  const handleReview = async (id, decision, reason) => {
     try {
-      await apiClient.post(`/training-requests/${id}/coordinator-review`, {
-        decision,
-        reason: decision !== "prelim_approved" ? reason : undefined
-      });
-      alert("تمت المراجعة بنجاح");
+      await reviewDecision(id, decision, reason);
+      setDrawerOpen(false);
       setSelectedRequest(null);
-      setDecision("");
-      setReason("");
-      fetchRequests();
-    } catch (err) {
-      alert(err.response?.data?.message || "فشلت المراجعة");
+    } catch {
+      // error handled in hook
     }
   };
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      sent_to_coordinator: { bg: "#fff3cd", text: "#856404", label: "بانتظار المنسق" },
-      prelim_approved: { bg: "#d4edda", text: "#155724", label: "معتمد مبدئياً" },
-      coordinator_rejected: { bg: "#f8d7da", text: "#721c24", label: "مرفوض من المنسق" },
-      needs_edit: { bg: "#d1ecf1", text: "#0c5460", label: "يحتاج تعديل" },
-    };
-    const badge = badges[status] || { bg: "#e9ecef", text: "#6c757d", label: status };
-    return (
-      <span style={{ background: badge.bg, color: badge.text, padding: "4px 8px", borderRadius: "4px", fontSize: "12px" }}>
-        {badge.label}
-      </span>
-    );
-  };
+  function setBatchSendField(batchId, key, value) {
+    setBatchSendForm((prev) => ({
+      ...prev,
+      [batchId]: { ...(prev[batchId] || {}), [key]: value },
+    }));
+  }
+
+  async function handleSendBatch(batchId) {
+    const data = batchSendForm[batchId] || {};
+    await sendBatch(batchId, {
+      letter_number: data.letter_number,
+      letter_date: data.letter_date,
+      content: data.content,
+    });
+    setBatchSendForm((prev) => {
+      const next = { ...prev };
+      delete next[batchId];
+      return next;
+    });
+  }
+
+  const statusOptions = Object.entries(STATUS_LABELS).map(([value, label]) => ({
+    value,
+    label,
+  }));
+
+  const filteredIncoming = filters.status
+    ? incomingRequests.filter((r) => r.book_status === filters.status)
+    : incomingRequests;
+
+  const filteredSearch = filters.search
+    ? filteredIncoming.filter((r) => {
+        const s0 = r.students?.[0];
+        const name = s0?.user?.name || r.requested_by?.name || "";
+        const uid = s0?.user?.university_id || "";
+        const site = r.training_site?.name || "";
+        const q = filters.search.toLowerCase();
+        return (
+          name.toLowerCase().includes(q) ||
+          uid.toLowerCase().includes(q) ||
+          site.toLowerCase().includes(q)
+        );
+      })
+    : filteredIncoming;
 
   return (
-    <div className="container-fluid py-4">
-      <h2>طلبات التدريب بانتظار المراجعة</h2>
-      
-      {loading ? (
-        <p>جاري التحميل...</p>
-      ) : requests.length === 0 ? (
-        <p className="text-muted">لا توجد طلبات بانتظار المراجعة</p>
-      ) : (
-        <table className="table table-striped">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>الطالب</th>
-              <th>موقع التدريب</th>
-              <th>الفترة</th>
-              <th>الحالة</th>
-              <th>تاريخ التقديم</th>
-              <th>إجراء</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((req) => (
-              <tr key={req.id}>
-                <td>{req.id}</td>
-                <td>{req.requested_by?.name || "—"}</td>
-                <td>{req.training_site?.name || "—"}</td>
-                <td>{req.training_period?.name || "—"}</td>
-                <td>{getStatusBadge(req.book_status)}</td>
-                <td>{req.requested_at ? new Date(req.requested_at).toLocaleDateString("ar-SA") : "—"}</td>
-                <td>
-                  <button className="btn btn-sm btn-primary" onClick={() => setSelectedRequest(req)}>
-                    مراجعة
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {selectedRequest && (
-        <div className="modal show" style={{ display: "block", background: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">مراجعة طلب التدريب #{selectedRequest.id}</h5>
-                <button className="btn-close" onClick={() => setSelectedRequest(null)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">القرار</label>
-                  <select className="form-select" value={decision} onChange={(e) => setDecision(e.target.value)}>
-                    <option value="">اختر القرار...</option>
-                    <option value="prelim_approved">اعتماد مبدئي</option>
-                    <option value="needs_edit">يحتاج تعديل</option>
-                    <option value="rejected">رفض</option>
-                  </select>
-                </div>
-                {decision !== "prelim_approved" && decision !== "" && (
-                  <div className="mb-3">
-                    <label className="form-label">السبب</label>
-                    <textarea className="form-control" rows="3" value={reason} onChange={(e) => setReason(e.target.value)} />
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setSelectedRequest(null)}>إلغاء</button>
-                <button className="btn btn-primary" onClick={() => handleReview(selectedRequest.id)} disabled={!decision}>
-                  تأكيد
-                </button>
-              </div>
-            </div>
+    <div className="enrollments-list">
+      <div className="page-header">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h1>طلبات التدريب والتوزيع</h1>
+            <p>مراجعة الطلبات، اعتمادها، تجميعها في كتب رسمية حسب المديرية، وإرسالها للجهات الرسمية.</p>
           </div>
+          <button
+            className="btn-secondary"
+            onClick={reload}
+            disabled={loading}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <RefreshCw size={16} className={loading ? "spin" : ""} />
+            تحديث
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="section-card" style={{ marginBottom: 12 }}>
+          <p className="text-danger">{error}</p>
         </div>
       )}
+
+      {success && (
+        <div className="section-card" style={{ marginBottom: 12, background: "#d4edda" }}>
+          <p style={{ color: "#155724", margin: 0 }}>{success}</p>
+        </div>
+      )}
+
+      <CoordinatorFilters
+        filters={filters}
+        setFilters={setFilters}
+        showStatus
+        showSearch
+        statusOptions={statusOptions}
+      />
+
+      {loading ? (
+        <div className="section-card">جاري التحميل...</div>
+      ) : (
+        <>
+          {/* المرحلة ١: طلبات واردة */}
+          <div className="section-card" style={{ marginTop: 16 }}>
+            <h4>طلبات واردة ({filteredSearch.length})</h4>
+            {filteredSearch.length === 0 ? (
+              <EmptyState title="لا توجد طلبات واردة" description="جميع الطلبات تمت مراجعتها." />
+            ) : (
+              <RequestsTable
+                requests={filteredSearch}
+                onReview={handleReview}
+                onView={handleView}
+                saving={saving}
+              />
+            )}
+          </div>
+
+          {/* المرحلة ٢: معتمد مبدئيًا — تجميع كتب رسمية */}
+          <div style={{ marginTop: 16 }}>
+            <BatchBuilder
+              groups={prelimApprovedByGroup}
+              onCreateBatchForGroup={createBatchForGroup}
+              saving={saving}
+            />
+          </div>
+
+          {/* المرحلة ٣: مرفوضة */}
+          {coordinatorRejected.length > 0 && (
+            <div className="section-card" style={{ marginTop: 16 }}>
+              <h4>مرفوضة ({coordinatorRejected.length})</h4>
+              <RequestsTable
+                requests={coordinatorRejected}
+                onView={handleView}
+                showActions={false}
+                saving={saving}
+              />
+            </div>
+          )}
+
+          {/* المرحلة ٤: دفعات الإرسال */}
+          <div className="section-card" style={{ marginTop: 16 }}>
+            <h4>دفعات الإرسال</h4>
+            {batches.length === 0 ? (
+              <EmptyState title="لا توجد دفعات" description="لم تُنشأ دفعات بعد." />
+            ) : (
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>رقم الدفعة</th>
+                      <th>الجهة الرسمية</th>
+                      <th>المديرية/المنطقة</th>
+                      <th>عدد الطلبات</th>
+                      <th>الحالة</th>
+                      <th>إرسال</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {batches.map((b) => {
+                      const statusLabel = BATCH_STATUS_LABELS[b.status] || b.status;
+                      const statusColors = BATCH_STATUS_COLORS[b.status] || { bg: "#e9ecef", text: "#495057" };
+                      return (
+                        <tr key={b.id}>
+                          <td>#{b.id}</td>
+                          <td>{getGoverningBodyLabel(b.governing_body)}</td>
+                          <td>{b.directorate || "—"}</td>
+                          <td>{b.items_count ?? "—"}</td>
+                          <td>
+                            <span
+                              style={{
+                                background: statusColors.bg,
+                                color: statusColors.text,
+                                padding: "3px 8px",
+                                borderRadius: 6,
+                                fontSize: "0.82rem",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td style={{ minWidth: 320 }}>
+                            {b.status === "draft" ? (
+                              <div style={{ display: "grid", gap: 8 }}>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                  <input
+                                    placeholder="رقم الكتاب"
+                                    value={batchSendForm[b.id]?.letter_number || ""}
+                                    onChange={(e) =>
+                                      setBatchSendField(b.id, "letter_number", e.target.value)
+                                    }
+                                  />
+                                  <input
+                                    type="date"
+                                    value={batchSendForm[b.id]?.letter_date || ""}
+                                    onChange={(e) =>
+                                      setBatchSendField(b.id, "letter_date", e.target.value)
+                                    }
+                                  />
+                                </div>
+                                <textarea
+                                  placeholder="محتوى الكتاب"
+                                  value={batchSendForm[b.id]?.content || ""}
+                                  onChange={(e) =>
+                                    setBatchSendField(b.id, "content", e.target.value)
+                                  }
+                                  rows={2}
+                                />
+                                <button
+                                  className="btn-sm btn-primary"
+                                  onClick={() => handleSendBatch(b.id)}
+                                  disabled={saving}
+                                >
+                                  إرسال الدفعة
+                                </button>
+                              </div>
+                            ) : (
+                              <span>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <RequestReviewDrawer
+        request={selectedRequest}
+        open={drawerOpen}
+        onClose={() => {
+          setDrawerOpen(false);
+          setSelectedRequest(null);
+        }}
+        onReview={handleReview}
+        saving={saving}
+        sites={sites}
+      />
     </div>
   );
 }

@@ -71,7 +71,9 @@ export default function MentorAssignment({ siteType = "school" }) {
       setErrorMessage("");
     } catch (error) {
       console.error("Failed to load mentor assignment data:", error);
-      setErrorMessage("تعذر تحميل بيانات التعيين.");
+      const errMsg = error?.response?.data?.message || error?.message || "خطأ غير معروف";
+      const errStatus = error?.response?.status;
+      setErrorMessage(`تعذر تحميل بيانات التعيين. ${errStatus ? `(HTTP ${errStatus}) ` : ""}${errMsg}`);
     } finally {
       setLoading(false);
     }

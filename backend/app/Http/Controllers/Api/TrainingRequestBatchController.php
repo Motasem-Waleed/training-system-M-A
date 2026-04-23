@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateTrainingRequestBatchRequest;
 use App\Http\Requests\SendTrainingRequestBatchRequest;
 use App\Http\Resources\TrainingRequestBatchResource;
+use App\Models\OfficialLetter;
 use App\Models\TrainingRequest;
 use App\Models\TrainingRequestBatch;
+use App\Support\TrainingRequestNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -135,10 +137,42 @@ class TrainingRequestBatchController extends Controller
                     'book_status' => $nextStatus,
                     'sent_to_directorate_at' => now(),
                 ]);
+
+                OfficialLetter::query()->create([
+                    'training_request_id' => $tr->id,
+                    'training_site_id' => $tr->training_site_id,
+                    'letter_number' => $data['letter_number'],
+                    'letter_date' => $data['letter_date'],
+                    'type' => $trainingRequestBatch->governing_body === 'ministry_of_health'
+                        ? 'to_health_ministry'
+                        : 'to_directorate',
+                    'content' => $data['content'],
+                    'sent_by' => request()->user()->id,
+                    'sent_at' => now(),
+                    'status' => $nextStatus,
+                ]);
             }
 
             return $trainingRequestBatch;
         });
+
+        $batch->load('trainingRequests.trainingSite');
+
+        foreach ($batch->trainingRequests as $tr) {
+            $requestDirectorate = $tr->directorate
+                ?? trim((string) data_get($tr, 'trainingSite.directorate', ''));
+            TrainingRequestNotifications::forDirectorate(
+                $batch->governing_body,
+                'training_request_sent_to_directorate',
+                'تم إرسال كتاب رسمي يتضمن طلبات تدريب للمديرية المختصة (' . $requestDirectorate . ').',
+                [
+                    'batch_id' => $batch->id,
+                    'training_request_id' => $tr->id,
+                    'book_status' => $tr->book_status,
+                    'directorate' => $requestDirectorate,
+                ]
+            );
+        }
 
         return new TrainingRequestBatchResource($batch->load('createdBy')->loadCount('trainingRequests'));
     }

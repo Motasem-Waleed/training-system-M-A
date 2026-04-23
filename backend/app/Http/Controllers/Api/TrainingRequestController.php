@@ -282,26 +282,11 @@ class TrainingRequestController extends Controller
             ]);
             $msg = 'تم رفض طلب التدريب من المنسق.';
         } else {
-            DB::transaction(function () use ($trainingRequest) {
-                $trainingRequest->update([
-                    'book_status' => 'sent_to_directorate',
-                    'coordinator_reviewed_at' => now(),
-                    'sent_to_directorate_at' => now(),
-                ]);
-
-                OfficialLetter::query()->create([
-                    'training_request_id' => $trainingRequest->id,
-                    'training_site_id' => $trainingRequest->training_site_id,
-                    'letter_number' => 'AUTO-DIR-' . $trainingRequest->id,
-                    'letter_date' => now()->toDateString(),
-                    'type' => 'to_directorate',
-                    'content' => 'تحويل تلقائي لطلب التدريب إلى المديرية المختصة حسب مديرية المدرسة.',
-                    'sent_by' => request()->user()->id,
-                    'sent_at' => now(),
-                    'status' => 'sent_to_directorate',
-                ]);
-            });
-            $msg = 'تم اعتماد الطلب وتحويله تلقائيًا إلى المديرية المختصة.';
+            $trainingRequest->update([
+                'book_status' => 'prelim_approved',
+                'coordinator_reviewed_at' => now(),
+            ]);
+            $msg = 'تم اعتماد الطلب مبدئيًا. يمكن الآن تجميعه في دفعة وإرساله للجهة الرسمية.';
         }
 
         $trainingRequest->load([
@@ -323,21 +308,6 @@ class TrainingRequestController extends Controller
                 'decision' => $decision,
             ]
         );
-
-        if ($decision === 'prelim_approved') {
-            $requestDirectorate = $trainingRequest->directorate
-                ?? trim((string) data_get($trainingRequest, 'trainingSite.directorate', ''));
-            TrainingRequestNotifications::forDirectorate(
-                $trainingRequest->governing_body,
-                'training_request_sent_to_directorate',
-                'تم إرسال طلب تدريب جديد للمديرية المختصة (' . $requestDirectorate . ').',
-                [
-                    'training_request_id' => $trainingRequest->id,
-                    'book_status' => $trainingRequest->book_status,
-                    'directorate' => $requestDirectorate,
-                ]
-            );
-        }
 
         return new TrainingRequestResource($trainingRequest);
     }

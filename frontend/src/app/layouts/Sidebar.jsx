@@ -129,9 +129,10 @@ const menus = {
 
   coordinator: [
     { name: "الرئيسية", path: "/coordinator/dashboard" },
+    { name: "طلبات التدريب والتوزيع", path: "/coordinator/training-requests" },
+    { name: "الكتب الرسمية", path: "/coordinator/official-letters" },
+    { name: "حالة التوزيع", path: "/coordinator/distribution-status" },
     { name: "الطلبة", path: "/coordinator/students" },
-    { name: "طلبات التدريب", path: "/coordinator/training-requests" },
-    { name: "التوزيع", path: "/coordinator/distribution" },
     { name: "الإحصائيات", path: "/coordinator/statistics" },
     { name: "التحكم ببرنامج التدريب", path: "/coordinator/training-program-control" },
   ],

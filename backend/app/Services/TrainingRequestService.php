@@ -152,6 +152,13 @@ class TrainingRequestService
                     'book_status' => BookStatus::DIRECTORATE_APPROVED->value,
                 ]
             );
+
+            // إرسال تلقائي إلى المدرسة بعد موافقة المديرية
+            $this->sendToSchool($trainingRequest, $directorateUserId, [
+                'letter_number' => 'AUTO-SCH-' . $trainingRequest->id,
+                'letter_date' => now()->toDateString(),
+                'content' => 'تحويل تلقائي لطلب التدريب إلى المدرسة بعد موافقة المديرية.',
+            ]);
         });
     }
 
