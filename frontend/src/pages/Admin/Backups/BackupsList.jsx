@@ -6,6 +6,7 @@ export default function BackupsList() {
   const [backups, setBackups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchBackups();
@@ -18,7 +19,7 @@ export default function BackupsList() {
       setBackups(data.data || []);
     } catch (err) {
       console.error(err);
-      alert("فشل تحميل النسخ الاحتياطية");
+      setError("فشل تحميل النسخ الاحتياطية");
     } finally {
       setLoading(false);
     }
@@ -32,8 +33,7 @@ export default function BackupsList() {
       alert("تم إنشاء النسخة الاحتياطية بنجاح");
       fetchBackups();
     } catch (err) {
-      console.error(err);
-      alert("فشل إنشاء النسخة: " + (err.response?.data?.message || "خطأ غير معروف"));
+      setError("فشل إنشاء النسخة");
     } finally {
       setCreating(false);
     }
@@ -46,8 +46,7 @@ export default function BackupsList() {
       alert("تمت استعادة النسخة بنجاح");
       fetchBackups();
     } catch (err) {
-      console.error(err);
-      alert("فشل استعادة النسخة");
+      setError("فشل استعادة النسخة");
     }
   };
 
@@ -58,12 +57,13 @@ export default function BackupsList() {
       alert("تم حذف النسخة");
       fetchBackups();
     } catch (err) {
-      console.error(err);
-      alert("فشل حذف النسخة");
+      setError("فشل حذف النسخة");
     }
   };
 
   if (loading) return <div className="text-center">جاري التحميل...</div>;
+
+  if (error) return <div className="text-center text-danger">{error}</div>;
 
   return (
     <div>

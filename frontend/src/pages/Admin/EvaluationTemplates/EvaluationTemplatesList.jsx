@@ -4,19 +4,88 @@ import { getEvaluationTemplates, deleteEvaluationTemplate } from "../../../servi
 
 export default function EvaluationTemplatesList() {
   const [templates, setTemplates] = useState([]);
-  useEffect(() => { fetch(); }, []);
-  const fetch = async () => { const data = await getEvaluationTemplates(); setTemplates(data.data || []); };
-  const handleDelete = async (id) => { if (confirm("حذف القالب؟")) { await deleteEvaluationTemplate(id); fetch(); } };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    setLoading(true);
+    try {
+      const response = await getEvaluationTemplates();
+      // الصحيح: response.data هي المصفوفة
+      const templatesData = response.data || [];
+      setTemplates(templatesData);
+    } catch (err) {
+      console.error(err);
+      setError("فشل تحميل قوالب التقييم");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("هل أنت متأكد من حذف هذا القالب؟")) {
+      try {
+        await deleteEvaluationTemplate(id);
+        fetchTemplates();
+      } catch (err) {
+        alert("حدث خطأ أثناء حذف القالب");
+      }
+    }
+  };
+
+  if (loading) return <div className="text-center">جاري التحميل...</div>;
+  if (error) return <div className="text-danger">{error}</div>;
+
   return (
     <div>
-      <div className="page-header"><h1>قوالب التقييم</h1><Link to="/admin/evaluation-templates/create" className="btn-primary">+ إضافة قالب</Link></div>
-      <table className="data-table">
-        <thead><tr><th>الاسم</th><th>النوع</th><th>الدور المستهدف</th><th>عدد البنود</th><th>إجراءات</th></tr></thead>
-        <tbody>{templates.map(t => (
-          <tr key={t.id}><td>{t.name}</td><td>{t.form_type === "evaluation" ? "تقييم" : "نموذج طالب"}</td><td>{t.target_role_label || "عام"}</td><td>{t.items?.length || 0}</td>
-          <td><Link to={`/admin/evaluation-templates/edit/${t.id}`} className="btn-sm">تعديل</Link><button onClick={() => handleDelete(t.id)} className="btn-sm danger">حذف</button></td></tr>
-        ))}</tbody>
-      </table>
+      <div className="page-header">
+        <h1>قوالب التقييم</h1>
+        <Link to="/admin/evaluation-templates/create" className="btn-primary">
+          + إضافة قالب جديد
+        </Link>
+      </div>
+
+      {templates.length === 0 ? (
+        <p>لا توجد قوالب حالياً. يمكنك إضافة قالب جديد باستخدام الزر أعلاه.</p>
+      ) : (
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>الاسم</th>
+              <th>النوع</th>
+              <th>عدد البنود</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {templates.map((template) => (
+              <tr key={template.id}>
+                <td>{template.name}</td>
+                <td>{template.form_type === "evaluation" ? "تقييم" : "نموذج طالب"}</td>
+                <td>{template.items?.length || 0}</td>
+                <td>
+                  <Link
+                    to={`/admin/evaluation-templates/edit/${template.id}`}
+                    className="btn-sm"
+                  >
+                    تعديل
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(template.id)}
+                    className="btn-sm danger"
+                  >
+                    حذف
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getUser, createUser, updateUser, getDepartments } from "../../../services/api";
+import { getUser, createUser, updateUser, getTrainingSites } from "../../../services/api";
 import * as XLSX from "xlsx";
 
 export default function AddCounselor() {
@@ -10,15 +10,15 @@ export default function AddCounselor() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
-  const [departments, setDepartments] = useState([]);
+  const [trainingSites, setTrainingSites] = useState([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     password: "",
     password_confirmation: "",
-    department_id: "",
-    role_id: 5,
+    training_site_id: "",
+    role_id: 5,          // مرشد (تم التعديل من 6 إلى 5)
     status: "active",
   });
   const [file, setFile] = useState(null);
@@ -26,12 +26,18 @@ export default function AddCounselor() {
   const [bulkResults, setBulkResults] = useState({ success: [], errors: [] });
   const isEditMode = !!id;
 
+  // جلب أماكن التدريب
   useEffect(() => {
-    const fetchDepartments = async () => {
-      try { const res = await getDepartments(); const data = res?.data || res; setDepartments(Array.isArray(data) ? data : []); }
-      catch (err) { console.error("فشل جلب الأقسام", err); }
+    const fetchSites = async () => {
+      try {
+        const res = await getTrainingSites();
+        const sitesData = res?.data || res;
+        setTrainingSites(Array.isArray(sitesData) ? sitesData : []);
+      } catch (err) {
+        console.error("فشل جلب أماكن التدريب", err);
+      }
     };
-    fetchDepartments();
+    fetchSites();
   }, []);
 
   useEffect(() => {
@@ -45,7 +51,7 @@ export default function AddCounselor() {
             phone: userData.phone || "",
             password: "",
             password_confirmation: "",
-            department_id: userData.department_id || "",
+            training_site_id: userData.training_site_id || "",
             role_id: userData.role_id || 5,
             status: userData.status || "active",
           });
@@ -100,17 +106,18 @@ export default function AddCounselor() {
           return clean;
         });
 
-        const departmentMap = {};
-        departments.forEach(dept => {
-          const normalized = dept.name.trim();
-          departmentMap[normalized] = dept.id;
-          departmentMap[normalized.toLowerCase()] = dept.id;
+        // بناء خريطة اسم موقع التدريب -> ID (مع تجاهل حالة الأحرف)
+        const siteMap = {};
+        trainingSites.forEach(site => {
+          const normalized = site.name.trim();
+          siteMap[normalized] = site.id;
+          siteMap[normalized.toLowerCase()] = site.id;
         });
 
         const counselors = cleanRows.map(row => {
-          let deptName = (row["القسم"] || row["department"] || "").trim();
-          let departmentId = departmentMap[deptName];
-          if (!departmentId) departmentId = departmentMap[deptName.toLowerCase()];
+          let siteName = (row["مكان العمل"] || row["institution_name"] || row["المدرسة"] || "").trim();
+          let trainingSiteId = siteMap[siteName];
+          if (!trainingSiteId) trainingSiteId = siteMap[siteName.toLowerCase()];
 
           return {
             name: row["الاسم الكامل"] || row["name"] || "",
@@ -118,7 +125,7 @@ export default function AddCounselor() {
             phone: row["رقم الهاتف"] || row["phone"] || "",
             password: row["كلمة المرور"] || row["password"] || "12345678",
             password_confirmation: row["كلمة المرور"] || row["password"] || "12345678",
-            department_id: departmentId,
+            training_site_id: trainingSiteId,
             role_id: 5,
             status: "active",
           };
@@ -129,7 +136,7 @@ export default function AddCounselor() {
 
         counselors.forEach((counselor, idx) => {
           const missing = [];
-          if (!counselor.name) missing.push("الاسم الكامل");
+          if (!counselor.training_site_id) missing.push("مكان العمل (غير موجود أو غير مطابق)");
           if (!counselor.email) missing.push("البريد الإلكتروني");
 
           if (missing.length === 0) {
@@ -196,7 +203,7 @@ export default function AddCounselor() {
         setStatusMessage({ type: "success", text: "تمت إضافة المرشد بنجاح" });
         setForm({
           name: "", email: "", phone: "", password: "", password_confirmation: "",
-          department_id: "", role_id: 5, status: "active",
+          training_site_id: "", role_id: 5, status: "active",
         });
         setTimeout(() => navigate("/admin/users"), 1500);
       }
@@ -240,14 +247,14 @@ export default function AddCounselor() {
             {errors.phone && <span className="error">{errors.phone[0]}</span>}
           </div>
           <div className="form-group">
-            <label>القسم</label>
-            <select name="department_id" value={form.department_id} onChange={handleChange}>
-              <option value="">اختر القسم</option>
-              {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
+            <label>مكان العمل *</label>
+            <select name="training_site_id" value={form.training_site_id} onChange={handleChange} required>
+              <option value="">اختر مكان العمل</option>
+              {trainingSites.map(site => (
+                <option key={site.id} value={site.id}>{site.name}</option>
               ))}
             </select>
-            {errors.department_id && <span className="error">{errors.department_id[0]}</span>}
+            {errors.training_site_id && <span className="error">{errors.training_site_id[0]}</span>}
           </div>
           <div className="form-group">
             <label>كلمة المرور (اتركها فارغة إذا لم ترد التغيير)</label>
@@ -311,14 +318,14 @@ export default function AddCounselor() {
             {errors.phone && <span className="error">{errors.phone[0]}</span>}
           </div>
           <div className="form-group">
-            <label>القسم</label>
-            <select name="department_id" value={form.department_id} onChange={handleChange}>
-              <option value="">اختر القسم</option>
-              {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
+            <label>مكان العمل *</label>
+            <select name="training_site_id" value={form.training_site_id} onChange={handleChange} required>
+              <option value="">اختر مكان العمل</option>
+              {trainingSites.map(site => (
+                <option key={site.id} value={site.id}>{site.name}</option>
               ))}
             </select>
-            {errors.department_id && <span className="error">{errors.department_id[0]}</span>}
+            {errors.training_site_id && <span className="error">{errors.training_site_id[0]}</span>}
           </div>
           <div className="form-group">
             <label>كلمة المرور *</label>

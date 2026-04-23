@@ -1,71 +1,83 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { getBackup } from "../../../services/api";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { getBackupDetails } from "../../../services/api";
 
 export default function BackupDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [backup, setBackup] = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchBackup = async () => {
+    const fetchDetails = async () => {
       try {
-        const data = await getBackup(id);
-        setBackup(data);
+        const result = await getBackupDetails(id);
+        setData(result);
       } catch (err) {
         console.error(err);
+        setError("فشل تحميل تفاصيل النسخة الاحتياطية");
       } finally {
         setLoading(false);
       }
     };
-    fetchBackup();
+    fetchDetails();
   }, [id]);
 
-  if (loading) return <div className="text-center">جاري التحميل...</div>;
-  if (!backup) return <div className="text-danger">لم يتم العثور على النسخة الاحتياطية</div>;
-
-  const tables = backup.tables || [];
+  if (loading) return <div>جاري تحميل التفاصيل...</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
-    <div className="backup-details">
+    <div>
       <div className="page-header">
         <h1>تفاصيل النسخة الاحتياطية</h1>
-        <button onClick={() => navigate("/admin/backups")} className="btn-secondary">رجوع</button>
+        <button onClick={() => navigate("/admin/backups")} className="btn-secondary">
+          رجوع إلى القائمة
+        </button>
       </div>
 
-      <div className="section-card" style={{ padding: 20 }}>
-        <h3>{backup.name || backup.filename || `نسخة #${id}`}</h3>
-        <p className="text-soft">تاريخ الإنشاء: {backup.created_at || "—"}</p>
-        <p className="text-soft">الحجم: {backup.size || "—"}</p>
-
-        {tables.length > 0 && (
-          <>
-            <h5 style={{ marginTop: 16 }}>الجداول المتضمنة ({tables.length})</h5>
-            <table className="data-table">
-              <thead>
-                <tr><th>اسم الجدول</th><th>عدد السجلات</th><th>عرض</th></tr>
-              </thead>
-              <tbody>
-                {tables.map(t => (
-                  <tr key={t.name || t.table_name}>
-                    <td>{t.name || t.table_name}</td>
-                    <td>{t.rows || t.count || "—"}</td>
-                    <td>
-                      <button
-                        className="btn-sm"
-                        onClick={() => navigate(`/admin/backups/${id}/table/${t.name || t.table_name}`)}
-                      >
-                        عرض البيانات
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
+      <div className="backup-info">
+        <p><strong>اسم الملف:</strong> {data.name}</p>
+        <p><strong>تاريخ الإنشاء:</strong> {new Date(data.created_at).toLocaleString()}</p>
+        <p><strong>الحجم:</strong> {data.size} bytes</p>
+        <p><strong>النوع:</strong> {data.type}</p>
+        {data.notes && <p><strong>ملاحظة:</strong> {data.notes}</p>}
       </div>
+
+      <hr />
+      <h3>محتويات النسخة</h3>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>اسم الجدول</th>
+            <th>عدد السجلات</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.tables && data.tables.length > 0 ? (
+            data.tables.map((table, idx) => (
+              <tr key={idx}>
+                <td>{table.name}</td>
+                <td>{table.count}</td>
+                <td>
+                  <Link 
+                    to={`/admin/backups/${id}/table/${encodeURIComponent(table.name)}`}
+                    target="_blank"
+                    className="btn-sm"
+                  >
+                    عرض البيانات
+                  </Link>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="3">لا توجد معلومات عن الجداول</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

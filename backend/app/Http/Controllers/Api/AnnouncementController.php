@@ -75,8 +75,29 @@ class AnnouncementController extends Controller
 
     public function update(UpdateAnnouncementRequest $request, Announcement $announcement)
     {
-        $announcement->update($request->validated());
-        return new AnnouncementResource($announcement);
+        $announcement->update($request->only(['title', 'content']));
+
+        if ($request->has('target_roles') || $request->has('target_users') || $request->has('target_departments')) {
+            $announcement->targets()->delete();
+
+            if ($request->has('target_roles')) {
+                foreach ($request->target_roles as $roleId) {
+                    AnnouncementTarget::create(['announcement_id' => $announcement->id, 'role_id' => $roleId]);
+                }
+            }
+            if ($request->has('target_users')) {
+                foreach ($request->target_users as $userId) {
+                    AnnouncementTarget::create(['announcement_id' => $announcement->id, 'user_id' => $userId]);
+                }
+            }
+            if ($request->has('target_departments')) {
+                foreach ($request->target_departments as $deptId) {
+                    AnnouncementTarget::create(['announcement_id' => $announcement->id, 'department_id' => $deptId]);
+                }
+            }
+        }
+
+        return new AnnouncementResource($announcement->load('targets'));
     }
 
     public function destroy(Announcement $announcement)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getRoles, deleteRole } from "../../../services/api";
+import { getRoles } from "../../../services/api";
 
 export default function RolesList() {
   const [roles, setRoles] = useState([]);
@@ -15,31 +15,34 @@ export default function RolesList() {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("هل أنت متأكد؟")) {
-      await deleteRole(id);
-      fetchRoles();
-    }
-  };
-
   if (loading) return <div>جاري التحميل...</div>;
 
   return (
     <div>
       <div className="page-header">
-        <h1>إدارة الأدوار</h1>
-        <Link to="/admin/roles/create" className="btn-primary">+ إضافة دور</Link>
+        <h1>إدارة الأدوار والصلاحيات</h1>
       </div>
       <table className="data-table">
-        <thead><tr><th>#</th><th>اسم الدور</th><th>الإجراءات</th></tr></thead>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>اسم الدور</th>
+            <th>الصلاحيات</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
         <tbody>
           {roles.map(role => (
             <tr key={role.id}>
               <td>{role.id}</td>
               <td>{role.name}</td>
               <td>
-                <Link to={`/admin/roles/edit/${role.id}`} className="btn-sm">تعديل</Link>
-                <button onClick={() => handleDelete(role.id)} className="btn-sm danger">حذف</button>
+                {role.permissions?.length || 0} صلاحية
+              </td>
+              <td>
+                <Link to={`/admin/roles/edit/${role.id}`} className="btn-sm">
+                  تعديل الصلاحيات
+                </Link>
               </td>
             </tr>
           ))}

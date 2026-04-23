@@ -10,11 +10,16 @@ class Course extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['code', 'name', 'description', 'credit_hours', 'type'];
+    protected $fillable = ['code', 'name', 'description', 'credit_hours', 'type', 'department_id'];
 
     public function sections()
     {
         return $this->hasMany(Section::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
     }
 
     public function trainingRequestStudents()

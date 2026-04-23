@@ -18,8 +18,9 @@ class CourseController extends Controller
 
     public function index(Request $request)
     {
-        $query = Course::with('sections');
+        $query = Course::with('sections', 'department');
         if ($request->has('type')) $query->where('type', $request->type);
+        if ($request->has('department_id')) $query->where('department_id', $request->department_id);
         if ($request->has('search')) {
             $query->where(function($q) use ($request) {
                 $q->where('code', 'like', '%'.$request->search.'%')

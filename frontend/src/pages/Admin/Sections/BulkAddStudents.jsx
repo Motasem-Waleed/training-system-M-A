@@ -1,85 +1,273 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { getSections, createUser } from "../../../services/api";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
+import { getSections, getUsers, createUser, createEnrollment } from "../../../services/api";
 
 export default function BulkAddStudents() {
   const navigate = useNavigate();
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState({ success: [], errors: [] });
-  const [sections, setSections] = useState([]);
+  const [searchParams] = useSearchParams();
+  const preselectedSectionId = searchParams.get("sectionId");
 
+  const [loading, setLoading] = useState(false);
+  const [sections, setSections] = useState([]);
+  const [selectedSectionId, setSelectedSectionId] = useState(preselectedSectionId || "");
+  const [manualStudent, setManualStudent] = useState({ name: "", email: "", university_id: "" });
+  const [studentsList, setStudentsList] = useState([]);
+  const [results, setResults] = useState(null);
+  const [step, setStep] = useState("form"); // form, preview, results
+
+  // تحميل قائمة الشعب
   useEffect(() => {
     const fetchSections = async () => {
-      try { const res = await getSections(); const data = res?.data || res; setSections(Array.isArray(data) ? data : []); }
-      catch (err) { console.error(err); }
+      try {
+        const res = await getSections();
+        setSections(res.data.data || res.data || []);
+      } catch (err) {
+        console.error(err);
+      }
     };
     fetchSections();
   }, []);
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-    setResults({ success: [], errors: [] });
+  // إضافة طالب يدوي (لشعبة واحدة محددة)
+  const handleAddManualStudent = () => {
+    if (!selectedSectionId) {
+      alert("يرجى اختيار الشعبة أولاً");
+      return;
+    }
+    if (!manualStudent.name || !manualStudent.email || !manualStudent.university_id) {
+      alert("املأ جميع حقول الطالب");
+      return;
+    }
+    setStudentsList([...studentsList, { ...manualStudent, section_id: selectedSectionId }]);
+    setManualStudent({ name: "", email: "", university_id: "" });
   };
 
-  const processExcel = async () => {
-    if (!file) { alert("اختر ملف Excel أولاً"); return; }
-    setLoading(true);
-    setResults({ success: [], errors: [] });
+  // رفع ملف Excel (يدعم عمود "رقم الشعبة" أو "اسم الشعبة")
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const workbook = XLSX.read(evt.target.result, { type: "array" });
-        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-        if (!rows.length) { alert("الملف فارغ"); setLoading(false); return; }
-
-        const sectionMap = {};
-        sections.forEach(s => { sectionMap[s.name.trim()] = s.id; });
-
-        const ok = [], fail = [];
-        for (const row of rows) {
-          const clean = {};
-          Object.keys(row).forEach(k => { clean[k.trim()] = row[k]; });
-          const student = {
-            name: clean["الاسم الكامل"] || clean["الاسم"] || clean["name"] || "",
-            email: clean["البريد الإلكتروني"] || clean["email"] || "",
-            password: clean["كلمة المرور"] || "12345678",
-            password_confirmation: clean["كلمة المرور"] || "12345678",
-            university_id: String(clean["الرقم الجامعي"] || clean["university_id"] || ""),
-            major: clean["التخصص"] || clean["major"] || "",
-            department_id: "",
-            role_id: 2,
-            status: "active",
-          };
-          if (!student.name || !student.email) { fail.push({ email: student.email || "غير معروف", error: "الاسم أو البريد مفقود" }); continue; }
-          try { await createUser(student); ok.push(student.email); }
-          catch (e) { fail.push({ email: student.email, error: e.response?.data?.message || e.message }); }
-        }
-        setResults({ success: ok, errors: fail });
-        if (ok.length) setFile(null);
-      } catch (err) { alert("خطأ: " + err.message); }
-      finally { setLoading(false); }
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+      const mapped = rows.map((row) => ({
+        name: row["الاسم الكامل"] || row["name"] || "",
+        email: row["البريد الإلكتروني"] || row["email"] || "",
+        university_id: String(row["الرقم الجامعي"] || row["university_id"] || ""),
+        section_identifier: row["رقم الشعبة"] || row["اسم الشعبة"] || row["section_id"] || row["section_name"] || "",
+      }));
+      // تصفية الصفوف المكتملة
+      const valid = mapped.filter(s => s.name && s.email && s.university_id && s.section_identifier);
+      if (valid.length === 0) {
+        alert("الملف لا يحتوي على بيانات صحيحة. تأكد من وجود الأعمدة: الاسم، البريد، الرقم الجامعي، ورقم/اسم الشعبة");
+        return;
+      }
+      setStudentsList(valid);
+      setStep("preview");
     };
     reader.readAsArrayBuffer(file);
   };
 
+  // دالة لحل معرف الشعبة من المعرف النصي (رقم أو اسم)
+  const resolveSectionId = (identifier) => {
+    // إذا كان identifier رقماً (id)
+    if (!isNaN(identifier) && sections.find(s => s.id == identifier)) {
+      return sections.find(s => s.id == identifier).id;
+    }
+    // إذا كان اسماً
+    const section = sections.find(s => s.name == identifier);
+    return section ? section.id : null;
+  };
+
+  const handleBulkEnroll = async () => {
+    setLoading(true);
+    let successCount = 0;
+    let errors = [];
+
+    for (const student of studentsList) {
+      // تحديد section_id
+      let sectionId = null;
+      if (student.section_id) {
+        sectionId = student.section_id;
+      } else if (student.section_identifier) {
+        sectionId = resolveSectionId(student.section_identifier);
+        if (!sectionId) {
+          errors.push(`الطالب ${student.name}: لم يتم العثور على الشعبة "${student.section_identifier}"`);
+          continue;
+        }
+      } else {
+        errors.push(`الطالب ${student.name}: لم يتم تحديد الشعبة`);
+        continue;
+      }
+
+      try {
+        // البحث عن المستخدم أو إنشاؤه
+        let userId = null;
+        const existing = await getUsers({ email: student.email });
+        if (existing.data && existing.data.length > 0) {
+          userId = existing.data[0].id;
+        } else {
+          const newUser = await createUser({
+            name: student.name,
+            email: student.email,
+            university_id: student.university_id,
+            password: "12345678",
+            password_confirmation: "12345678",
+            role_id: 2,
+            status: "active",
+          });
+          userId = newUser.data.id;
+        }
+        // استخدام createEnrollment بدلاً من enrollStudentInSection
+        await createEnrollment({
+          user_id: userId,
+          section_id: sectionId,
+          academic_year: new Date().getFullYear(),
+          semester: "first",
+          status: "active"
+        });
+        successCount++;
+      } catch (err) {
+        errors.push(`الطالب ${student.name} (${student.email}): ${err.response?.data?.message || err.message}`);
+      }
+    }
+
+    setResults({ successCount, errors, total: studentsList.length });
+    setStep("results");
+    setLoading(false);
+  };
+
+  const resetForm = () => {
+    setStudentsList([]);
+    setSelectedSectionId(preselectedSectionId || "");
+    setManualStudent({ name: "", email: "", university_id: "" });
+    setStep("form");
+    setResults(null);
+  };
+
+  if (step === "results" && results) {
+    return (
+      <div>
+        <h2>نتيجة إضافة الطلاب</h2>
+        <p>تمت إضافة {results.successCount} من أصل {results.total} طالب بنجاح.</p>
+        {results.errors.length > 0 && (
+          <div style={{ color: "red" }}>
+            <h4>الأخطاء:</h4>
+            <ul>
+              {results.errors.map((err, i) => <li key={i}>{err}</li>)}
+            </ul>
+          </div>
+        )}
+        <button onClick={resetForm} className="btn-primary">إضافة طلاب آخرين</button>
+        <button onClick={() => navigate("/admin/sections")} className="btn-secondary">العودة إلى القائمة</button>
+      </div>
+    );
+  }
+
+  if (step === "preview") {
+    return (
+      <div>
+        <div className="page-header">
+          <h1>معاينة بيانات الطلاب ({studentsList.length})</h1>
+          <button onClick={() => setStep("form")} className="btn-secondary">رجوع</button>
+        </div>
+        <table className="data-table">
+          <thead>
+            <tr><th>الاسم</th><th>البريد</th><th>الرقم الجامعي</th><th>الشعبة (معرف/اسم)</th></tr>
+          </thead>
+          <tbody>
+            {studentsList.map((s, i) => (
+              <tr key={i}>
+                <td>{s.name}</td>
+                <td>{s.email}</td>
+                <td>{s.university_id}</td>
+                <td>{s.section_identifier || s.section_id}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="form-actions">
+          <button onClick={handleBulkEnroll} disabled={loading} className="btn-primary">
+            {loading ? "جاري الإضافة..." : "تأكيد الإضافة"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="section-form">
+    <div>
       <div className="page-header">
-        <h1>إضافة طلبة جماعياً</h1>
+        <h1>إضافة طلاب إلى شعب</h1>
         <button onClick={() => navigate("/admin/sections")} className="btn-secondary">رجوع</button>
       </div>
-      <div className="bulk-section">
-        <p>الأعمدة: <strong>الاسم الكامل</strong>، <strong>البريد الإلكتروني</strong>، <strong>الرقم الجامعي</strong>، <strong>التخصص</strong>، <strong>كلمة المرور</strong> (اختياري)</p>
-        <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
-        <button onClick={processExcel} disabled={loading} className="btn-primary">
-          {loading ? "جاري الرفع..." : "رفع والإضافة"}
-        </button>
-        {results.success.length > 0 && <div className="success-box">✅ تمت إضافة {results.success.length} طالب</div>}
-        {results.errors.length > 0 && <div className="error-box">❌ فشلت إضافة {results.errors.length} طالب<ul>{results.errors.map((e, i) => <li key={i}><strong>{e.email}</strong> : {e.error}</li>)}</ul></div>}
+
+      <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
+        {/* قسم الإضافة اليدوية لشعبة محددة */}
+        <div style={{ flex: 1, border: "1px solid #ccc", padding: "1rem", borderRadius: "8px" }}>
+          <h3>إضافة طالب يدوي</h3>
+          <div className="form-group">
+            <label>اختر الشعبة</label>
+            <select value={selectedSectionId} onChange={(e) => setSelectedSectionId(e.target.value)}>
+              <option value="">-- اختر الشعبة --</option>
+              {sections.map(sec => (
+                <option key={sec.id} value={sec.id}>{sec.name} (ID: {sec.id})</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <input type="text" placeholder="الاسم الكامل" value={manualStudent.name} onChange={(e) => setManualStudent({ ...manualStudent, name: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <input type="email" placeholder="البريد الإلكتروني" value={manualStudent.email} onChange={(e) => setManualStudent({ ...manualStudent, email: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <input type="text" placeholder="الرقم الجامعي" value={manualStudent.university_id} onChange={(e) => setManualStudent({ ...manualStudent, university_id: e.target.value })} />
+          </div>
+          <button onClick={handleAddManualStudent} className="btn-primary">إضافة طالب إلى القائمة</button>
+        </div>
+
+        {/* قسم رفع ملف Excel */}
+        <div style={{ flex: 2, border: "1px solid #ccc", padding: "1rem", borderRadius: "8px" }}>
+          <h3>رفع ملف Excel (لإضافة طلاب متعددين إلى شعب مختلفة)</h3>
+          <p>يجب أن يحتوي الملف على الأعمدة التالية:</p>
+          <ul>
+            <li><strong>الاسم الكامل</strong> (name) - إجباري</li>
+            <li><strong>البريد الإلكتروني</strong> (email) - إجباري</li>
+            <li><strong>الرقم الجامعي</strong> (university_id) - إجباري</li>
+            <li><strong>رقم الشعبة</strong> أو <strong>اسم الشعبة</strong> (section_id أو section_name) - إجباري، يمكن أن يكون رقم ID أو اسم الشعبة كما هو مسجل في النظام</li>
+          </ul>
+          <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} />
+        </div>
       </div>
+
+      {/* عرض قائمة الطلاب المضافة يدوياً */}
+      {studentsList.length > 0 && (
+        <div style={{ marginTop: "2rem" }}>
+          <h3>قائمة الطلاب المضافة ({studentsList.length})</h3>
+          <table className="data-table">
+            <thead>
+              <tr><th>الاسم</th><th>البريد</th><th>الرقم الجامعي</th><th>الشعبة (ID)</th><th></th></tr>
+            </thead>
+            <tbody>
+              {studentsList.map((s, idx) => (
+                <tr key={idx}>
+                  <td>{s.name}</td>
+                  <td>{s.email}</td>
+                  <td>{s.university_id}</td>
+                  <td>{s.section_id || s.section_identifier}</td>
+                  <td><button onClick={() => setStudentsList(studentsList.filter((_, i) => i !== idx))}>حذف</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button onClick={handleBulkEnroll} disabled={loading} className="btn-primary">إضافة جميع الطلاب ({studentsList.length})</button>
+        </div>
+      )}
     </div>
   );
 }

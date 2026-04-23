@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getEnrollment, createEnrollment, updateEnrollment, getSections, getUsers } from "../../../services/api";
+import { getEnrollment, createEnrollment, updateEnrollment, getSections, getStudents } from "../../../services/api";
 
 export default function EnrollmentForm() {
   const { id } = useParams();
@@ -26,7 +26,7 @@ export default function EnrollmentForm() {
         setSections(sectionsData.data || []);
 
         // جلب قائمة الطلاب (users with role student)
-        const studentsData = await getUsers({ role_id: 5 }); // افتراض أن role_id=5 للطلاب
+        const studentsData = await getStudents(); // getStudents already filters for role_id: 2
         setStudents(studentsData.data || []);
 
         if (id) {

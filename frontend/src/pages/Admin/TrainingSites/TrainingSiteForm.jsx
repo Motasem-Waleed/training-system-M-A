@@ -1,42 +1,219 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getTrainingSite, createTrainingSite, updateTrainingSite } from "../../../services/api";
+import * as XLSX from "xlsx";
 
 export default function TrainingSiteForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", location: "", phone: "", description: "", directorate: "وسط", capacity: 10, site_type: "school", governing_body: "directorate_of_education", is_active: true });
-  useEffect(() => { if (id) getTrainingSite(id).then(data => setForm(data)); }, [id]);
+  const [form, setForm] = useState({
+    name: "",
+    location: "",
+    phone: "",
+    description: "",
+    directorate: "وسط",
+    capacity: 10,
+    site_type: "school",
+    governing_body: "directorate_of_education",
+    is_active: true,
+  });
+  const [loading, setLoading] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkResults, setBulkResults] = useState(null);
+
+  // تحميل البيانات إذا كان تعديل
+  useEffect(() => {
+    if (id) {
+      getTrainingSite(id).then((data) => setForm(data));
+    }
+  }, [id]);
+
+  // الإضافة / التعديل الفردي
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (id) await updateTrainingSite(id, form);
-    else await createTrainingSite(form);
-    navigate("/admin/training-sites");
+    setLoading(true);
+    try {
+      if (id) await updateTrainingSite(id, form);
+      else await createTrainingSite(form);
+      navigate("/admin/training-sites");
+    } catch (err) {
+      console.error(err);
+      alert("حدث خطأ أثناء الحفظ");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // معالجة رفع ملف Excel
+  const handleFileChange = (e) => setBulkFile(e.target.files[0]);
+
+  // دالة مساعدة لتحويل القيم إلى الأنواع الصحيحة
+  const normalizeValue = (value, type) => {
+    if (value === undefined || value === null) {
+      if (type === "number") return 0;
+      if (type === "boolean") return false;
+      return "";
+    }
+    switch (type) {
+      case "string":
+        return String(value).trim();
+      case "number":
+        const num = Number(value);
+        return isNaN(num) ? 0 : num;
+      case "boolean":
+        if (typeof value === "boolean") return value;
+        const str = String(value).toLowerCase();
+        return str === "نعم" || str === "yes" || str === "true" || str === "1";
+      default:
+        return value;
+    }
+  };
+
+  const processBulkUpload = async () => {
+    if (!bulkFile) return alert("اختر ملف Excel أولاً");
+    setBulkLoading(true);
+    setBulkResults(null);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        
+        const sites = rows.map((row) => ({
+          name: normalizeValue(row["الاسم"] || row["name"], "string"),
+          location: normalizeValue(row["الموقع"] || row["location"], "string"),
+          phone: normalizeValue(row["الهاتف"] || row["phone"], "string"),
+          description: normalizeValue(row["الوصف"] || row["description"], "string"),
+          directorate: normalizeValue(row["المديرية"] || row["directorate"], "string") || "وسط",
+          capacity: normalizeValue(row["السعة"] || row["capacity"], "number") || 10,
+          site_type: (() => {
+            const val = normalizeValue(row["نوع الموقع"] || row["site_type"], "string");
+            return val === "مركز صحي" ? "health_center" : "school";
+          })(),
+          governing_body: (() => {
+            const val = normalizeValue(row["الجهة المسؤولة"] || row["governing_body"], "string");
+            return val === "وزارة الصحة" ? "ministry_of_health" : "directorate_of_education";
+          })(),
+          is_active: normalizeValue(row["نشط"] || row["is_active"], "boolean"),
+        })).filter(s => s.name !== "");
+
+        if (sites.length === 0) throw new Error("لا توجد بيانات صالحة (الاسم مطلوب)");
+
+        const successList = [];
+        const errorList = [];
+        for (const site of sites) {
+          try {
+            await createTrainingSite(site);
+            successList.push(site.name);
+          } catch (err) {
+            let errorMsg = err.response?.data?.message || err.message;
+            if (errorMsg.includes("phone")) errorMsg += " (تأكد أن الهاتف نص وليس رقماً)";
+            errorList.push({ name: site.name, error: errorMsg });
+          }
+        }
+        setBulkResults({ success: successList, errors: errorList });
+        if (successList.length) alert(`تمت إضافة ${successList.length} موقع بنجاح`);
+        if (errorList.length) console.error("أخطاء الرفع:", errorList);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        setBulkLoading(false);
+        setBulkFile(null);
+        document.getElementById("bulk-file-input").value = "";
+      }
+    };
+    reader.readAsArrayBuffer(bulkFile);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="form">
-      <h1>{id ? "تعديل موقع تدريب" : "إضافة موقع تدريب"}</h1>
-      <div className="form-group"><label>الاسم</label><input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
-      <div className="form-group"><label>الموقع</label><input type="text" value={form.location} onChange={e => setForm({...form, location: e.target.value})} /></div>
-      <div className="form-group"><label>الهاتف</label><input type="text" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} /></div>
-      <div className="form-group"><label>المديرية</label>
-        <select value={form.directorate} onChange={e => setForm({...form, directorate: e.target.value})}>
-          <option value="وسط">وسط</option><option value="شمال">شمال</option><option value="جنوب">جنوب</option><option value="يطا">يطا</option>
-        </select>
+    <div>
+      <div className="page-header">
+        <h1>{id ? "تعديل موقع تدريب" : "إضافة مواقع تدريب (فردي / جماعي)"}</h1>
+        <button onClick={() => navigate("/admin/training-sites")} className="btn-secondary">
+          رجوع
+        </button>
       </div>
-      <div className="form-group"><label>السعة</label><input type="number" value={form.capacity} onChange={e => setForm({...form, capacity: parseInt(e.target.value)})} /></div>
-      <div className="form-group"><label>نوع الموقع</label>
-        <select value={form.site_type} onChange={e => setForm({...form, site_type: e.target.value})}>
-          <option value="school">مدرسة</option><option value="health_center">مركز صحي</option>
-        </select>
-      </div>
-      <div className="form-group"><label>الجهة المسؤولة</label>
-        <select value={form.governing_body} onChange={e => setForm({...form, governing_body: e.target.value})}>
-          <option value="directorate_of_education">مديرية التربية</option><option value="ministry_of_health">وزارة الصحة</option>
-        </select>
-      </div>
-      <div className="form-group"><label>نشط</label><input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} /></div>
-      <button type="submit">حفظ</button>
-    </form>
+
+      {/* نموذج الإضافة الفردية */}
+      <form onSubmit={handleSubmit} className="form" style={{ marginBottom: "2rem", border: "1px solid #ccc", padding: "1rem", borderRadius: "8px" }}>
+        <h3>إضافة فردية</h3>
+        <div className="form-group">
+          <label>الاسم *</label>
+          <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        </div>
+        <div className="form-group">
+          <label>الموقع</label>
+          <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+        </div>
+        <div className="form-group">
+          <label>الهاتف</label>
+          <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        </div>
+        <div className="form-group">
+          <label>الوصف</label>
+          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        </div>
+        <div className="form-group">
+          <label>المديرية</label>
+          <select value={form.directorate} onChange={(e) => setForm({ ...form, directorate: e.target.value })}>
+            <option value="وسط">وسط</option>
+            <option value="شمال">شمال</option>
+            <option value="جنوب">جنوب</option>
+            <option value="يطا">يطا</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>السعة</label>
+          <input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: parseInt(e.target.value) })} />
+        </div>
+        <div className="form-group">
+          <label>نوع الموقع</label>
+          <select value={form.site_type} onChange={(e) => setForm({ ...form, site_type: e.target.value })}>
+            <option value="school">مدرسة</option>
+            <option value="health_center">مركز صحي</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>الجهة المسؤولة</label>
+          <select value={form.governing_body} onChange={(e) => setForm({ ...form, governing_body: e.target.value })}>
+            <option value="directorate_of_education">مديرية التربية</option>
+            <option value="ministry_of_health">وزارة الصحة</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>
+            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+            نشط
+          </label>
+        </div>
+        <button type="submit" disabled={loading}>
+          {loading ? "جاري الحفظ..." : id ? "تحديث" : "إضافة موقع"}
+        </button>
+      </form>
+
+      {/* قسم الإضافة الجماعية */}
+      <fieldset style={{ border: "1px solid #ccc", padding: "1rem", borderRadius: "8px" }}>
+        <legend style={{ fontWeight: "bold" }}>إضافة جماعية عبر ملف Excel</legend>
+        <p>
+          الأعمدة المطلوبة: <strong>الاسم</strong> (إجباري)، الموقع، الهاتف، الوصف، المديرية، السعة، نوع الموقع (مدرسة/مركز صحي)، الجهة المسؤولة (مديرية التربية/وزارة الصحة)، نشط (نعم/لا).
+        </p>
+        <input type="file" id="bulk-file-input" accept=".xlsx, .xls" onChange={handleFileChange} />
+        <button onClick={processBulkUpload} disabled={bulkLoading} style={{ marginTop: "0.5rem" }} className="btn-secondary">
+          {bulkLoading ? "جاري الرفع..." : "رفع وإضافة"}
+        </button>
+        {bulkResults && (
+          <div style={{ marginTop: "1rem" }}>
+            <div style={{ color: "green" }}>✅ نجح: {bulkResults.success.length} موقع</div>
+            {bulkResults.errors.length > 0 && (
+              <div style={{ color: "red" }}>
+                ❌ فشل: {bulkResults.errors.map((e) => `${e.name} (${e.error})`).join("; ")}
+              </div>
+            )}
+          </div>
+        )}
+      </fieldset>
+    </div>
   );
 }

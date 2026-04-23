@@ -6,13 +6,22 @@ export default function DepartmentForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [name, setName] = useState("");
-  useEffect(() => { if (id) getDepartment(id).then(data => setName(data.name)); }, [id]);
+  
+  useEffect(() => { 
+    if (id) getDepartment(id).then(data => setName(data.name)); 
+  }, [id]);
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (id) await updateDepartment(id, { name });
-    else await createDepartment({ name });
-    navigate("/admin/departments");
+    try {
+      if (id) await updateDepartment(id, { name });
+      else await createDepartment({ name });
+      navigate("/admin/departments");
+    } catch (err) {
+      alert("حدث خطأ أثناء حفظ القسم");
+    }
   };
+  
   return (
     <form onSubmit={handleSubmit} className="form">
       <h1>{id ? "تعديل قسم" : "إضافة قسم"}</h1>

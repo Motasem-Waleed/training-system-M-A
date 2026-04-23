@@ -1,25 +1,78 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getAnnouncement, createAnnouncement, updateAnnouncement } from "../../../services/api";
+import {
+  getAnnouncement,
+  createAnnouncement,
+  updateAnnouncement,
+  getRoles,
+  getUsers,
+  getDepartments,
+} from "../../../services/api";
 
 export default function AnnouncementForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(false);
+  const [roles, setRoles] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
   const [form, setForm] = useState({
     title: "",
     content: "",
+    target_type: "all",
+    target_ids: [],
   });
+
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [rolesRes, usersRes, deptsRes] = await Promise.all([
+          getRoles(),
+          getUsers({ per_page: 200 }),
+          getDepartments(),
+        ]);
+        setRoles(rolesRes.data || []);
+        setUsers(usersRes.data || []);
+        setDepartments(deptsRes.data || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchOptions();
+  }, []);
 
   useEffect(() => {
     if (id) {
       const fetchAnnouncement = async () => {
         try {
           const data = await getAnnouncement(id);
+          const targets = data.targets || [];
+          const roleIds = targets.filter((t) => t.role).map((t) => t.role?.id);
+          const userIds = targets.filter((t) => t.user).map((t) => t.user?.id);
+          const deptIds = targets.filter((t) => t.department).map((t) => t.department?.id);
+
+          let targetType = "all";
+          let targetIds = [];
+          if (roleIds.length > 0) {
+            targetType = "role";
+            targetIds = roleIds;
+          } else if (userIds.length > 0) {
+            targetType = "user";
+            targetIds = userIds;
+          } else if (deptIds.length > 0) {
+            targetType = "department";
+            targetIds = deptIds;
+          }
+
           setForm({
             title: data.title,
             content: data.content,
+            target_type: targetType,
+            target_ids: targetIds,
           });
         } catch (error) {
           console.error(error);
@@ -34,16 +87,36 @@ export default function AnnouncementForm() {
     if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: null });
   };
 
+  const handleTargetIdsChange = (e) => {
+    const selected = Array.from(e.target.selectedOptions, (opt) => Number(opt.value));
+    setForm({ ...form, target_ids: selected });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrors({});
+
     try {
-      if (id) {
-        await updateAnnouncement(id, form);
-      } else {
-        await createAnnouncement(form);
+      const payload = {
+        title: form.title,
+        content: form.content,
+      };
+
+      if (form.target_type === "role") {
+        payload.target_roles = form.target_ids;
+      } else if (form.target_type === "user") {
+        payload.target_users = form.target_ids;
+      } else if (form.target_type === "department") {
+        payload.target_departments = form.target_ids;
       }
+
+      if (id) {
+        await updateAnnouncement(id, payload);
+      } else {
+        await createAnnouncement(payload);
+      }
+
       navigate("/admin/announcements");
     } catch (err) {
       if (err.response?.data?.errors) {
@@ -56,11 +129,26 @@ export default function AnnouncementForm() {
     }
   };
 
+  const targetOptions = () => {
+    switch (form.target_type) {
+      case "role":
+        return roles;
+      case "user":
+        return users;
+      case "department":
+        return departments;
+      default:
+        return [];
+    }
+  };
+
   return (
     <div className="announcement-form">
       <div className="page-header">
         <h1>{id ? "تعديل إعلان" : "إضافة إعلان جديد"}</h1>
-        <button onClick={() => navigate("/admin/announcements")} className="btn-secondary">رجوع</button>
+        <button onClick={() => navigate("/admin/announcements")} className="btn-secondary">
+          رجوع
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="form">
@@ -76,11 +164,46 @@ export default function AnnouncementForm() {
           {errors.content && <span className="error">{errors.content[0]}</span>}
         </div>
 
+        <div className="form-group">
+          <label>نوع الاستهداف *</label>
+          <select name="target_type" value={form.target_type} onChange={handleChange}>
+            <option value="all">الجميع</option>
+            <option value="role">أدوار</option>
+            <option value="user">مستخدمين</option>
+            <option value="department">أقسام</option>
+          </select>
+        </div>
+
+        {form.target_type !== "all" && (
+          <div className="form-group">
+            <label>
+              {form.target_type === "role" && "الأدوار المستهدفة"}
+              {form.target_type === "user" && "المستخدمين المستهدفين"}
+              {form.target_type === "department" && "الأقسام المستهدفة"}
+              {" (اضغط Ctrl لاختيار متعدد)"}
+            </label>
+            <select
+              multiple
+              value={form.target_ids.map(String)}
+              onChange={handleTargetIdsChange}
+              style={{ minHeight: 120 }}
+            >
+              {targetOptions().map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="form-actions">
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? "جاري الحفظ..." : (id ? "تحديث" : "إضافة")}
+            {loading ? "جاري الحفظ..." : id ? "تحديث" : "إضافة"}
           </button>
-          <button type="button" onClick={() => navigate("/admin/announcements")} className="btn-secondary">إلغاء</button>
+          <button type="button" onClick={() => navigate("/admin/announcements")} className="btn-secondary">
+            إلغاء
+          </button>
         </div>
       </form>
     </div>

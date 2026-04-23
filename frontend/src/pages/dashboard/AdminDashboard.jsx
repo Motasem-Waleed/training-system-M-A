@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { getDashboardStats, getRecentActivities, getLatestAnnouncement } from "../../services/api"; // سنضيف هذه الدوال لاحقاً
+import {
+  getDashboardStats,
+  getRecentActivities,
+  getLatestAnnouncement,
+} from "../../services/api";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -8,8 +12,10 @@ export default function AdminDashboard() {
     completed_evaluations: 0,
     pending_reports: 0,
   });
+
   const [activities, setActivities] = useState([]);
   const [announcement, setAnnouncement] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -17,21 +23,21 @@ export default function AdminDashboard() {
     const fetchData = async () => {
       try {
         const statsData = await getDashboardStats();
-        // ضبط الإحصائيات حسب الحقول المتوقعة من الـ API
         setStats({
           total_students: statsData.total_students || 0,
           total_sites: statsData.total_sites || 0,
           completed_evaluations: statsData.completed_evaluations || 0,
-          pending_reports: statsData.pending_evaluations || 0, // أو أي حقل مناسب
+          pending_reports: statsData.pending_evaluations || 0,
         });
 
-        // جلب آخر الأنشطة (يمكن استدعاء endpoint منفصل)
-        // const activitiesData = await getRecentActivities();
-        // setActivities(activitiesData);
+        // 🔥 آخر 4 أنشطة فقط
+        const activitiesData = await getRecentActivities(4);
+        setActivities(activitiesData?.data?.data || activitiesData?.data || []);
 
-        // جلب آخر إعلان
-        // const announcementData = await getLatestAnnouncement();
-        // setAnnouncement(announcementData);
+        // 🔥 آخر إعلان
+        const announcementData = await getLatestAnnouncement();
+        setAnnouncement(announcementData || null);
+
       } catch (err) {
         console.error(err);
         setError("حدث خطأ أثناء تحميل البيانات");
@@ -39,6 +45,7 @@ export default function AdminDashboard() {
         setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
@@ -77,26 +84,47 @@ export default function AdminDashboard() {
       </div>
 
       <div className="dashboard-row">
+        {/* 🔥 Activities */}
         <div className="section-card">
-          <h4>أحدث الأنشطة</h4>
+          <h4>آخر الأنشطة</h4>
+
           {activities.length === 0 ? (
             <p>لا توجد أنشطة حديثة.</p>
           ) : (
             <div className="activity-list">
-              {activities.map((activity, idx) => (
+              {activities.slice(0, 4).map((activity, idx) => (
                 <div key={idx} className="activity-item">
-                  <h6>{activity.title}</h6>
-                  <p>{activity.description}</p>
+                  <div style={{ fontWeight: "bold" }}>
+                    {activity.description || activity.action || "نشاط"}
+                  </div>
+
+                  <small style={{ color: "#888" }}>
+                    {activity.created_at
+                      ? new Date(activity.created_at).toLocaleString()
+                      : ""}
+                  </small>
                 </div>
               ))}
             </div>
           )}
         </div>
 
+        {/* 🔥 Latest Announcement */}
         <div className="announcement-box">
-          <h5>إعلان</h5>
+          <h5>آخر إعلان</h5>
+
           {announcement ? (
-            <p>{announcement.content}</p>
+            <>
+              <div style={{ fontWeight: "bold", marginBottom: "5px" }}>
+                {announcement.title}
+              </div>
+              <p>{announcement.content}</p>
+              <small style={{ color: "#888" }}>
+                {announcement.created_at
+                  ? new Date(announcement.created_at).toLocaleString()
+                  : ""}
+              </small>
+            </>
           ) : (
             <p>لا توجد إعلانات حالية.</p>
           )}

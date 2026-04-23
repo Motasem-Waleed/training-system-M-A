@@ -35,6 +35,20 @@ export default function AnnouncementsList() {
     }
   };
 
+  const getTargetLabel = (announcement) => {
+    const targets = announcement.targets || [];
+    if (targets.length === 0) return "الجميع";
+
+    const hasRoles = targets.some((t) => t.role);
+    const hasUsers = targets.some((t) => t.user);
+    const hasDepts = targets.some((t) => t.department);
+
+    if (hasRoles) return `أدوار (${targets.filter((t) => t.role).length})`;
+    if (hasUsers) return `مستخدمين (${targets.filter((t) => t.user).length})`;
+    if (hasDepts) return `أقسام (${targets.filter((t) => t.department).length})`;
+    return "غير محدد";
+  };
+
   if (loading) return <div className="text-center">جاري التحميل...</div>;
   if (error) return <div className="text-danger">{error}</div>;
 
@@ -50,15 +64,20 @@ export default function AnnouncementsList() {
           <tr>
             <th>العنوان</th>
             <th>المحتوى</th>
+            <th>الاستهداف</th>
             <th>تاريخ النشر</th>
             <th>الإجراءات</th>
           </tr>
         </thead>
         <tbody>
-          {announcements.map(announcement => (
+          {announcements.map((announcement) => (
             <tr key={announcement.id}>
               <td>{announcement.title}</td>
-              <td>{announcement.content?.substring(0, 100)}...</td>
+              <td>
+                {announcement.content?.substring(0, 100)}
+                {announcement.content?.length > 100 ? "..." : ""}
+              </td>
+              <td>{getTargetLabel(announcement)}</td>
               <td>{new Date(announcement.created_at).toLocaleDateString()}</td>
               <td>
                 <Link to={`/admin/announcements/edit/${announcement.id}`} className="btn-sm">تعديل</Link>
@@ -67,7 +86,7 @@ export default function AnnouncementsList() {
             </tr>
           ))}
           {announcements.length === 0 && (
-            <tr><td colSpan="4" className="text-center">لا توجد إعلانات</td></tr>
+            <tr><td colSpan="5" className="text-center">لا توجد إعلانات</td></tr>
           )}
         </tbody>
       </table>
