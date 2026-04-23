@@ -73,6 +73,36 @@ export const itemsFromPagedResponse = (payload) => {
   return [];
 };
 
+/** استجابة { success, data } قد تتضمن JsonResource كـ { data: [...] } */
+export const unwrapSupervisorList = (body) => {
+  if (!body || typeof body !== "object") return [];
+  const d = body.data;
+  if (Array.isArray(d)) return d;
+  if (d && typeof d === "object" && Array.isArray(d.data)) return d.data;
+  return [];
+};
+
+export const unwrapSupervisorStats = (body) => {
+  if (!body || typeof body !== "object") return null;
+  const raw = body.data;
+  if (!raw || typeof raw !== "object") return null;
+  return {
+    sections_count: raw.sections_count ?? 0,
+    students_count: raw.students_count ?? 0,
+    visits_this_week: raw.visits_this_week ?? 0,
+    unreviewed_logs: raw.unreviewed_logs ?? 0,
+    absence_alerts: raw.attendance_alerts_count ?? 0,
+    incomplete_portfolios: raw.missing_portfolio_items_count ?? 0,
+    pending_task_reviews: raw.pending_submissions_count ?? 0,
+    unevaluated_students: raw.pending_academic_evaluations_count ?? 0,
+    open_tasks_count: raw.open_tasks_count ?? 0,
+    supervisor_profile: raw.supervisor_profile,
+    recent_activity: raw.recent_activity,
+    upcoming_visits: raw.upcoming_visits,
+    track_distribution: raw.track_distribution,
+  };
+};
+
 // CURRENT USER
 export const getCurrentUser = async (config = {}) => {
   const response = await apiClient.get("/user", config);

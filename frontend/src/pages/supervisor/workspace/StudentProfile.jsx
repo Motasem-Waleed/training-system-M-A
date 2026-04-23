@@ -34,8 +34,19 @@ export default function StudentProfile({ studentId, onBack, onRefresh }) {
     setLoading(true);
     setError("");
     try {
-      const res = await apiClient.get(`/supervisor/students/${studentId}`);
-      setStudent(res.data);
+      const res = await apiClient.get(`/supervisor/students/${studentId}/overview`);
+      const payload = res.data?.data;
+      if (!payload?.student) {
+        setError(res.data?.message || "فشل تحميل بيانات الطالب");
+        setStudent(null);
+        return;
+      }
+      setStudent({
+        ...payload.student,
+        specialization: payload.student?.department?.name || payload.student?.specialization,
+        section_name: payload.related_data?.section?.name,
+        site_name: payload.related_data?.training_site?.name,
+      });
     } catch (e) {
       setError(e?.response?.data?.message || "فشل تحميل بيانات الطالب");
     } finally {

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class StudentPortfolio extends Model
@@ -24,5 +25,10 @@ class StudentPortfolio extends Model
     public function entries()
     {
         return $this->hasMany(PortfolioEntry::class);
+    }
+
+    public function scopeVisibleToAcademicSupervisor(Builder $query, User $user): Builder
+    {
+        return $query->whereHas('trainingAssignment', fn (Builder $q) => $q->where('academic_supervisor_id', $user->id));
     }
 }

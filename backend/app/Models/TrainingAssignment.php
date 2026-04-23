@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class TrainingAssignment extends Model
@@ -114,5 +115,30 @@ class TrainingAssignment extends Model
     public function fieldSupervisor()
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function scopeForAcademicSupervisor(Builder $query, User $user): Builder
+    {
+        return $query->where('academic_supervisor_id', $user->id);
+    }
+
+    public function scopeForTrainingTrack(Builder $query, string $track): Builder
+    {
+        $track = strtolower($track);
+
+        if ($track === 'psychology_clinic') {
+            return $query->whereHas('trainingSite', fn (Builder $q) => $q->whereIn('site_type', ['health_center', 'clinic']));
+        }
+
+        if ($track === 'psychology_school') {
+            return $query
+                ->whereHas('trainingSite', fn (Builder $q) => $q->where('site_type', 'school'))
+                ->whereHas('enrollment.user.department', function (Builder $departmentQuery) {
+                    $departmentQuery->where('name', 'like', '%psych%')
+                        ->orWhere('name', 'like', '%علم النفس%');
+                });
+        }
+
+        return $query->whereHas('trainingSite', fn (Builder $q) => $q->where('site_type', 'school'));
     }
 }

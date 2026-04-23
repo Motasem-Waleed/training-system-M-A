@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { apiClient } from "../../../services/api";
+import { apiClient, unwrapSupervisorList, unwrapSupervisorStats } from "../../../services/api";
 import DashboardSummary from "./DashboardSummary";
 import StudentsTable from "./StudentsTable";
 import StudentProfile from "./StudentProfile";
@@ -21,13 +21,13 @@ export default function SupervisorWorkspace() {
     try {
       const [statsRes, studentsRes, sectionsRes] = await Promise.all([
         apiClient.get("/supervisor/stats").then((r) => r.data).catch(() => null),
-        apiClient.get("/supervisor/students", { params: { per_page: 200 } }).then((r) => r.data).catch(() => []),
-        apiClient.get("/supervisor/sections").then((r) => r.data).catch(() => []),
+        apiClient.get("/supervisor/students", { params: { per_page: 200 } }).then((r) => r.data).catch(() => ({})),
+        apiClient.get("/supervisor/sections", { params: { per_page: 100 } }).then((r) => r.data).catch(() => ({})),
       ]);
 
-      setStats(statsRes || getDefaultStats());
-      setStudents(Array.isArray(studentsRes) ? studentsRes : studentsRes?.data || []);
-      setSections(Array.isArray(sectionsRes) ? sectionsRes : sectionsRes?.data || []);
+      setStats(unwrapSupervisorStats(statsRes) || getDefaultStats());
+      setStudents(unwrapSupervisorList(studentsRes));
+      setSections(unwrapSupervisorList(sectionsRes));
     } catch (e) {
       setError(e?.response?.data?.message || "فشل تحميل البيانات");
       setStats(getDefaultStats());
@@ -112,7 +112,9 @@ export default function SupervisorWorkspace() {
             >
               <option value="">كل الشعب</option>
               {sections.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>
+                  {s.section_name || s.name}
+                </option>
               ))}
             </select>
             <select

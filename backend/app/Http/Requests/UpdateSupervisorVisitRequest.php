@@ -15,6 +15,10 @@ class UpdateSupervisorVisitRequest extends FormRequest
     {
         return [
             'scheduled_date' => 'sometimes|date',
+            'visit_type' => 'sometimes|in:initial,formative,final',
+            'location' => 'sometimes|nullable|string|max:255',
+            'training_track' => 'sometimes|nullable|in:usool_tarbiah_school,psychology_school,psychology_clinic',
+            'template_type' => 'sometimes|nullable|string|max:100',
             'notes' => 'nullable|string',
         ];
     }

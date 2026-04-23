@@ -11,12 +11,16 @@ class SupervisorVisit extends Model
 
     protected $fillable = [
         'training_assignment_id', 'supervisor_id', 'visit_date', 'notes',
-        'rating', 'scheduled_date', 'status'
+        'rating', 'scheduled_date', 'status', 'visit_type', 'location',
+        'training_track', 'template_type', 'report_data', 'positive_points',
+        'needs_improvement', 'general_notes', 'completed_at'
     ];
 
     protected $casts = [
         'visit_date' => 'date',
         'scheduled_date' => 'date',
+        'report_data' => 'array',
+        'completed_at' => 'datetime',
     ];
 
     public function trainingAssignment()

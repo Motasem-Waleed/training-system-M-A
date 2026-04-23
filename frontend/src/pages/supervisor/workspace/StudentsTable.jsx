@@ -64,8 +64,40 @@ const MiniBadge = ({ status, label }) => {
 };
 
 export default function StudentsTable({ students, searchTerm, filterSection, filterStatus, onSelectStudent }) {
+  const normalized = useMemo(
+    () =>
+      students.map((s) => {
+        const id = s.student_id ?? s.id;
+        const rateRaw = s.attendance_status_summary;
+        const attendance_rate =
+          s.attendance_rate != null
+            ? s.attendance_rate
+            : rateRaw && rateRaw !== "n/a"
+              ? parseFloat(String(rateRaw).replace("%", ""))
+              : null;
+        return {
+          ...s,
+          id,
+          section_name: s.section_name ?? s.section,
+          site_name: s.site_name ?? s.training_site,
+          mentor_name: s.mentor_name ?? s.field_supervisor_name,
+          health_status:
+            s.health_status ??
+            (s.risk_level === "critical" ? "critical" : s.risk_level === "medium" ? "warning" : "healthy"),
+          attendance_rate: Number.isFinite(attendance_rate) ? attendance_rate : null,
+          logs_status:
+            s.logs_status ?? (typeof s.daily_log_status_summary === "number" && s.daily_log_status_summary > 0 ? "good" : "needs_review"),
+          portfolio_status:
+            s.portfolio_status ?? (typeof s.portfolio_completion === "number" && s.portfolio_completion > 0 ? "complete" : "incomplete"),
+          evaluation_status:
+            s.evaluation_status ?? (s.academic_evaluation_status === "final" ? "graded" : "pending"),
+        };
+      }),
+    [students]
+  );
+
   const filtered = useMemo(() => {
-    let list = [...students];
+    let list = [...normalized];
 
     if (searchTerm.trim()) {
       const q = searchTerm.trim().toLowerCase();
@@ -86,9 +118,9 @@ export default function StudentsTable({ students, searchTerm, filterSection, fil
     }
 
     return list;
-  }, [students, searchTerm, filterSection, filterStatus]);
+  }, [normalized, searchTerm, filterSection, filterStatus]);
 
-  if (!students.length) {
+  if (!normalized.length) {
     return (
       <div style={{ textAlign: "center", padding: "60px 20px" }}>
         <div style={{ fontSize: "3rem", marginBottom: "16px" }}>📭</div>

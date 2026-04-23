@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             UsersSeeder::class,
             StudentsSeeder::class,
+            Students2Seeder::class,
             SectionsSeeder::class,
             EnrollmentsSeeder::class,
             DemoDataSeeder::class,
@@ -28,6 +29,7 @@ class DatabaseSeeder extends Seeder
             FeatureFlagsSeeder::class,
             FieldSupervisorTemplatesSeeder::class, // قوالب المشرف الميداني
             FieldSupervisorSeeder::class, // مشرف ميداني تجريبي
+            AcademicSupervisorWorkspaceSeeder::class, // ربط طلاب بمشرف hebron للواجهة
         ]);
 
       

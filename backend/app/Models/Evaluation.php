@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Evaluation extends Model
@@ -11,7 +12,14 @@ class Evaluation extends Model
 
     protected $fillable = [
         'training_assignment_id', 'evaluator_id', 'template_id',
-        'total_score', 'notes'
+        'total_score', 'notes', 'status', 'is_final', 'strengths',
+        'areas_for_improvement', 'recommendation', 'criteria_scores', 'submitted_at'
+    ];
+
+    protected $casts = [
+        'is_final' => 'boolean',
+        'criteria_scores' => 'array',
+        'submitted_at' => 'datetime',
     ];
 
     public function trainingAssignment()
@@ -32,5 +40,15 @@ class Evaluation extends Model
     public function scores()
     {
         return $this->hasMany(EvaluationScore::class);
+    }
+
+    public function scopeVisibleToAcademicSupervisor(Builder $query, User $user): Builder
+    {
+        return $query->whereHas('trainingAssignment', fn (Builder $q) => $q->where('academic_supervisor_id', $user->id));
+    }
+
+    public function scopeForTrainingTrack(Builder $query, string $track): Builder
+    {
+        return $query->whereHas('trainingAssignment', fn (Builder $q) => $q->forTrainingTrack($track));
     }
 }

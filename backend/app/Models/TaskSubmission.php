@@ -3,16 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class TaskSubmission extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['task_id', 'user_id', 'file_path', 'notes', 'submitted_at'];
+    protected $fillable = [
+        'task_id', 'user_id', 'file_path', 'notes', 'submitted_at',
+        'review_status', 'score', 'feedback', 'needs_resubmission', 'reviewed_by', 'reviewed_at',
+    ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'needs_resubmission' => 'boolean',
+        'reviewed_at' => 'datetime',
     ];
 
     public function task()
@@ -23,5 +29,20 @@ class TaskSubmission extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function scopeVisibleToAcademicSupervisor(Builder $query, User $user): Builder
+    {
+        return $query->whereHas('task.trainingAssignment', fn (Builder $q) => $q->where('academic_supervisor_id', $user->id));
+    }
+
+    public function scopeForTrainingTrack(Builder $query, string $track): Builder
+    {
+        return $query->whereHas('task.trainingAssignment', fn (Builder $q) => $q->forTrainingTrack($track));
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Attendance extends Model
@@ -11,7 +12,8 @@ class Attendance extends Model
 
     protected $fillable = [
         'training_assignment_id', 'user_id', 'notes', 'date',
-        'check_in', 'check_out', 'approved_by', 'approved_at', 'status'
+        'check_in', 'check_out', 'approved_by', 'approved_at', 'status',
+        'academic_note', 'academic_alert_status', 'academic_commented_at', 'visible_to_academic'
     ];
 
     protected $casts = [
@@ -19,6 +21,8 @@ class Attendance extends Model
         'check_in' => 'datetime:H:i:s',
         'check_out' => 'datetime:H:i:s',
         'approved_at' => 'datetime',
+        'academic_commented_at' => 'datetime',
+        'visible_to_academic' => 'boolean',
     ];
 
     public function trainingAssignment()
@@ -34,5 +38,15 @@ class Attendance extends Model
     public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function scopeVisibleToAcademicSupervisor(Builder $query, User $user): Builder
+    {
+        return $query->whereHas('trainingAssignment', fn (Builder $q) => $q->where('academic_supervisor_id', $user->id));
+    }
+
+    public function scopeForTrainingTrack(Builder $query, string $track): Builder
+    {
+        return $query->whereHas('trainingAssignment', fn (Builder $q) => $q->forTrainingTrack($track));
     }
 }
