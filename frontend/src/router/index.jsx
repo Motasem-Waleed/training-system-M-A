@@ -43,7 +43,7 @@ import FeatureFlagsList from "../pages/Admin/FeatureFlags/FeatureFlagsList";
 import EvaluationTemplatesList from "../pages/Admin/EvaluationTemplates/EvaluationTemplatesList";
 import EvaluationTemplateForm from "../pages/Admin/EvaluationTemplates/EvaluationTemplateForm";
 
-// Reports (FIXED)
+// Reports
 import ReportsDashboard from "../pages/reports/ReportsDashboard";
 
 // Student
@@ -70,7 +70,7 @@ import SupervisorReports from "../pages/supervisor/Reports";
 import Submissions from "../pages/supervisor/Submissions";
 
 
-// Mentor (المعلم المرشد — دور teacher) — legacy, kept for reference
+// Mentor (المعلم المرشد - دور teacher) - legacy, kept for reference
 import MentorAttendance from "../pages/mentor/Attendance";
 import MentorSchedule from "../pages/mentor/MentorSchedule";
 
@@ -210,14 +210,12 @@ export default function AppRouter() {
           <Route path="/student/attendance" element={<StudentAttendance />} />
           <Route path="/student/notifications-updates" element={<NotificationsUpdates />} />
 
-          {/* ═══════════════════════════════════════════════════════
-              Supervisor Routes — مساحة عمل المشرف الأكاديمي الموحدة
-          ═══════════════════════════════════════════════════════ */}
-          {/* مساحة العمل الموحدة — المركز الرئيسي */}
+          {/* Supervisor Routes: مساحة عمل المشرف الأكاديمي الموحدة */}
+          {/* مساحة العمل الموحدة - المركز الرئيسي */}
           <Route path="/supervisor/workspace" element={<SupervisorWorkspace />} />
           <Route path="/supervisor/workspace/:studentId" element={<SupervisorWorkspace />} />
 
-          {/* الصفحات الموحدة — تُوجّه لـ field-staff */}
+          {/* الصفحات الموحدة - تُوجَّه إلى field-staff */}
           <Route path="/supervisor/dashboard" element={<FieldStaffDashboard />} />
           <Route path="/supervisor/students" element={<FieldStaffStudents />} />
           <Route path="/supervisor/evaluations" element={<FieldStaffEvaluations />} />
@@ -232,15 +230,15 @@ export default function AppRouter() {
           <Route path="/supervisor/sections" element={<Sections />} />
           <Route path="/supervisor/submissions" element={<Submissions />} />
           
-          {/* Legacy — يُحتفظ للتوافق */}
+          {/* Legacy - يُحتفظ به للتوافق */}
           <Route path="/supervisor/reports" element={<SupervisorReports />} />
           
 
-          {/* ═══════════════════════════════════════════════════════
-              Unified Field Staff Routes
-              (المعلم المرشد، المشرف الأكاديمي، الأخصائي النفسي، مدير المدرسة)
-              جميعها تستخدم نفس الصفحات مع Conditional Rendering حسب الدور
-          ═══════════════════════════════════════════════════════ */}
+          {/*
+            Unified Field Staff Routes
+            (المعلم المرشد، المشرف الأكاديمي، الأخصائي النفسي، مدير المدرسة)
+            جميعها تستخدم نفس الصفحات مع Conditional Rendering حسب الدور
+          */}
           <Route path="/field-staff/dashboard" element={<FieldStaffDashboard />} />
           <Route path="/field-staff/students" element={<FieldStaffStudents />} />
           <Route path="/field-staff/evaluations" element={<FieldStaffEvaluations />} />
@@ -251,7 +249,7 @@ export default function AppRouter() {
           <Route path="/field-staff/final-evaluation" element={<FieldStaffFinalEvaluation />} />
           <Route path="/field-staff/students/:studentId/training-program" element={<StudentTrainingProgram />} />
 
-          {/* Legacy Mentor routes — redirect to unified field-staff */}
+          {/* Legacy Mentor routes - redirect to unified field-staff */}
           <Route path="/mentor/dashboard" element={<FieldStaffDashboard />} />
           <Route path="/mentor/students" element={<FieldStaffStudents />} />
           <Route path="/mentor/student-profiles" element={<FieldStaffStudents />} />
@@ -264,7 +262,7 @@ export default function AppRouter() {
           <Route path="/mentor/notes" element={<FieldStaffNotes />} />
           <Route path="/mentor/students/:studentId/training-program" element={<StudentTrainingProgram />} />
 
-          {/* Legacy Psychologist routes — redirect to unified field-staff */}
+          {/* Legacy Psychologist routes - redirect to unified field-staff */}
           <Route path="/psychologist/dashboard" element={<FieldStaffDashboard />} />
           <Route path="/psychologist/students" element={<FieldStaffStudents />} />
           <Route path="/psychologist/guidance" element={<FieldStaffGuidance />} />
@@ -310,7 +308,7 @@ export default function AppRouter() {
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/notifications" element={<Notifications />} />
 
-          {/* 404 — أي رابط غير معروف */}
+          {/* 404 - أي رابط غير معروف */}
           <Route path="*" element={
             <div style={{ padding: 40, textAlign: "center" }}>
               <h2>الصفحة غير موجودة</h2>

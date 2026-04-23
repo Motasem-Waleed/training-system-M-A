@@ -1,8 +1,9 @@
 import { useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
+import { readStoredUser, writeStoredUser } from "../../utils/session";
 
 export default function Profile() {
-  const savedUser = JSON.parse(localStorage.getItem("user")) || {};
+  const savedUser = readStoredUser();
 
   const [form, setForm] = useState({
     name: savedUser.name || "مستخدم تجريبي",
@@ -27,7 +28,7 @@ export default function Profile() {
       phone: form.phone,
     };
 
-    localStorage.setItem("user", JSON.stringify(updatedUser));
+    writeStoredUser(updatedUser);
     alert("تم تحديث الملف الشخصي بنجاح");
   };
 

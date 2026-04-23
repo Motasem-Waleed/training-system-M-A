@@ -15,6 +15,7 @@ use App\Enums\OfficialLetterType;
 use App\Enums\OfficialLetterStatus;
 use App\Support\TrainingRequestNotifications;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TrainingRequestService
 {
@@ -204,8 +205,11 @@ class TrainingRequestService
     public function schoolApprove(TrainingRequest $trainingRequest, int $schoolManagerId, array $studentsData): void
     {
         DB::transaction(function () use ($trainingRequest, $schoolManagerId, $studentsData) {
+            $activeTrainingPeriodId = $this->requireActiveTrainingPeriodId();
+
             foreach ($studentsData as $studentData) {
                 $studentRequest = TrainingRequestStudent::findOrFail($studentData['id']);
+                $enrollmentId = $this->requireEnrollmentId($studentRequest);
                 $studentRequest->update([
                     'status' => TrainingRequestStudentStatus::APPROVED->value,
                     'assigned_teacher_id' => $studentData['assigned_teacher_id'],
@@ -213,11 +217,11 @@ class TrainingRequestService
 
                 // إنشاء training assignment
                 TrainingAssignment::create([
-                    'enrollment_id' => $this->getEnrollmentId($studentRequest->user_id, $studentRequest->course_id),
+                    'enrollment_id' => $enrollmentId,
                     'training_request_id' => $trainingRequest->id,
                     'training_request_student_id' => $studentRequest->id,
                     'training_site_id' => $trainingRequest->training_site_id,
-                    'training_period_id' => $this->getActiveTrainingPeriodId(),
+                    'training_period_id' => $activeTrainingPeriodId,
                     'teacher_id' => $studentData['assigned_teacher_id'],
                     'academic_supervisor_id' => $this->getAcademicSupervisorId($studentRequest->course_id),
                     'status' => 'assigned',
@@ -341,10 +345,38 @@ class TrainingRequestService
         return $enrollment?->id;
     }
 
+    private function requireEnrollmentId(TrainingRequestStudent $studentRequest): int
+    {
+        $enrollmentId = $this->getEnrollmentId($studentRequest->user_id, $studentRequest->course_id);
+
+        if ($enrollmentId) {
+            return $enrollmentId;
+        }
+
+        throw ValidationException::withMessages([
+            'students' => [
+                "لا يمكن اعتماد الطالب {$studentRequest->user_id} لعدم وجود تسجيل أكاديمي مرتبط بالمساق المطلوب.",
+            ],
+        ]);
+    }
+
     private function getActiveTrainingPeriodId(): ?int
     {
         $period = \App\Models\TrainingPeriod::where('is_active', true)->first();
         return $period?->id;
+    }
+
+    private function requireActiveTrainingPeriodId(): int
+    {
+        $periodId = $this->getActiveTrainingPeriodId();
+
+        if ($periodId) {
+            return $periodId;
+        }
+
+        throw ValidationException::withMessages([
+            'training_period' => ['لا يمكن اعتماد الطلب لعدم وجود فترة تدريب مفعلة.'],
+        ]);
     }
 
     private function getAcademicSupervisorId(int $courseId): ?int

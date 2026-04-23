@@ -7,6 +7,9 @@ import {
   itemsFromPagedResponse,
 } from "../../services/api";
 import { siteLabels } from "../../utils/roles";
+import {
+  isStudentApproved,
+} from "../../utils/status";
 
 const PrincipalDashboard = ({ siteType = "school" }) => {
   const labels = siteLabels(siteType);
@@ -94,10 +97,9 @@ const PrincipalDashboard = ({ siteType = "school" }) => {
           specialization:
             student.course?.data?.name || student.course?.name || "—",
           status: student.status_label || student.status || "قيد المراجعة",
-          badgeClass:
-            student.status === "approved"
-              ? "badge-custom badge-success"
-              : student.status === "rejected"
+          badgeClass: isStudentApproved(student.status)
+            ? "badge-custom badge-success"
+            : student.status === "rejected"
               ? "badge-custom badge-danger"
               : "badge-custom badge-warning",
         }))
@@ -109,8 +111,7 @@ const PrincipalDashboard = ({ siteType = "school" }) => {
     {
       title: "طلبات التدريب الجديدة",
       value: String(
-        requests.filter((request) => request.book_status === "sent_to_school")
-          .length
+        requests.filter((request) => request.book_status === "sent_to_school").length
       ),
       desc: "طلبات بحاجة لمراجعة واعتماد",
       className: "warning",
@@ -120,7 +121,7 @@ const PrincipalDashboard = ({ siteType = "school" }) => {
       value: String(
         requests
           .flatMap((request) => request.students || [])
-          .filter((student) => student.status === "approved").length
+          .filter((student) => isStudentApproved(student.status)).length
       ),
       desc: `عدد الطلبة المقبولين داخل ${labels.siteName}`,
       className: "primary",

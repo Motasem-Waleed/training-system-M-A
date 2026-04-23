@@ -10,6 +10,8 @@ import {
   itemsFromPagedResponse,
 } from "../../services/api";
 import { getStudentDashboardPath, getStudentTrack } from "../../utils/studentSection";
+import { readStoredUser } from "../../utils/session";
+import { getTrainingRequestStatusMeta, isTaskPending } from "../../utils/status";
 import {
   User,
   IdCard,
@@ -29,11 +31,53 @@ import {
   Loader2,
 } from "lucide-react";
 
+const getStudentSpecialization = (user, track) => {
+  const departmentName = String(user?.department?.name || user?.data?.department?.name || "").toLowerCase();
+
+  if (departmentName.includes("psych")) {
+    return "علم النفس";
+  }
+
+  if (departmentName.includes("usool") || track === "education") {
+    return "أصول التربية";
+  }
+
+  return user?.department?.name || user?.data?.department?.name || "—";
+};
+
+const getCollegeLabel = (user, track) => {
+  const departmentName = String(user?.department?.name || user?.data?.department?.name || "").toLowerCase();
+
+  if (departmentName.includes("psych") || track === "psychology") {
+    return "كلية الآداب";
+  }
+
+  if (departmentName.includes("usool") || track === "education") {
+    return "كلية التربية";
+  }
+
+  return user?.department?.name || user?.data?.department?.name || "—";
+};
+
+const getUserStatusLabel = (user) => {
+  if (user?.status_label || user?.data?.status_label) {
+    return user?.status_label || user?.data?.status_label;
+  }
+
+  const status = String(user?.status || user?.data?.status || "").toLowerCase();
+
+  if (status === "active") return "نشط";
+  if (status === "inactive") return "غير نشط";
+  if (status === "suspended") return "موقوف";
+
+  return user?.status || user?.data?.status || "—";
+};
+
 export default function StudentDashboard({ forcedTrack = null }) {
   const [studentInfo, setStudentInfo] = useState({
     name: "",
     universityId: "",
-    specialization: "علوم الحاسوب",
+    specialization: "",
     college: "",
     status: "",
     directorate: "",
@@ -51,7 +95,7 @@ export default function StudentDashboard({ forcedTrack = null }) {
   const [latestLogs, setLatestLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const abortControllerRef = useRef(null);
-  const currentUser = useMemo(() => JSON.parse(localStorage.getItem("user") || "{}"), []);
+  const currentUser = useMemo(() => readStoredUser(), []);
   const detectedTrack = getStudentTrack(currentUser);
   const effectiveTrack = forcedTrack || detectedTrack || "education";
 
@@ -86,8 +130,9 @@ export default function StudentDashboard({ forcedTrack = null }) {
         ...prev,
         name: user?.name || user?.data?.name || "",
         universityId: user?.university_id || user?.data?.university_id || "",
-        college: user?.department?.name || user?.data?.department?.name || "كلية التربية",
-        status: user?.status_label || user?.status || user?.data?.status || "",
+        specialization: getStudentSpecialization(user, effectiveTrack),
+        college: getCollegeLabel(user, effectiveTrack),
+        status: getUserStatusLabel(user),
       }));
 
       // 2. طلبات التدريب
@@ -96,7 +141,10 @@ export default function StudentDashboard({ forcedTrack = null }) {
       let schoolName = "";
       let directorateName = "";
       if (trainingRequest) {
-        requestStatus = trainingRequest.book_status_label || trainingRequest.book_status || trainingRequest.status_label || trainingRequest.status || "قيد الانتظار";
+        requestStatus = getTrainingRequestStatusMeta(
+          trainingRequest.book_status,
+          trainingRequest.book_status_label || trainingRequest.status_label
+        ).label;
         schoolName = trainingRequest.training_site?.name || "";
         directorateName = trainingRequest.training_site?.directorate_label || trainingRequest.training_site?.directorate || "";
       }
@@ -113,7 +161,7 @@ export default function StudentDashboard({ forcedTrack = null }) {
           if (card.title === "طلب التدريب") return { ...card, value: requestStatus };
           if (card.title === "المهام") {
             const tasks = itemsFromPagedResponse(tasksRes);
-            const pendingTasks = tasks.filter(t => t.status !== "submitted" && t.status !== "graded").length;
+            const pendingTasks = tasks.filter((task) => isTaskPending(task.status)).length;
             return { ...card, value: `${pendingTasks} مهمة متبقية` };
           }
           if (card.title === "ملف الإنجاز") {
@@ -154,7 +202,7 @@ export default function StudentDashboard({ forcedTrack = null }) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [effectiveTrack]);
 
   useEffect(() => {
     fetchDashboardData();

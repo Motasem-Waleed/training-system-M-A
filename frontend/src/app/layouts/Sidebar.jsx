@@ -2,23 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import SidebarMenuGlyph from "./SidebarMenuGlyph";
 import { checkFeatureFlag } from "../../services/api";
-
-const roleLabels = {
-  admin: "مدير النظام",
-  coordinator: "المنسق الأكاديمي",
-  training_coordinator: "منسق التدريب",
-  supervisor: "المشرف الأكاديمي",
-  teacher: "المعلم المرشد",
-  mentor: "المشرف الميداني",
-  field_supervisor: "المشرف الميداني",
-  psychologist: "الأخصائي النفسي",
-  principal: "مدير المدرسة",
-  school_manager: "مدير المدرسة",
-  psychology_center_manager: "مدير المركز النفسي",
-  health_directorate: "مديرية الصحة",
-  education_directorate: "مديرية التربية والتعليم",
-  student: "الطالب المتدرب",
-};
+import { getFieldStaffRoleKey, getRoleLabel, normalizeRole, ROLES } from "../../utils/roles";
+import { clearStoredUser, readStoredUser } from "../../utils/session";
 
 const menuFeatureMap = {
   "/student/training-request": "training_requests.create",
@@ -113,6 +98,7 @@ const menus = {
   mentor: buildFieldStaffMenu("mentor"),
   psychologist: buildFieldStaffMenu("psychologist"),
   supervisor: buildFieldStaffMenu("supervisor"),
+  school_manager: buildFieldStaffMenu("school_manager"),
   
   // المشرف الميداني — يستخدم نفس قائمة الكادر الميداني
   field_supervisor: buildFieldStaffMenu("field_supervisor"),
@@ -167,22 +153,17 @@ const menus = {
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const [featureFlags, setFeatureFlags] = useState({});
-  const savedUser = JSON.parse(localStorage.getItem("user")) || {};
-  const rawRole = savedUser?.role?.name || savedUser?.role || "admin";
+  const savedUser = readStoredUser();
+  const rawRole = savedUser?.role?.name || savedUser?.role || ROLES.ADMIN;
+  const normalizedRole = normalizeRole(rawRole);
   const role =
-    rawRole === "training_coordinator"
+    normalizedRole === ROLES.COORDINATOR
       ? "coordinator"
-      : rawRole === "teacher"
-        ? "mentor"
-        : rawRole === "psychology_center_manager"
-          ? "psychology_center_manager"
-          : rawRole === "academic_supervisor"
-            ? "supervisor"
-            : rawRole === "school_manager"
-              ? "principal"
-              : rawRole;
+      : normalizedRole === ROLES.PRINCIPAL
+        ? "school_manager"
+      : getFieldStaffRoleKey(normalizedRole);
   const userName = savedUser?.name || "مستخدم تجريبي";
-const roleName = roleLabels[rawRole] || roleLabels[role] || "مستخدم النظام";
+  const roleName = getRoleLabel(rawRole);
   const menu = menus[role] || [];
 
   useEffect(() => {
@@ -228,7 +209,7 @@ const roleName = roleLabels[rawRole] || roleLabels[role] || "مستخدم الن
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    clearStoredUser();
     navigate("/");
   };
 

@@ -8,6 +8,7 @@ use App\Models\TrainingSite;
 use App\Models\TrainingPeriod;
 use App\Models\User;
 use App\Models\Course;
+use App\Models\Enrollment;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -28,11 +29,12 @@ class SchoolAdminSupervisorRequestsSeeder extends Seeder
         // Get students
         $students = User::query()
             ->whereHas('role', fn($q) => $q->where('name', 'student'))
+            ->whereHas('enrollments.section', fn($q) => $q->where('course_id', $course->id))
             ->limit(5)
             ->get();
 
         if ($students->isEmpty()) {
-            $this->command->warn('Skipping SchoolAdminSupervisorRequestsSeeder: No students found');
+            $this->command->warn('Skipping SchoolAdminSupervisorRequestsSeeder: No enrolled students found for the selected course');
             return;
         }
 

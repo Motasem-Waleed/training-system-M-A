@@ -1,10 +1,11 @@
 import { Navigate } from "react-router-dom";
+import { readStoredToken, readStoredUser } from "../utils/session";
 
 export default function ProtectedRoute({ children }) {
-  const user = JSON.parse(localStorage.getItem("user"));
-  const token = localStorage.getItem("access_token");
+  const user = readStoredUser();
+  const token = readStoredToken();
 
-  if (!user || !token || token === "undefined" || token === "null") {
+  if (!user?.id || !token || token === "undefined" || token === "null") {
     return <Navigate to="/" replace />;
   }
 

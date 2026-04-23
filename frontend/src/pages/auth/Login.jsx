@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { login } from "../../services/api";
 import myLogo from "../../assets/HU Logo.webp";
 import { getStudentDashboardPath } from "../../utils/studentSection";
+import { getDashboardPathByRole, normalizeRole, ROLES } from "../../utils/roles";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -20,54 +21,21 @@ export default function Login() {
       const response = await login({ email, password });
 
       const user = response?.user?.data ?? response?.user;
-      const token = response.access_token; // ✔️ التصحيح هنا
-      const userRole = user?.role?.name;
+      const token = response.access_token;
+      const userRole = normalizeRole(user?.role?.name);
 
       if (!token || token === "undefined" || token === "null") {
         throw new Error("لم يتم استلام رمز الدخول من الخادم");
       }
 
-      // 🔥 تخزين البيانات
+      // تخزين بيانات الجلسة محليًا بعد نجاح تسجيل الدخول.
       localStorage.setItem("access_token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
-      // التوجيه حسب الدور
-      // الكادر الميداني الموحد: المعلم المرشد، المشرف الأكاديمي، الأخصائي النفسي، مدير المدرسة
-      const fieldStaffRoles = ["teacher", "academic_supervisor", "psychologist", "school_manager"];
-
-      switch (userRole) {
-        case "admin":
-          navigate("/dashboard");
-          break;
-        case "coordinator":
-        case "training_coordinator":
-          navigate("/coordinator/dashboard");
-          break;
-        case "field_supervisor":
-        case "teacher":
-        case "academic_supervisor":
-        case "psychologist":
-        case "school_manager":
-          navigate("/field-staff/dashboard");
-          break;
-        case "principal":
-          navigate("/principal/dashboard");
-          break;
-        case "psychology_center_manager":
-          navigate("/psychology-center/dashboard");
-          break;
-        case "education_directorate":
-          navigate("/education/dashboard");
-          break;
-        case "ministry_of_health":
-        case "health_directorate":
-          navigate("/health/dashboard");
-          break;
-        case "student":
-          navigate(getStudentDashboardPath(user));
-          break;
-        default:
-          navigate("/");
+      if (userRole === ROLES.STUDENT) {
+        navigate(getStudentDashboardPath(user));
+      } else {
+        navigate(getDashboardPathByRole(userRole));
       }
 
     } catch (err) {

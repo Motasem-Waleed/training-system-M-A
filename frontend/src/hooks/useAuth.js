@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
+import { clearStoredUser, readStoredUser, writeStoredUser } from "../utils/session";
 
 export default function useAuth() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    const savedUser = readStoredUser();
+    if (savedUser?.id || savedUser?.name || savedUser?.role) {
+      setUser(savedUser);
     }
   }, []);
 
@@ -16,12 +17,12 @@ export default function useAuth() {
       role,
     };
 
-    localStorage.setItem("user", JSON.stringify(fakeUser));
+    writeStoredUser(fakeUser);
     setUser(fakeUser);
   };
 
   const logout = () => {
-    localStorage.removeItem("user");
+    clearStoredUser();
     setUser(null);
   };
 

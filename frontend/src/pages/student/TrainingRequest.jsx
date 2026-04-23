@@ -26,11 +26,17 @@ import {
   updateStudentTrainingRequest,
 } from "../../services/api";
 import { getStudentTrack } from "../../utils/studentSection";
+import { readStoredUser } from "../../utils/session";
+import {
+  getTrainingRequestStatusMeta,
+  isTrainingRequestCancelable,
+  isTrainingRequestEditable,
+} from "../../utils/status";
 
 const educationDirectorates = ["وسط", "شمال", "جنوب", "يطا"];
 
 export default function TrainingRequest() {
-  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const currentUser = readStoredUser();
   const studentTrack = getStudentTrack(currentUser);
   const isEducationFlow = studentTrack === "education";
   const isPsychologyFlow = studentTrack === "psychology";
@@ -197,18 +203,11 @@ export default function TrainingRequest() {
   const hasSubmittedRequest = useMemo(() => Boolean(latestRequest?.id), [latestRequest]);
   const canEditLatestRequest = useMemo(() => {
     if (!latestRequest) return false;
-    // زر التعديل يظهر عند الرفض أو طلب التعديل
-    return ["needs_edit", "rejected", "coordinator_rejected"].includes(latestRequest.book_status);
+    return isTrainingRequestEditable(latestRequest.book_status);
   }, [latestRequest]);
   const canCancelLatestRequest = useMemo(() => {
     if (!latestRequest) return false;
-    // الإلغاء مسموح فقط قبل موافقة المنسق؛ بعد الموافقة لا يمكن الإلغاء أبداً
-    return [
-      "draft",
-      "sent_to_coordinator",
-      "coordinator_under_review",
-      "needs_edit",
-    ].includes(latestRequest.book_status);
+    return isTrainingRequestCancelable(latestRequest.book_status);
   }, [latestRequest]);
   const submitTargetRequestId = useMemo(() => {
     if (editingId) return editingId;
@@ -328,27 +327,20 @@ export default function TrainingRequest() {
   };
 
   const getStatusBadge = (status) => {
-    const statusConfig = {
-      draft: { class: "badge-info", icon: ClipboardList, text: "مسودة" },
-      sent_to_directorate: { class: "badge-info", icon: Send, text: "أُرسل للمديرية" },
-      sent_to_school: { class: "badge-info", icon: Send, text: "أُرسل للمدرسة" },
-      school_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة المدرسة" },
-      directorate_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة المديرية" },
-      sent_to_coordinator: { class: "badge-primary", icon: Send, text: "عند المنسق" },
-      prelim_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة أولية" },
-      approved: { class: "badge-success", icon: CheckCircle2, text: "مقبول" },
-      rejected: { class: "badge-danger", icon: XCircle, text: "مرفوض" },
-      coordinator_rejected: { class: "badge-danger", icon: XCircle, text: "مرفوض من المنسق" },
-      needs_edit: { class: "badge-warning", icon: AlertCircle, text: "يحتاج تعديل" },
+    const meta = getTrainingRequestStatusMeta(status);
+    const iconMap = {
+      "badge-danger": XCircle,
+      "badge-warning": AlertCircle,
+      "badge-success": CheckCircle2,
+      "badge-primary": Send,
+      "badge-info": ClipboardList,
     };
-    
-    const config = statusConfig[status] || { class: "badge-soft", icon: Loader2, text: status || "قيد المعالجة" };
-    const Icon = config.icon;
+    const Icon = iconMap[meta.className] || Loader2;
     
     return (
-      <span className={`badge-custom ${config.class} d-inline-flex align-items-center gap-1`}>
+      <span className={`badge-custom ${meta.className} d-inline-flex align-items-center gap-1`}>
         <Icon size={14} />
-        {config.text}
+        {meta.label}
       </span>
     );
   };

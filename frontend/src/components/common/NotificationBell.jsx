@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getUnreadNotificationsCount, getNotifications, markSystemNotificationAsRead, markAllSystemNotificationsAsRead } from "../../services/api";
 import { useNavigate } from "react-router-dom";
+import { normalizeRole, ROLES } from "../../utils/roles";
+import { readStoredUser } from "../../utils/session";
 
 const notificationIcons = {
   training_request_new_from_student: "📝",
@@ -106,17 +108,19 @@ export default function NotificationBell() {
 
   const handleNotificationClick = (notification) => {
     setIsOpen(false);
-    // Navigate based on notification type
     const type = notification.type;
+    const user = readStoredUser();
+    const role = normalizeRole(user?.role?.name || user?.role);
+
     if (type.includes("coordinator") && !type.includes("student")) {
       navigate("/coordinator/training-requests");
     } else if (type.includes("directorate")) {
-      const user = JSON.parse(localStorage.getItem("user")) || {};
-      const role = user?.role?.name || user?.role;
-      if (role === "health_directorate") {
-        navigate("/health/training-requests");
-      } else if (role === "education_directorate") {
-        navigate("/education/training-requests");
+      if (role === ROLES.HEALTH_DIRECTORATE) {
+        navigate("/health/official-letters");
+      } else if (role === ROLES.EDUCATION_DIRECTORATE) {
+        navigate("/education/official-letters");
+      } else {
+        navigate("/notifications");
       }
     } else if (type.includes("school") || type.includes("principal")) {
       navigate("/principal/training-requests");

@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { getFieldStaffRoleKey, normalizeRole, ROLES } from "../utils/roles";
+import { readStoredUser } from "../utils/session";
 
 /**
  * Hook يحدد دور المستخدم ضمن مجموعة الكادر الميداني الموحد
@@ -55,37 +57,37 @@ const SUBTYPE_TERMS = {
 };
 
 const FIELD_STAFF_MAP = {
-  teacher: {
+  [ROLES.MENTOR]: {
     roleKey: "mentor",
     label: "المعلم المرشد (المشرف الميداني)",
-    targetRole: "teacher",
+    targetRole: ROLES.MENTOR,
   },
-  academic_supervisor: {
+  [ROLES.SUPERVISOR]: {
     roleKey: "supervisor",
     label: "المشرف الأكاديمي",
-    targetRole: "academic_supervisor",
+    targetRole: ROLES.SUPERVISOR,
   },
-  psychologist: {
+  [ROLES.PSYCHOLOGIST]: {
     roleKey: "psychologist",
     label: "الأخصائي النفسي",
-    targetRole: "psychologist",
+    targetRole: ROLES.PSYCHOLOGIST,
   },
-  school_manager: {
+  [ROLES.PRINCIPAL]: {
     roleKey: "principal",
     label: "مدير جهة التدريب",
-    targetRole: "school_manager",
+    targetRole: ROLES.PRINCIPAL,
   },
-  field_supervisor: {
+  [ROLES.FIELD_SUPERVISOR]: {
     roleKey: "field_supervisor",
     label: "المشرف الميداني",
-    targetRole: "field_supervisor",
+    targetRole: ROLES.FIELD_SUPERVISOR,
   },
 };
 
 export default function useFieldStaffRole() {
   const info = useMemo(() => {
-    const savedUser = JSON.parse(localStorage.getItem("user")) || {};
-    const rawRole = savedUser?.role?.name || savedUser?.role || "";
+    const savedUser = readStoredUser();
+    const rawRole = normalizeRole(savedUser?.role?.name || savedUser?.role || "");
 
     const mapped = FIELD_STAFF_MAP[rawRole];
 
@@ -93,7 +95,7 @@ export default function useFieldStaffRole() {
       // ليس من الكادر الميداني
       return {
         isFieldStaff: false,
-        roleKey: rawRole,
+        roleKey: getFieldStaffRoleKey(rawRole),
         rawRole,
         label: "",
         targetRole: rawRole,

@@ -1,15 +1,85 @@
 export const ROLES = {
   ADMIN: "admin",
-  COORDINATOR: "coordinator",
-  SUPERVISOR: "supervisor",
-  MENTOR: "mentor",
-  PRINCIPAL: "principal",
+  COORDINATOR: "training_coordinator",
+  SUPERVISOR: "academic_supervisor",
+  MENTOR: "teacher",
+  PRINCIPAL: "school_manager",
   SCHOOL_MANAGER: "school_manager",
   PSYCHOLOGY_CENTER_MANAGER: "psychology_center_manager",
-  HEALTH: "health_directorate",
-  EDUCATION: "education_directorate",
+  HEALTH_DIRECTORATE: "health_directorate",
+  EDUCATION_DIRECTORATE: "education_directorate",
+  FIELD_SUPERVISOR: "field_supervisor",
+  PSYCHOLOGIST: "psychologist",
   STUDENT: "student",
 };
+
+export const ROLE_ALIASES = {
+  coordinator: ROLES.COORDINATOR,
+  supervisor: ROLES.SUPERVISOR,
+  mentor: ROLES.MENTOR,
+  principal: ROLES.PRINCIPAL,
+};
+
+export const ROLE_LABELS = {
+  [ROLES.ADMIN]: "مدير النظام",
+  [ROLES.COORDINATOR]: "منسق التدريب",
+  [ROLES.SUPERVISOR]: "المشرف الأكاديمي",
+  [ROLES.MENTOR]: "المعلم المرشد",
+  [ROLES.FIELD_SUPERVISOR]: "المشرف الميداني",
+  [ROLES.PSYCHOLOGIST]: "الأخصائي النفسي",
+  [ROLES.PRINCIPAL]: "مدير جهة التدريب",
+  [ROLES.PSYCHOLOGY_CENTER_MANAGER]: "مدير المركز النفسي",
+  [ROLES.HEALTH_DIRECTORATE]: "مديرية الصحة",
+  [ROLES.EDUCATION_DIRECTORATE]: "مديرية التربية والتعليم",
+  [ROLES.STUDENT]: "الطالب المتدرب",
+};
+
+const DASHBOARD_PATHS = {
+  [ROLES.ADMIN]: "/dashboard",
+  [ROLES.COORDINATOR]: "/coordinator/dashboard",
+  [ROLES.FIELD_SUPERVISOR]: "/field-staff/dashboard",
+  [ROLES.MENTOR]: "/field-staff/dashboard",
+  [ROLES.SUPERVISOR]: "/field-staff/dashboard",
+  [ROLES.PSYCHOLOGIST]: "/field-staff/dashboard",
+  [ROLES.PRINCIPAL]: "/field-staff/dashboard",
+  [ROLES.PSYCHOLOGY_CENTER_MANAGER]: "/psychology-center/dashboard",
+  [ROLES.EDUCATION_DIRECTORATE]: "/education/dashboard",
+  [ROLES.HEALTH_DIRECTORATE]: "/health/dashboard",
+};
+
+export function normalizeRole(role) {
+  if (!role) return "";
+  return ROLE_ALIASES[role] || role;
+}
+
+export function getRoleLabel(role) {
+  const normalizedRole = normalizeRole(role);
+  return ROLE_LABELS[normalizedRole] || "مستخدم النظام";
+}
+
+export function getDashboardPathByRole(role) {
+  const normalizedRole = normalizeRole(role);
+  return DASHBOARD_PATHS[normalizedRole] || "/";
+}
+
+export function getFieldStaffRoleKey(role) {
+  const normalizedRole = normalizeRole(role);
+
+  switch (normalizedRole) {
+    case ROLES.MENTOR:
+      return "mentor";
+    case ROLES.SUPERVISOR:
+      return "supervisor";
+    case ROLES.PSYCHOLOGIST:
+      return "psychologist";
+    case ROLES.PRINCIPAL:
+      return "principal";
+    case ROLES.FIELD_SUPERVISOR:
+      return "field_supervisor";
+    default:
+      return normalizedRole;
+  }
+}
 
 /**
  * يعيد مسميات الواجهة حسب نوع موقع التدريب

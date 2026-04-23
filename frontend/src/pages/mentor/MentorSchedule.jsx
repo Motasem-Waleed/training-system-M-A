@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import { getWeeklySchedules, itemsFromPagedResponse } from "../../services/api";
+import { readStoredUser } from "../../utils/session";
 
 export default function MentorSchedule() {
   const [loading, setLoading] = useState(true);
@@ -9,12 +10,8 @@ export default function MentorSchedule() {
   const [teacherId, setTeacherId] = useState(null);
 
   useEffect(() => {
-    try {
-      const u = JSON.parse(localStorage.getItem("user") || "{}");
-      setTeacherId(u?.id ?? null);
-    } catch {
-      setTeacherId(null);
-    }
+    const user = readStoredUser();
+    setTeacherId(user?.id ?? null);
   }, []);
 
   useEffect(() => {
