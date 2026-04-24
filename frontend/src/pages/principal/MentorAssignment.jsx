@@ -30,6 +30,18 @@ const normalizeRowsFromRequest = (request) =>
     };
   });
 
+const getApiErrorMessage = (error, fallbackMessage) => {
+  const responseData = error?.response?.data;
+  const validationErrors = responseData?.errors;
+
+  if (validationErrors && typeof validationErrors === "object") {
+    const firstError = Object.values(validationErrors).flat().find(Boolean);
+    if (firstError) return firstError;
+  }
+
+  return responseData?.message || fallbackMessage;
+};
+
 export default function MentorAssignment({ siteType = "school" }) {
   const labels = siteLabels(siteType);
   const [requests, setRequests] = useState([]);
@@ -71,7 +83,7 @@ export default function MentorAssignment({ siteType = "school" }) {
       setErrorMessage("");
     } catch (error) {
       console.error("Failed to load mentor assignment data:", error);
-      const errMsg = error?.response?.data?.message || error?.message || "خطأ غير معروف";
+      const errMsg = getApiErrorMessage(error, error?.message || "خطأ غير معروف");
       const errStatus = error?.response?.status;
       setErrorMessage(`تعذر تحميل بيانات التعيين. ${errStatus ? `(HTTP ${errStatus}) ` : ""}${errMsg}`);
     } finally {
@@ -122,7 +134,7 @@ export default function MentorAssignment({ siteType = "school" }) {
       await fetchData();
     } catch (error) {
       console.error("Failed to approve request:", error);
-      setErrorMessage(error?.response?.data?.message || "تعذر اعتماد الطلب.");
+      setErrorMessage(getApiErrorMessage(error, "تعذر اعتماد الطلب."));
     } finally {
       setSavingRequestId(null);
     }
@@ -144,7 +156,7 @@ export default function MentorAssignment({ siteType = "school" }) {
       await fetchData();
     } catch (error) {
       console.error("Failed to reject request:", error);
-      setErrorMessage(error?.response?.data?.message || "تعذر رفض الطلب.");
+      setErrorMessage(getApiErrorMessage(error, "تعذر رفض الطلب."));
     } finally {
       setSavingRequestId(null);
     }

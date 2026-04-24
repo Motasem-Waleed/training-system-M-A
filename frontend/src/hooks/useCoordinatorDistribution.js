@@ -12,6 +12,18 @@ import {
   itemsFromPagedResponse,
 } from "../services/api";
 
+const getApiErrorMessage = (error, fallbackMessage) => {
+  const responseData = error?.response?.data;
+  const validationErrors = responseData?.errors;
+
+  if (validationErrors && typeof validationErrors === "object") {
+    const firstError = Object.values(validationErrors).flat().find(Boolean);
+    if (firstError) return firstError;
+  }
+
+  return responseData?.message || fallbackMessage;
+};
+
 export default function useCoordinatorDistribution() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,7 +64,7 @@ export default function useCoordinatorDistribution() {
       const periodsPayload = periodsRes?.data ?? periodsRes;
       setPeriods(itemsFromPagedResponse(periodsPayload));
     } catch (e) {
-      setError(e?.response?.data?.message || "فشل تحميل بيانات التوزيع");
+      setError(getApiErrorMessage(e, "فشل تحميل بيانات التوزيع"));
     } finally {
       setLoading(false);
     }
@@ -121,7 +133,7 @@ export default function useCoordinatorDistribution() {
         setSuccess("تم إنشاء الدفعة بنجاح");
         await load();
       } catch (e) {
-        setError(e?.response?.data?.message || "فشل إنشاء الدفعة");
+        setError(getApiErrorMessage(e, "فشل إنشاء الدفعة"));
       } finally {
         setSaving(false);
       }
@@ -137,7 +149,7 @@ export default function useCoordinatorDistribution() {
         await coordinatorReviewTrainingRequest(id, { decision, reason });
         await load();
       } catch (e) {
-        setError(e?.response?.data?.message || "فشل تنفيذ الإجراء");
+        setError(getApiErrorMessage(e, "فشل تنفيذ الإجراء"));
       } finally {
         setSaving(false);
       }
@@ -176,7 +188,7 @@ export default function useCoordinatorDistribution() {
       setSuccess("تم إنشاء الدفعة بنجاح");
       await load();
     } catch (e) {
-      setError(e?.response?.data?.message || "فشل إنشاء الدفعة");
+      setError(getApiErrorMessage(e, "فشل إنشاء الدفعة"));
     } finally {
       setSaving(false);
     }
@@ -190,8 +202,10 @@ export default function useCoordinatorDistribution() {
         await sendTrainingRequestBatch(batchId, letterData);
         setSuccess("تم إرسال الدفعة بنجاح");
         await load();
+        return true;
       } catch (e) {
-        setError(e?.response?.data?.message || "فشل إرسال الدفعة");
+        setError(getApiErrorMessage(e, "فشل إرسال الدفعة"));
+        return false;
       } finally {
         setSaving(false);
       }

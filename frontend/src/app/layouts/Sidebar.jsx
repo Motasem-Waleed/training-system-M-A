@@ -98,10 +98,14 @@ const menus = {
   mentor: buildFieldStaffMenu("mentor"),
   psychologist: buildFieldStaffMenu("psychologist"),
   supervisor: buildFieldStaffMenu("supervisor"),
-  school_manager: buildFieldStaffMenu("school_manager"),
+  school_manager: [
+    { name: "\u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629", path: "/principal/dashboard" },
+    { name: "\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062e\u0635\u064a", path: "/principal/profile" },
+    { name: "\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u062a\u062f\u0631\u064a\u0628", path: "/principal/training-requests" },
+  ],
   
-  // المشرف الميداني — يستخدم نفس قائمة الكادر الميداني
-  field_supervisor: buildFieldStaffMenu("field_supervisor"),
+  // ???????????? ???????????????? ??? ???????????? ?????? ?????????? ???????????? ????????????????
+    field_supervisor: buildFieldStaffMenu("field_supervisor"),
 
   student: [
     { name: "الرئيسية", path: "/student/dashboard" },
@@ -126,8 +130,7 @@ const menus = {
   principal: [
     { name: "الرئيسية", path: "/principal/dashboard" },
     { name: "الملف الشخصي", path: "/principal/profile" },
-    { name: "طلبات التدريب", path: "/principal/mentor-assignment" },
-    { name: "الطلبة المتدربون", path: "/principal/trainee-students" },
+    { name: "طلبات التدريب", path: "/principal/training-requests" },
   ],
 
   psychology_center_manager: [
@@ -160,7 +163,7 @@ export default function Sidebar({ isOpen, onClose }) {
     normalizedRole === ROLES.COORDINATOR
       ? "coordinator"
       : normalizedRole === ROLES.PRINCIPAL
-        ? "school_manager"
+        ? "principal"
       : getFieldStaffRoleKey(normalizedRole);
   const userName = savedUser?.name || "مستخدم تجريبي";
   const roleName = getRoleLabel(rawRole);

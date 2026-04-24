@@ -63,11 +63,19 @@ export default function CoordinatorTrainingRequests() {
 
   async function handleSendBatch(batchId) {
     const data = batchSendForm[batchId] || {};
-    await sendBatch(batchId, {
-      letter_number: data.letter_number,
-      letter_date: data.letter_date,
-      content: data.content,
-    });
+    const payload = {
+      letter_number: data.letter_number?.trim() || "",
+      letter_date: data.letter_date || "",
+      content: data.content?.trim() || "",
+    };
+
+    if (!payload.letter_number || !payload.letter_date || !payload.content) {
+      return;
+    }
+
+    const sent = await sendBatch(batchId, payload);
+    if (!sent) return;
+
     setBatchSendForm((prev) => {
       const next = { ...prev };
       delete next[batchId];
@@ -202,6 +210,12 @@ export default function CoordinatorTrainingRequests() {
                     {batches.map((b) => {
                       const statusLabel = BATCH_STATUS_LABELS[b.status] || b.status;
                       const statusColors = BATCH_STATUS_COLORS[b.status] || { bg: "#e9ecef", text: "#495057" };
+                      const batchDraft = batchSendForm[b.id] || {};
+                      const isBatchFormComplete = Boolean(
+                        batchDraft.letter_number?.trim() &&
+                        batchDraft.letter_date &&
+                        batchDraft.content?.trim()
+                      );
                       return (
                         <tr key={b.id}>
                           <td>#{b.id}</td>
@@ -252,7 +266,12 @@ export default function CoordinatorTrainingRequests() {
                                 <button
                                   className="btn-sm btn-primary"
                                   onClick={() => handleSendBatch(b.id)}
-                                  disabled={saving}
+                                  disabled={saving || !isBatchFormComplete}
+                                  title={
+                                    isBatchFormComplete
+                                      ? "إرسال الدفعة"
+                                      : "أدخل رقم الكتاب وتاريخه ومحتواه قبل الإرسال"
+                                  }
                                 >
                                   إرسال الدفعة
                                 </button>

@@ -2,9 +2,22 @@ import { useEffect, useState } from "react";
 import {
   directorateApprove,
   getTrainingRequests,
+  itemsFromPagedResponse,
   sendToSchool,
 } from "../../services/api";
 import { siteLabels } from "../../utils/roles";
+
+const getApiErrorMessage = (error, fallbackMessage) => {
+  const responseData = error?.response?.data;
+  const validationErrors = responseData?.errors;
+
+  if (validationErrors && typeof validationErrors === "object") {
+    const firstError = Object.values(validationErrors).flat().find(Boolean);
+    if (firstError) return firstError;
+  }
+
+  return responseData?.message || fallbackMessage;
+};
 
 const OfficialLetters = ({ siteType = "school" }) => {
   const labels = siteLabels(siteType);
@@ -43,11 +56,20 @@ const OfficialLetters = ({ siteType = "school" }) => {
         getTrainingRequests({ book_status: "sent_to_directorate", governing_body: governingBody, per_page: 100 }),
         getTrainingRequests({ book_status: "directorate_approved", governing_body: governingBody, per_page: 100 }),
       ]);
-      setIncomingRequests(Array.isArray(incomingRes?.data) ? incomingRes.data : []);
-      setApprovedRequests(Array.isArray(approvedRes?.data) ? approvedRes.data : []);
+      const incomingItems = itemsFromPagedResponse(incomingRes);
+      const approvedItems = itemsFromPagedResponse(approvedRes);
+      console.log("OfficialLetters fetched requests:", {
+        governingBody,
+        incomingCount: incomingItems.length,
+        approvedCount: approvedItems.length,
+        incomingRes,
+        approvedRes,
+      });
+      setIncomingRequests(incomingItems);
+      setApprovedRequests(approvedItems);
     } catch (error) {
       console.error("Failed to load training requests:", error);
-      setErrorMessage("تعذر تحميل طلبات التدريب.");
+      setErrorMessage(getApiErrorMessage(error, "تعذر تحميل طلبات التدريب."));
     } finally {
       setLoading(false);
     }
@@ -96,7 +118,7 @@ const OfficialLetters = ({ siteType = "school" }) => {
     } catch (error) {
       console.error("Failed to decide training request:", error);
       console.error("Error response:", error?.response?.data);
-      setErrorMessage(error?.response?.data?.message || "تعذر حفظ القرار.");
+      setErrorMessage(getApiErrorMessage(error, "تعذر حفظ القرار."));
     } finally {
       setRequestSavingId(null);
     }
@@ -142,7 +164,7 @@ const OfficialLetters = ({ siteType = "school" }) => {
       await fetchTrainingRequests();
     } catch (error) {
       console.error("Failed to send request:", error);
-      setErrorMessage(error?.response?.data?.message || "تعذر إرسال الطلب.");
+      setErrorMessage(getApiErrorMessage(error, "تعذر إرسال الطلب."));
     } finally {
       setSendingToSchoolId(null);
     }
@@ -179,8 +201,8 @@ const OfficialLetters = ({ siteType = "school" }) => {
                 <tr key={request.id}>
                   <td>{request.letter_number || `#${request.id}`}</td>
                   <td>{request.training_site?.data?.name || request.training_site?.name || "—"}</td>
-                  <td>{request.training_request_students?.[0]?.user?.name || "—"}</td>
-                  <td>{request.training_request_students?.[0]?.course?.name || "—"}</td>
+                  <td>{request.students?.[0]?.user?.name || "—"}</td>
+                  <td>{request.students?.[0]?.course?.name || "—"}</td>
                   <td>
                     <span className={getRequestStatusClass(request.book_status)}>
                       {request.book_status_label || request.book_status}
@@ -262,8 +284,8 @@ const OfficialLetters = ({ siteType = "school" }) => {
                 <tr key={request.id}>
                   <td>{request.letter_number || `#${request.id}`}</td>
                   <td>{request.training_site?.data?.name || request.training_site?.name || "—"}</td>
-                  <td>{request.training_request_students?.[0]?.user?.name || "—"}</td>
-                  <td>{request.training_request_students?.[0]?.course?.name || "—"}</td>
+                  <td>{request.students?.[0]?.user?.name || "—"}</td>
+                  <td>{request.students?.[0]?.course?.name || "—"}</td>
                   <td>{request.directorate_approved_at ? new Date(request.directorate_approved_at).toLocaleDateString('ar-SA') : "—"}</td>
                   <td>
                     <input

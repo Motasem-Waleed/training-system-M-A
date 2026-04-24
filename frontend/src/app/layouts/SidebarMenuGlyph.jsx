@@ -72,6 +72,7 @@ const ROUTE_ICON = {
 
   "/principal/dashboard": "home",
   "/principal/profile": "user",
+  "/principal/training-requests": "fileText",
   "/principal/mentor-assignment": "fileText",
   "/principal/trainee-students": "graduation",
 

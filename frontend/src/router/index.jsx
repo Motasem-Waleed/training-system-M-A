@@ -98,10 +98,10 @@ import CoordinatorDistributionStatus from "../pages/coordinator/DistributionStat
 // Principal
 import PrincipalDashboard from "../pages/dashboard/PrincipalDashboard";
 import PrincipalProfile from "../pages/principal/Profile";
-import MentorAssignment from "../pages/principal/MentorAssignment";
-import TraineeStudents from "../pages/principal/TraineeStudents";
 import PrincipalOfficialLetters from "../pages/principal/OfficialLetters";
 import PrincipalTrainingRequests from "../pages/principal/TrainingRequests";
+import MentorAssignment from "../pages/principal/MentorAssignment";
+import TraineeStudents from "../pages/principal/TraineeStudents";
 
 // Health Directorate
 import HealthDirectorateDashboard from "../pages/dashboard/HealthDirectorateDashboard";
@@ -282,8 +282,7 @@ export default function AppRouter() {
           {/* Principal */}
           <Route path="/principal/dashboard" element={<PrincipalDashboard siteType="school" />} />
           <Route path="/principal/profile" element={<PrincipalProfile />} />
-          <Route path="/principal/mentor-assignment" element={<MentorAssignment siteType="school" />} />
-          <Route path="/principal/trainee-students" element={<TraineeStudents siteType="school" />} />
+          <Route path="/principal/mentor-assignment" element={<PrincipalTrainingRequests />} />
           <Route path="/principal/training-requests" element={<PrincipalTrainingRequests />} />
           <Route path="/principal/official-letters" element={<PrincipalOfficialLetters />} />
 
