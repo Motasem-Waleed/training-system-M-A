@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, CheckCircle2, AlertTriangle, XCircle, Loader2 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { COORDINATOR_DECISIONS } from "../../config/coordinator/workflowSteps";
-import { GOVERNING_BODIES, DIRECTORATES } from "../../config/coordinator/governingBodies";
+import { GOVERNING_BODIES } from "../../config/coordinator/governingBodies";
 
 export default function RequestReviewDrawer({
   request,
@@ -11,10 +11,25 @@ export default function RequestReviewDrawer({
   onReview,
   saving,
   sites = [],
+  initialDecision = "",
+  initialReason = "",
 }) {
   const [decision, setDecision] = useState("");
   const [reason, setReason] = useState("");
   const [selectedSiteId, setSelectedSiteId] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setDecision("");
+      setReason("");
+      setSelectedSiteId("");
+      return;
+    }
+
+    setDecision(initialDecision || "");
+    setReason(initialReason || "");
+    setSelectedSiteId("");
+  }, [open, request?.id, initialDecision, initialReason]);
 
   if (!open || !request) return null;
 
@@ -287,7 +302,7 @@ export default function RequestReviewDrawer({
           <button
             className="btn-primary"
             onClick={handleSubmit}
-            disabled={!decision || saving}
+            disabled={!decision || saving || (decision !== "prelim_approved" && !reason.trim())}
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
             {saving && <Loader2 className="spin" size={16} />}

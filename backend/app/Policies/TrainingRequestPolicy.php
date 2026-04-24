@@ -189,7 +189,7 @@ class TrainingRequestPolicy
 
     public function approveBySchool(User $user, TrainingRequest $trainingRequest): bool
     {
-        if (! in_array($user->role?->name, ['school_manager', 'psychology_center_manager'], true)) {
+        if (! in_array($user->role?->name, ['school_manager', 'psychology_center_manager', 'principal'], true)) {
             return false;
         }
 

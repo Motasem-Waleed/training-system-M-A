@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { getOfficialLetters, receiveOfficialLetter } from "../../services/api";
 
 const normalizeLetter = (item) => ({
@@ -11,7 +11,8 @@ const normalizeLetter = (item) => ({
   sender: item.sent_by?.data?.name || item.sent_by?.name || "غير محدد",
   date: item.letter_date || item.created_at || "—",
   status: item.status || "sent_to_school",
-  status_label: item.status_label || "مرسل للمدرسة",
+  statusLabel: item.status_label || "مرسل للمدرسة",
+  content: item.content || "",
 });
 
 const OfficialLetters = () => {
@@ -20,6 +21,7 @@ const OfficialLetters = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const [savingId, setSavingId] = useState(null);
+  const [expandedLetterId, setExpandedLetterId] = useState(null);
 
   useEffect(() => {
     fetchLetters();
@@ -66,6 +68,10 @@ const OfficialLetters = () => {
     }
   };
 
+  const toggleContent = (letterId) => {
+    setExpandedLetterId((current) => (current === letterId ? null : letterId));
+  };
+
   return (
     <>
       <div className="content-header">
@@ -88,40 +94,72 @@ const OfficialLetters = () => {
                   <th>الجهة المرسلة</th>
                   <th>التاريخ</th>
                   <th>الحالة</th>
+                  <th>المحتوى</th>
                   <th>الإجراء</th>
                 </tr>
               </thead>
               <tbody>
                 {letters.map((letter) => (
-                  <tr key={letter.id}>
-                    <td className="fw-bold">{letter.subject}</td>
-                    <td>{letter.sender}</td>
-                    <td>{letter.date}</td>
-                    <td>
-                      <span className={getStatusClass(letter.status)}>
-                        {letter.status_label}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn-primary-custom btn-sm-custom"
-                        onClick={() => handleReceive(letter)}
-                        disabled={savingId === letter.id || letter.status === "school_received"}
-                      >
-                        {savingId === letter.id
-                          ? "جاري التحديث..."
-                          : letter.status === "school_received"
-                          ? "تم الاستلام"
-                          : "تأكيد الاستلام"}
-                      </button>
-                    </td>
-                  </tr>
+                  <Fragment key={letter.id}>
+                    <tr key={letter.id}>
+                      <td className="fw-bold">{letter.subject}</td>
+                      <td>{letter.sender}</td>
+                      <td>{letter.date}</td>
+                      <td>
+                        <span className={getStatusClass(letter.status)}>
+                          {letter.statusLabel}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn-secondary-custom btn-sm-custom"
+                          onClick={() => toggleContent(letter.id)}
+                        >
+                          {expandedLetterId === letter.id ? "إخفاء المحتوى" : "عرض المحتوى"}
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn-primary-custom btn-sm-custom"
+                          onClick={() => handleReceive(letter)}
+                          disabled={
+                            savingId === letter.id || letter.status === "school_received"
+                          }
+                        >
+                          {savingId === letter.id
+                            ? "جاري التحديث..."
+                            : letter.status === "school_received"
+                              ? "تم الاستلام"
+                              : "تأكيد الاستلام"}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedLetterId === letter.id && (
+                      <tr>
+                        <td colSpan="6">
+                          <div
+                            style={{
+                              background: "#f8f9fa",
+                              border: "1px solid var(--border)",
+                              borderRadius: 12,
+                              padding: 16,
+                              whiteSpace: "pre-wrap",
+                              lineHeight: 1.8,
+                            }}
+                          >
+                            {letter.content || "لا يوجد محتوى محفوظ لهذا الكتاب."}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
 
                 {letters.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="text-center">
+                    <td colSpan="6" className="text-center">
                       لا توجد كتب رسمية حاليًا
                     </td>
                   </tr>

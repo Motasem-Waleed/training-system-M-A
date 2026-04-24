@@ -4,7 +4,7 @@ import { getGoverningBodyLabel } from "../../config/coordinator/governingBodies"
 
 export default function RequestsTable({
   requests = [],
-  onReview,
+  onDecisionSelect,
   onView,
   saving = false,
   showActions = true,
@@ -74,12 +74,12 @@ export default function RequestsTable({
                         عرض
                       </button>
                     )}
-                    {onReview && (
+                    {onDecisionSelect && (
                       <>
                         <button
                           className="btn-sm btn-primary"
                           disabled={saving}
-                          onClick={() => onReview(r.id, "prelim_approved")}
+                          onClick={() => onDecisionSelect(r, "prelim_approved")}
                           style={{ display: "flex", alignItems: "center", gap: 4 }}
                         >
                           <CheckCircle2 size={14} />
@@ -88,7 +88,7 @@ export default function RequestsTable({
                         <button
                           className="btn-sm btn-secondary"
                           disabled={saving}
-                          onClick={() => onReview(r.id, "needs_edit")}
+                          onClick={() => onDecisionSelect(r, "needs_edit")}
                           style={{ display: "flex", alignItems: "center", gap: 4 }}
                         >
                           <AlertTriangle size={14} />
@@ -97,7 +97,7 @@ export default function RequestsTable({
                         <button
                           className="btn-sm btn-secondary"
                           disabled={saving}
-                          onClick={() => onReview(r.id, "rejected")}
+                          onClick={() => onDecisionSelect(r, "rejected")}
                           style={{
                             display: "flex",
                             alignItems: "center",

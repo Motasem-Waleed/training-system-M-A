@@ -37,7 +37,14 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
+    const requestUrl = String(error?.config?.url || "");
+    const isOptionalNotificationsRequest = requestUrl.includes("/notifications");
+    const isOptionalActivityRequest = requestUrl.includes("/activity-logs");
+    const shouldPreserveSession =
+      isOptionalNotificationsRequest ||
+      isOptionalActivityRequest;
+
+    if (error?.response?.status === 401 && !shouldPreserveSession) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
       if (window.location.pathname !== "/") {

@@ -37,6 +37,11 @@ class User extends Authenticatable
     return $this->role && $this->role->permissions->contains('name', $permission);
 }
 
+    public function hasRole(string $role): bool
+    {
+        return $this->role?->name === $role;
+    }
+
     public function role()
     {
         return $this->belongsTo(Role::class);

@@ -48,7 +48,7 @@ export default function useCoordinatorDistribution() {
     setError("");
     try {
       const [reqRes, usersRes, coursesRes, sitesRes, periodsRes, batchesRes] =
-        await Promise.all([
+        await Promise.allSettled([
           getTrainingRequests({ per_page: 200 }),
           getUsers({ per_page: 200, status: "active" }),
           getCourses({ per_page: 200 }),
@@ -56,13 +56,36 @@ export default function useCoordinatorDistribution() {
           getTrainingPeriods({ per_page: 200 }),
           getTrainingRequestBatches({ per_page: 50 }),
         ]);
-      setRequests(itemsFromPagedResponse(reqRes));
-      setStudents(itemsFromPagedResponse(usersRes));
-      setCourses(itemsFromPagedResponse(coursesRes));
-      setSites(itemsFromPagedResponse(sitesRes));
-      setBatches(itemsFromPagedResponse(batchesRes));
-      const periodsPayload = periodsRes?.data ?? periodsRes;
-      setPeriods(itemsFromPagedResponse(periodsPayload));
+      setRequests(
+        reqRes.status === "fulfilled" ? itemsFromPagedResponse(reqRes.value) : []
+      );
+      setStudents(
+        usersRes.status === "fulfilled" ? itemsFromPagedResponse(usersRes.value) : []
+      );
+      setCourses(
+        coursesRes.status === "fulfilled" ? itemsFromPagedResponse(coursesRes.value) : []
+      );
+      setSites(
+        sitesRes.status === "fulfilled" ? itemsFromPagedResponse(sitesRes.value) : []
+      );
+      setBatches(
+        batchesRes.status === "fulfilled" ? itemsFromPagedResponse(batchesRes.value) : []
+      );
+      setPeriods(
+        periodsRes.status === "fulfilled"
+          ? itemsFromPagedResponse(periodsRes.value?.data ?? periodsRes.value)
+          : []
+      );
+
+      if (reqRes.status === "rejected" || batchesRes.status === "rejected") {
+        const firstFailed =
+          reqRes.status === "rejected"
+            ? reqRes.reason
+            : batchesRes.status === "rejected"
+              ? batchesRes.reason
+              : null;
+        setError(getApiErrorMessage(firstFailed, "فشل تحميل بيانات المنسق"));
+      }
     } catch (e) {
       setError(getApiErrorMessage(e, "فشل تحميل بيانات التوزيع"));
     } finally {

@@ -18,3 +18,7 @@ export function readStoredToken() {
   return localStorage.getItem("access_token");
 }
 
+export function clearStoredToken() {
+  localStorage.removeItem("access_token");
+}
+

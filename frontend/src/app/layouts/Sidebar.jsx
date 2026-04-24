@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import SidebarMenuGlyph from "./SidebarMenuGlyph";
 import { checkFeatureFlag } from "../../services/api";
 import { getFieldStaffRoleKey, getRoleLabel, normalizeRole, ROLES } from "../../utils/roles";
-import { clearStoredUser, readStoredUser } from "../../utils/session";
+import { clearStoredToken, clearStoredUser, readStoredUser } from "../../utils/session";
 
 const menuFeatureMap = {
   "/student/training-request": "training_requests.create",
@@ -212,6 +212,7 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   const handleLogout = () => {
+    clearStoredToken();
     clearStoredUser();
     navigate("/");
   };

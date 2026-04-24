@@ -2,10 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\OfficialLetterStatus;
+use App\Enums\OfficialLetterType;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Enums\OfficialLetterType;
-use App\Enums\OfficialLetterStatus;
 
 class OfficialLetterResource extends JsonResource
 {

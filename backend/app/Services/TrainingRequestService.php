@@ -156,7 +156,7 @@ class TrainingRequestService
 
             // إرسال تلقائي إلى المدرسة بعد موافقة المديرية
             $this->sendToSchool($trainingRequest, $directorateUserId, [
-                'letter_number' => 'AUTO-SCH-' . $trainingRequest->id,
+                'letter_number' => $this->generateAutoSchoolLetterNumber($trainingRequest),
                 'letter_date' => now()->toDateString(),
                 'content' => 'تحويل تلقائي لطلب التدريب إلى المدرسة بعد موافقة المديرية.',
             ]);
@@ -334,6 +334,20 @@ class TrainingRequestService
     private function generateLetterNumber(): string
     {
         return 'LET-' . date('Ymd') . '-' . rand(100, 999);
+    }
+
+    private function generateAutoSchoolLetterNumber(TrainingRequest $trainingRequest): string
+    {
+        $base = 'AUTO-SCH-' . $trainingRequest->id . '-' . now()->format('YmdHis');
+        $candidate = $base;
+        $suffix = 1;
+
+        while (OfficialLetter::query()->where('letter_number', $candidate)->exists()) {
+            $candidate = $base . '-' . $suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 
     private function getEnrollmentId(int $userId, int $courseId): ?int

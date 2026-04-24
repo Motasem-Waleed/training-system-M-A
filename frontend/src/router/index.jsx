@@ -56,6 +56,7 @@ import StudentAttendance from "../pages/student/Attendance";
 import StudentDashboardRedirect from "../pages/student/StudentDashboardRedirect";
 import EForms from "../pages/student/EForms";
 import StudentTrainingRequestEntry from "../pages/student/StudentTrainingRequestEntry";
+import TrainingRequestStatus from "../pages/student/TrainingRequestStatus";
 
 // Common
 import Profile from "../pages/common/Profile";
@@ -205,7 +206,7 @@ export default function AppRouter() {
           <Route path="/student/assignments" element={<Assignments />} />
           <Route path="/student/training-request" element={<StudentTrainingRequestEntry />} />
           <Route path="/student/training-requests" element={<StudentTrainingRequestEntry />} />
-          <Route path="/student/training-request-status" element={<StudentTrainingRequestEntry />} />
+          <Route path="/student/training-request-status" element={<TrainingRequestStatus />} />
           <Route path="/student/e-forms" element={<EForms />} />
           <Route path="/student/attendance" element={<StudentAttendance />} />
           <Route path="/student/notifications-updates" element={<NotificationsUpdates />} />

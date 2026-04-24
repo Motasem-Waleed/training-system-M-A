@@ -8,7 +8,7 @@ class SchoolApproveTrainingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()->role?->name, ['school_manager', 'psychology_center_manager']);
+        return in_array($this->user()->role?->name, ['school_manager', 'principal', 'psychology_center_manager'], true);
     }
 
     public function rules(): array

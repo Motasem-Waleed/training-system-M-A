@@ -20,7 +20,7 @@ class StoreOfficialLetterRequest extends FormRequest
             'letter_date' => 'required|date',
             'type' => 'required|in:to_directorate,to_school',
             'content' => 'required|string',
-            'file_path' => 'nullable|file|mimes:pdf|max:2048',
+            'file_path' => 'nullable|string|max:255',
         ];
     }
 }

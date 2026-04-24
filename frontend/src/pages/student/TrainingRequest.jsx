@@ -18,7 +18,6 @@ import {
 import {
   createStudentTrainingRequest,
   deleteStudentTrainingRequest,
-  getCourses,
   getStudentTrainingRequests,
   getTrainingPeriods,
   getTrainingSites,
@@ -48,7 +47,6 @@ export default function TrainingRequest() {
   const [success, setSuccess] = useState("");
   const [editingId, setEditingId] = useState(null);
 
-  const [courses, setCourses] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
   const [directorates, setDirectorates] = useState([]);
@@ -78,11 +76,9 @@ export default function TrainingRequest() {
       setLoading(true);
       setError("");
       try {
-        const [coursesRes, periodsRes] = await Promise.all([
-          getCourses({ per_page: 200 }),
+        const [periodsRes] = await Promise.all([
           getTrainingPeriods({ per_page: 200 }),
         ]);
-        setCourses(itemsFromPagedResponse(coursesRes));
         setPeriods(itemsFromPagedResponse(periodsRes));
         await loadMyRequests();
       } catch (e) {
@@ -237,7 +233,6 @@ export default function TrainingRequest() {
       const payload = {
         training_site_id: Number(formData.training_site_id),
         training_period_id: activePeriod?.id ? Number(activePeriod.id) : null,
-        course_id: courses[0]?.id ? Number(courses[0].id) : null,
         directorate: filters.directorate || null,
         start_date: activePeriod?.start_date || fallbackStart,
         end_date: activePeriod?.end_date || fallbackEnd,

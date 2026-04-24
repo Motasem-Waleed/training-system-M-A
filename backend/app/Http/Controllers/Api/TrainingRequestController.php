@@ -321,10 +321,11 @@ class TrainingRequestController extends Controller
         $user = auth()->user();
         $requests = TrainingRequest::with([
             'trainingSite',
-            'trainingRequestStudents.user',
-            'trainingRequestStudents.course',
-            'trainingRequestStudents.assignedTeacher',
             'trainingPeriod',
+            'trainingRequestStudents' => function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->with(['user', 'course', 'assignedTeacher']);
+            },
         ])
             ->where(function ($q) use ($user) {
                 $q->where('requested_by', $user->id)

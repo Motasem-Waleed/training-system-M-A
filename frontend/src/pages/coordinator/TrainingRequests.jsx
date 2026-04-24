@@ -18,10 +18,8 @@ export default function CoordinatorTrainingRequests() {
     saving,
     error,
     success,
-    setSuccess,
     batches,
     incomingRequests,
-    prelimApproved,
     coordinatorRejected,
     prelimApprovedByGroup,
     reviewDecision,
@@ -33,6 +31,7 @@ export default function CoordinatorTrainingRequests() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [presetDecision, setPresetDecision] = useState("");
   const [batchSendForm, setBatchSendForm] = useState({});
   const [filters, setFilters] = useState({
     status: "",
@@ -41,6 +40,13 @@ export default function CoordinatorTrainingRequests() {
 
   const handleView = (req) => {
     setSelectedRequest(req);
+    setPresetDecision("");
+    setDrawerOpen(true);
+  };
+
+  const handleDecisionSelect = (req, decision) => {
+    setSelectedRequest(req);
+    setPresetDecision(decision);
     setDrawerOpen(true);
   };
 
@@ -49,6 +55,7 @@ export default function CoordinatorTrainingRequests() {
       await reviewDecision(id, decision, reason);
       setDrawerOpen(false);
       setSelectedRequest(null);
+      setPresetDecision("");
     } catch {
       // error handled in hook
     }
@@ -159,7 +166,7 @@ export default function CoordinatorTrainingRequests() {
             ) : (
               <RequestsTable
                 requests={filteredSearch}
-                onReview={handleReview}
+                onDecisionSelect={handleDecisionSelect}
                 onView={handleView}
                 saving={saving}
               />
@@ -297,10 +304,12 @@ export default function CoordinatorTrainingRequests() {
         onClose={() => {
           setDrawerOpen(false);
           setSelectedRequest(null);
+          setPresetDecision("");
         }}
         onReview={handleReview}
         saving={saving}
         sites={sites}
+        initialDecision={presetDecision}
       />
     </div>
   );

@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
-import { 
-  ClipboardList, 
-  Building2, 
-  MapPin, 
-  UserCheck, 
-  Clock, 
+import {
+  ClipboardList,
+  Building2,
+  MapPin,
+  UserCheck,
+  Clock,
   AlertCircle,
   CheckCircle2,
   XCircle,
   Send,
   History,
   RefreshCw,
-  Calendar
+  Calendar,
 } from "lucide-react";
-import { getStudentTrainingRequests, itemsFromPagedResponse, getActivityLogs } from "../../services/api";
+import {
+  getActivityLogs,
+  getStudentTrainingRequests,
+  itemsFromPagedResponse,
+} from "../../services/api";
 
 export default function TrainingRequestStatus() {
   const [loading, setLoading] = useState(true);
@@ -27,18 +31,28 @@ export default function TrainingRequestStatus() {
       const res = await getStudentTrainingRequests();
       const list = itemsFromPagedResponse(res);
       const latestRequest = list[0] || null;
+
       setRequestItem(latestRequest);
+      setActivityLogs([]);
 
       if (latestRequest?.id) {
-        const logsRes = await getActivityLogs({
-          subject_type: "training_request",
-          subject_id: latestRequest.id,
-          per_page: 50,
-        });
-        setActivityLogs(itemsFromPagedResponse(logsRes));
+        try {
+          const logsRes = await getActivityLogs({
+            subject_type: "training_request",
+            subject_id: latestRequest.id,
+            per_page: 50,
+          });
+          setActivityLogs(itemsFromPagedResponse(logsRes));
+        } catch (logsError) {
+          // The status page should still render even when logs are not accessible.
+          if (logsError?.response?.status !== 403) {
+            throw logsError;
+          }
+        }
       }
 
       setLastUpdate(new Date());
+      setError("");
     } catch (e) {
       setError(e?.response?.data?.message || "تعذر تحميل حالة الطلب.");
     }
@@ -51,6 +65,7 @@ export default function TrainingRequestStatus() {
       await loadData();
       setLoading(false);
     };
+
     load();
 
     const interval = setInterval(() => {
@@ -62,24 +77,68 @@ export default function TrainingRequestStatus() {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      draft: { class: "badge-info", icon: ClipboardList, text: "مسودة" },
-      sent_to_directorate: { class: "badge-info", icon: Send, text: "أُرسل للمديرية" },
-      sent_to_school: { class: "badge-info", icon: Send, text: "أُرسل للمدرسة" },
-      school_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة المدرسة" },
-      directorate_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة المديرية" },
-      sent_to_coordinator: { class: "badge-primary", icon: Send, text: "عند المنسق" },
-      prelim_approved: { class: "badge-success", icon: CheckCircle2, text: "موافقة أولية" },
-      approved: { class: "badge-success", icon: CheckCircle2, text: "مقبول" },
-      rejected: { class: "badge-danger", icon: XCircle, text: "مرفوض" },
-      coordinator_rejected: { class: "badge-danger", icon: XCircle, text: "مرفوض من المنسق" },
-      needs_edit: { class: "badge-warning", icon: AlertCircle, text: "يحتاج تعديل" },
+      draft: { className: "badge-info", icon: ClipboardList, text: "مسودة" },
+      sent_to_directorate: {
+        className: "badge-info",
+        icon: Send,
+        text: "أُرسل للمديرية",
+      },
+      sent_to_school: {
+        className: "badge-info",
+        icon: Send,
+        text: "أُرسل للمدرسة",
+      },
+      school_approved: {
+        className: "badge-success",
+        icon: CheckCircle2,
+        text: "موافقة جهة التدريب",
+      },
+      directorate_approved: {
+        className: "badge-success",
+        icon: CheckCircle2,
+        text: "موافقة المديرية",
+      },
+      sent_to_coordinator: {
+        className: "badge-primary",
+        icon: Send,
+        text: "عند المنسق",
+      },
+      prelim_approved: {
+        className: "badge-success",
+        icon: CheckCircle2,
+        text: "موافقة أولية",
+      },
+      approved: {
+        className: "badge-success",
+        icon: CheckCircle2,
+        text: "مقبول",
+      },
+      rejected: {
+        className: "badge-danger",
+        icon: XCircle,
+        text: "مرفوض",
+      },
+      coordinator_rejected: {
+        className: "badge-danger",
+        icon: XCircle,
+        text: "مرفوض من المنسق",
+      },
+      needs_edit: {
+        className: "badge-warning",
+        icon: AlertCircle,
+        text: "يحتاج تعديل",
+      },
     };
-    
-    const config = statusConfig[status] || { class: "badge-soft", icon: Clock, text: status || "قيد المعالجة" };
+
+    const config = statusConfig[status] || {
+      className: "badge-soft",
+      icon: Clock,
+      text: status || "قيد المعالجة",
+    };
     const Icon = config.icon;
-    
+
     return (
-      <span className={`badge-custom ${config.class} d-inline-flex align-items-center gap-1`}>
+      <span className={`badge-custom ${config.className} d-inline-flex align-items-center gap-1`}>
         <Icon size={14} />
         {config.text}
       </span>
@@ -88,6 +147,7 @@ export default function TrainingRequestStatus() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
+
     return new Date(dateStr).toLocaleString("ar-SA", {
       year: "numeric",
       month: "2-digit",
@@ -116,7 +176,7 @@ export default function TrainingRequestStatus() {
         </h1>
         <p className="page-subtitle">
           <Clock size={14} className="me-1" />
-          آخر تحديث: {formatDate(lastUpdate)} · يتم التحديث تلقائياً كل 30 ثانية
+          آخر تحديث: {formatDate(lastUpdate)} · يتم التحديث تلقائيًا كل 30 ثانية
         </p>
       </div>
 
@@ -141,16 +201,13 @@ export default function TrainingRequestStatus() {
           <div className="empty-state">
             <ClipboardList size={48} className="text-muted mb-3" />
             <h5>لا يوجد طلب تدريب حالي</h5>
-            <p className="text-muted mb-0">
-              يمكنك تقديم طلب جديد من صفحة طلب التدريب
-            </p>
+            <p className="text-muted mb-0">يمكنك تقديم طلب جديد من صفحة طلب التدريب.</p>
           </div>
         </div>
       )}
 
       {!loading && !error && requestItem && (
         <>
-          {/* بطاقة حالة الطلب الرئيسية */}
           <div className="section-card">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h5 className="mb-0 d-flex align-items-center gap-2">
@@ -164,18 +221,14 @@ export default function TrainingRequestStatus() {
               <div className="stat-card primary">
                 <div>
                   <div className="stat-title">حالة الطلب</div>
-                  <div className="stat-value fs-6">
-                    {getStatusBadge(requestItem.book_status)}
-                  </div>
+                  <div className="stat-value fs-6">{getStatusBadge(requestItem.book_status)}</div>
                 </div>
               </div>
 
               <div className="stat-card success">
                 <div>
                   <div className="stat-title">الجهة المعتمدة</div>
-                  <div className="stat-value fs-6">
-                    {requestItem.training_site?.name || "—"}
-                  </div>
+                  <div className="stat-value fs-6">{requestItem.training_site?.name || "—"}</div>
                 </div>
               </div>
 
@@ -200,20 +253,23 @@ export default function TrainingRequestStatus() {
               </div>
             </div>
 
-            {(requestItem.rejection_reason || requestItem.coordinator_rejection_reason || requestItem.needs_edit_reason) && (
+            {(requestItem.rejection_reason ||
+              requestItem.coordinator_rejection_reason ||
+              requestItem.needs_edit_reason) && (
               <div className="alert-custom alert-warning mt-3 d-flex align-items-start gap-2">
                 <AlertCircle size={20} className="mt-1 flex-shrink-0" />
                 <div>
                   <strong>ملاحظات على الطلب:</strong>
                   <p className="mb-0 mt-1">
-                    {requestItem.rejection_reason || requestItem.coordinator_rejection_reason || requestItem.needs_edit_reason}
+                    {requestItem.rejection_reason ||
+                      requestItem.coordinator_rejection_reason ||
+                      requestItem.needs_edit_reason}
                   </p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* تفاصيل إضافية */}
           <div className="section-card mt-3">
             <h5 className="mb-3 d-flex align-items-center gap-2">
               <Calendar size={20} className="text-primary" />
@@ -223,57 +279,44 @@ export default function TrainingRequestStatus() {
               <div className="col-md-6">
                 <div className="form-field">
                   <label className="form-label-custom">تاريخ التقديم</label>
-                  <div className="form-input-custom bg-light">
-                    {formatDate(requestItem.created_at)}
-                  </div>
+                  <div className="form-input-custom bg-light">{formatDate(requestItem.created_at)}</div>
                 </div>
               </div>
               <div className="col-md-6">
                 <div className="form-field">
                   <label className="form-label-custom">آخر تحديث</label>
-                  <div className="form-input-custom bg-light">
-                    {formatDate(requestItem.updated_at)}
-                  </div>
+                  <div className="form-input-custom bg-light">{formatDate(requestItem.updated_at)}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* سجل النشاط */}
           <div className="section-card mt-3">
             <h5 className="mb-3 d-flex align-items-center gap-2">
               <History size={20} className="text-primary" />
               سجل تحديثات الطلب
-              <span className="badge-custom badge-soft ms-auto">
-                {activityLogs.length} تحديث
-              </span>
+              <span className="badge-custom badge-soft ms-auto">{activityLogs.length} تحديث</span>
             </h5>
 
             {activityLogs.length === 0 ? (
               <div className="empty-state py-4">
                 <History size={32} className="text-muted mb-2" />
-                <p className="text-muted mb-0">لا توجد تحديثات مسجلة</p>
+                <p className="text-muted mb-0">لا توجد تحديثات مسجلة.</p>
               </div>
             ) : (
               <div className="timeline">
                 {activityLogs.map((log, index) => (
                   <div key={index} className="timeline-item">
-                    <div className="timeline-marker">
-                      {getLogIcon(log.event)}
-                    </div>
+                    <div className="timeline-marker">{getLogIcon(log.event)}</div>
                     <div className="timeline-content">
                       <div className="d-flex justify-content-between align-items-start">
                         <div>
                           <strong className="d-block">{log.description || log.event || "تحديث"}</strong>
                           {log.causer?.name && (
-                            <small className="text-muted">
-                              بواسطة: {log.causer.name}
-                            </small>
+                            <small className="text-muted">بواسطة: {log.causer.name}</small>
                           )}
                         </div>
-                        <small className="text-muted">
-                          {formatDate(log.created_at)}
-                        </small>
+                        <small className="text-muted">{formatDate(log.created_at)}</small>
                       </div>
                       {log.properties && Object.keys(log.properties).length > 0 && (
                         <details className="mt-2">

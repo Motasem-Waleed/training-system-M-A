@@ -72,10 +72,6 @@ class TrainingRequestBatchController extends Controller
             $attached = 0;
 
             foreach ($requests as $tr) {
-                if (DB::table('training_request_batch_items')->where('training_request_id', $tr->id)->exists()) {
-                    continue;
-                }
-
                 if ($tr->book_status !== 'prelim_approved') {
                     continue;
                 }
@@ -177,4 +173,3 @@ class TrainingRequestBatchController extends Controller
         return new TrainingRequestBatchResource($batch->load('createdBy')->loadCount('trainingRequests'));
     }
 }
-

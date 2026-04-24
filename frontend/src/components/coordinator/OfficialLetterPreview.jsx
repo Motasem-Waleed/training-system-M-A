@@ -1,4 +1,4 @@
-import { FileText, Printer } from "lucide-react";
+import { FileText, Printer, Send } from "lucide-react";
 import { BATCH_STATUS_LABELS, BATCH_STATUS_COLORS } from "../../config/coordinator/statusLabels";
 import { getGoverningBodyLabel } from "../../config/coordinator/governingBodies";
 

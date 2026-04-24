@@ -1,16 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { getUnreadNotificationsCount, getNotifications, markSystemNotificationAsRead, markAllSystemNotificationsAsRead } from "../../services/api";
 import { useNavigate } from "react-router-dom";
+import {
+  getNotifications,
+  getUnreadNotificationsCount,
+  markAllSystemNotificationsAsRead,
+  markSystemNotificationAsRead,
+} from "../../services/api";
 import { normalizeRole, ROLES } from "../../utils/roles";
-import { readStoredUser } from "../../utils/session";
+import { readStoredToken, readStoredUser } from "../../utils/session";
 
 const notificationIcons = {
-  training_request_new_from_student: "📝",
-  training_request_student_resubmitted: "🔄",
-  training_request_coordinator_review: "👁️",
+  training_request_new_from_student: "🔔",
+  training_request_student_resubmitted: "📝",
+  training_request_coordinator_review: "📋",
   training_request_received_from_coordinator: "📨",
   training_request_directorate_approved: "✅",
-  training_request_received_from_directorate: "📋",
+  training_request_received_from_directorate: "📬",
   training_request_school_approved_student: "🎓",
   training_request_directorate_rejected: "❌",
   training_request_rejected_student: "❌",
@@ -24,7 +29,7 @@ const notificationTitles = {
   training_request_received_from_coordinator: "طلب من المنسق",
   training_request_directorate_approved: "موافقة الجهة الرسمية",
   training_request_received_from_directorate: "طلب من الجهة الرسمية",
-  training_request_school_approved_student: "موافقة المدرسة",
+  training_request_school_approved_student: "موافقة جهة التدريب",
   training_request_directorate_rejected: "رفض الجهة الرسمية",
   training_request_rejected_student: "رفض طلب",
   default: "إشعار جديد",
@@ -38,34 +43,67 @@ export default function NotificationBell() {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
+  const hasSession = useCallback(() => {
+    const token = readStoredToken();
+    return Boolean(token && token !== "undefined" && token !== "null");
+  }, []);
+
   const fetchUnreadCount = useCallback(async () => {
+    if (!hasSession()) {
+      setUnreadCount(0);
+      return;
+    }
+
     try {
       const data = await getUnreadNotificationsCount();
       setUnreadCount(data?.unread_count || 0);
     } catch (error) {
+      if (error?.response?.status === 401) {
+        setUnreadCount(0);
+        return;
+      }
       console.error("Failed to fetch unread count:", error);
     }
-  }, []);
+  }, [hasSession]);
 
   const fetchNotifications = useCallback(async () => {
+    if (!hasSession()) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await getNotifications({ per_page: 5 });
       const list = Array.isArray(data?.data) ? data.data : [];
       setNotifications(list);
     } catch (error) {
+      if (error?.response?.status === 401) {
+        setNotifications([]);
+        return;
+      }
       console.error("Failed to fetch notifications:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hasSession]);
 
   useEffect(() => {
+    if (!hasSession()) {
+      return undefined;
+    }
+
     fetchUnreadCount();
-    // Poll every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchUnreadCount();
+      }
+    }, 30000);
+
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, hasSession]);
 
   useEffect(() => {
     if (isOpen) {
@@ -79,19 +117,28 @@ export default function NotificationBell() {
         setIsOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleMarkAsRead = async (e, id) => {
-    e.stopPropagation();
+  const handleMarkAsRead = async (event, id) => {
+    event.stopPropagation();
+
     try {
       await markSystemNotificationAsRead(id);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
+        prev.map((notification) =>
+          notification.id === id
+            ? { ...notification, read_at: new Date().toISOString() }
+            : notification
+        )
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
+      if (error?.response?.status === 401) {
+        return;
+      }
       console.error("Failed to mark as read:", error);
     }
   };
@@ -99,40 +146,64 @@ export default function NotificationBell() {
   const handleMarkAllAsRead = async () => {
     try {
       await markAllSystemNotificationsAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read_at: new Date().toISOString() })));
+      setNotifications((prev) =>
+        prev.map((notification) => ({
+          ...notification,
+          read_at: new Date().toISOString(),
+        }))
+      );
       setUnreadCount(0);
     } catch (error) {
+      if (error?.response?.status === 401) {
+        return;
+      }
       console.error("Failed to mark all as read:", error);
     }
   };
 
   const handleNotificationClick = (notification) => {
     setIsOpen(false);
-    const type = notification.type;
+
+    const type = String(notification.type || "");
     const user = readStoredUser();
     const role = normalizeRole(user?.role?.name || user?.role);
 
     if (type.includes("coordinator") && !type.includes("student")) {
       navigate("/coordinator/training-requests");
-    } else if (type.includes("directorate")) {
+      return;
+    }
+
+    if (type.includes("directorate")) {
       if (role === ROLES.HEALTH_DIRECTORATE) {
         navigate("/health/official-letters");
-      } else if (role === ROLES.EDUCATION_DIRECTORATE) {
-        navigate("/education/official-letters");
-      } else {
-        navigate("/notifications");
+        return;
       }
-    } else if (type.includes("school") || type.includes("principal")) {
-      navigate("/principal/training-requests");
-    } else if (type.includes("student")) {
-      navigate("/student/notifications-updates");
-    } else {
+
+      if (role === ROLES.EDUCATION_DIRECTORATE) {
+        navigate("/education/official-letters");
+        return;
+      }
+
       navigate("/notifications");
+      return;
     }
+
+    if (type.includes("school") || type.includes("principal")) {
+      navigate("/principal/training-requests");
+      return;
+    }
+
+    if (type.includes("student")) {
+      navigate("/student/notifications-updates");
+      return;
+    }
+
+    navigate("/notifications");
   };
 
   const formatTime = (dateString) => {
     if (!dateString) return "";
+
     const date = new Date(dateString);
     const now = new Date();
     const diff = Math.floor((now - date) / 1000);
@@ -140,21 +211,24 @@ export default function NotificationBell() {
     if (diff < 60) return "الآن";
     if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
     if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
+
     return date.toLocaleDateString("ar-SA");
   };
+
+  if (!hasSession()) {
+    return null;
+  }
 
   return (
     <div className="notification-bell-container" ref={dropdownRef}>
       <button
         className="notification-bell-btn"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen((prev) => !prev)}
         aria-label="الإشعارات"
       >
         <span className="bell-icon">🔔</span>
         {unreadCount > 0 && (
-          <span className="notification-badge">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
+          <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
         )}
       </button>
 
@@ -196,7 +270,7 @@ export default function NotificationBell() {
                   {!notification.read_at && (
                     <button
                       className="mark-read-btn"
-                      onClick={(e) => handleMarkAsRead(e, notification.id)}
+                      onClick={(event) => handleMarkAsRead(event, notification.id)}
                       title="تعليم كمقروء"
                     >
                       ✓
@@ -208,7 +282,12 @@ export default function NotificationBell() {
           </div>
 
           <div className="notification-dropdown-footer">
-            <button onClick={() => { setIsOpen(false); navigate("/notifications"); }}>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                navigate("/notifications");
+              }}
+            >
               عرض جميع الإشعارات
             </button>
           </div>
