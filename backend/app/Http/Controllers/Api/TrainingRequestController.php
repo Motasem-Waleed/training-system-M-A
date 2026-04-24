@@ -257,17 +257,19 @@ class TrainingRequestController extends Controller
         $trainingRequest->loadMissing('trainingSite');
         $this->authorize('approveBySchool', $trainingRequest);
         if ($request->status === 'rejected') {
-            $this->trainingRequestService->schoolReject($trainingRequest, $request->rejection_reason, $request->user()->id);
+            $reason = $request->rejection_reason ?? '';
+            $this->trainingRequestService->schoolReject($trainingRequest, $reason, $request->user()->id);
             return response()->json(['message' => 'تم رفض الكتاب من قبل المدرسة']);
         }
+
         $this->trainingRequestService->schoolApprove($trainingRequest, $request->user()->id, $request->students);
-        return response()->json(['message' => 'تمت موافقة المدرسة وتعيين المعلمين بنجاح']);
+        return response()->json(['message' => 'تمت موافقة المدرسة وتعيين المعلمين المرشدين بنجاح']);
     }
 
     public function reject(RejectTrainingRequestRequest $request, TrainingRequest $trainingRequest)
     {
         $this->authorize('update', $trainingRequest);
-        $this->trainingRequestService->reject($trainingRequest, $request->rejection_reason, $request->user()->id);
+        $this->trainingRequestService->reject($trainingRequest, $request->rejection_reason ?? '', $request->user()->id);
         return response()->json(['message' => 'تم رفض الكتاب']);
     }
 
@@ -556,6 +558,9 @@ class TrainingRequestController extends Controller
             'school_approved_at' => null,
         ]);
 
+        // حذف الربط القديم بالدفعة حتى لا يُعتبر الطلب مكرراً عند إنشاء دفعة جديدة
+        DB::table('training_request_batch_items')->where('training_request_id', $trainingRequest->id)->delete();
+
         $row = TrainingRequestStudent::query()
             ->where('training_request_id', $trainingRequest->id)
             ->where('user_id', auth()->id())
@@ -684,10 +689,12 @@ class TrainingRequestController extends Controller
      */
     public function schoolManagerApprove(SchoolApproveTrainingRequest $request, TrainingRequest $trainingRequest)
     {
+        $trainingRequest->loadMissing('trainingSite');
         $this->authorize('approveBySchool', $trainingRequest);
 
         if ($request->status === 'rejected') {
-            $this->trainingRequestService->schoolReject($trainingRequest, $request->rejection_reason, $request->user()->id);
+            $reason = $request->rejection_reason ?? '';
+            $this->trainingRequestService->schoolReject($trainingRequest, $reason, $request->user()->id);
             return response()->json(['message' => 'تم رفض الكتاب من قبل المدرسة']);
         }
 

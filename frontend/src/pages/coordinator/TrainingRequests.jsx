@@ -46,12 +46,6 @@ export default function CoordinatorTrainingRequests() {
     setDrawerOpen(true);
   };
 
-  const handleDecisionSelect = (req, decision) => {
-    setSelectedRequest(req);
-    setPresetDecision(decision);
-    setDrawerOpen(true);
-  };
-
   const handleReview = async (id, decision, reason) => {
     try {
       await reviewDecision(id, decision, reason);
@@ -170,7 +164,6 @@ export default function CoordinatorTrainingRequests() {
             ) : (
               <RequestsTable
                 requests={filteredSearch}
-                onDecisionSelect={handleDecisionSelect}
                 onView={handleView}
                 saving={saving}
               />

@@ -105,8 +105,14 @@ class TrainingRequestBatchController extends Controller
             }
 
             if ($attached === 0) {
+                $alreadyBatched = array_intersect($data['training_request_ids'], $existingBatchIds);
+                if (count($alreadyBatched) > 0) {
+                    throw ValidationException::withMessages([
+                        'training_request_ids' => ['جميع الطلبات المحددة موجودة بالفعل في دفعة أخرى. لا يمكن إنشاء دفعة مكررة.'],
+                    ]);
+                }
                 throw ValidationException::withMessages([
-                    'training_request_ids' => ['لم يُضف أي طلب إلى الدفعة. تأكد أن الطلبات معتمدة مبدئيًا، غير مربوطة بدفعة أخرى، وتطابق المديرية/الجهة المختارة.'],
+                    'training_request_ids' => ['لم يُضف أي طلب إلى الدفعة. تأكد أن الطلبات معتمدة مبدئيًا وتطابق المديرية/الجهة المختارة.'],
                 ]);
             }
 

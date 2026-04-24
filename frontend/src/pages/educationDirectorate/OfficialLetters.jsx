@@ -67,7 +67,6 @@ const OfficialLetters = ({ siteType = "school" }) => {
       setApprovedRequests(approvedItems);
       setRejectedRequests(rejectedItems);
     } catch (error) {
-      console.error("Failed to load training requests:", error);
       setErrorMessage(getApiErrorMessage(error, "تعذر تحميل طلبات التدريب."));
     } finally {
       setLoading(false);
@@ -83,15 +82,12 @@ const OfficialLetters = ({ siteType = "school" }) => {
 
   const handleRequestDecision = async (requestId) => {
     const decision = requestDecision[requestId];
-    console.log("handleRequestDecision called:", { requestId, decision, requestReason: requestReason[requestId] });
-
     if (!decision) {
       setErrorMessage("اختر القرار للطلب قبل الحفظ.");
       return;
     }
     if (decision === "rejected") {
       const reason = requestReason[requestId]?.trim();
-      console.log("Rejection reason check:", { requestId, reason, fullState: requestReason });
       if (!reason) {
         setErrorMessage("سبب الرفض مطلوب عند رفض طلب التدريب.");
         return;
@@ -107,16 +103,11 @@ const OfficialLetters = ({ siteType = "school" }) => {
         status: decision,
         rejection_reason: decision === "rejected" ? requestReason[requestId] : "",
       };
-      console.log("Sending API request:", payload);
-
-      const response = await directorateApprove(requestId, payload);
-      console.log("API response:", response);
+      await directorateApprove(requestId, payload);
 
       setSavedMessage(`تم تحديث قرار ${directorateName} على الطلب.`);
       await fetchTrainingRequests();
     } catch (error) {
-      console.error("Failed to decide training request:", error);
-      console.error("Error response:", error?.response?.data);
       setErrorMessage(getApiErrorMessage(error, "تعذر حفظ القرار."));
     } finally {
       setRequestSavingId(null);
@@ -162,7 +153,6 @@ const OfficialLetters = ({ siteType = "school" }) => {
       setSavedMessage(successSendMessage);
       await fetchTrainingRequests();
     } catch (error) {
-      console.error("Failed to send request:", error);
       setErrorMessage(getApiErrorMessage(error, "تعذر إرسال الطلب."));
     } finally {
       setSendingToSchoolId(null);
@@ -322,8 +312,6 @@ const OfficialLetters = ({ siteType = "school" }) => {
                       type="button"
                       className="btn-success-custom btn-sm-custom"
                       onClick={() => {
-                        console.log("Button clicked! request.id:", request.id);
-                        console.log("Form data:", sendFormMap[request.id]);
                         handleSendToSchool(request);
                       }}
                       disabled={sendingToSchoolId === request.id}
