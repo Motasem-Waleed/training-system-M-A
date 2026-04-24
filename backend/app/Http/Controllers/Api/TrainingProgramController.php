@@ -71,13 +71,14 @@ class TrainingProgramController extends Controller
         );
 
         // حفظ نسخة في الملف الإنجازي
-        $this->syncToPortfolio($user, $program);
+        $portfolioEntry = $this->syncToPortfolio($user, $program);
 
         return response()->json([
             'message' => 'تم حفظ برنامج التدريب بنجاح',
             'data' => [
                 'id' => $program->id,
                 'schedule' => $program->schedule,
+                'portfolio_entry_id' => $portfolioEntry?->id,
             ],
         ]);
     }
@@ -122,14 +123,14 @@ class TrainingProgramController extends Controller
                     'training_assignment_id' => $program->training_assignment_id,
                 ]);
             } catch (QueryException $e) {
-                return;
+                return null;
             }
         }
 
         $title = 'برنامج التدريب';
         $content = json_encode($program->schedule, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
-        PortfolioEntry::updateOrCreate(
+        return PortfolioEntry::updateOrCreate(
             [
                 'student_portfolio_id' => $portfolio->id,
                 'title' => $title,

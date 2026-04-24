@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from "react";
-import { getStudentAttendances, createAttendance, updateAttendance, deleteAttendance } from "../../services/api";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { getStudentAttendances, createAttendance, updateAttendance, deleteAttendance, uploadPortfolioFile } from "../../services/api";
+import html2pdf from "html2pdf.js";
 import {
   CalendarCheck,
   Clock,
@@ -10,7 +11,29 @@ import {
   Plus,
   ClipboardList,
   Info,
+  Printer,
 } from "lucide-react";
+
+// Print-specific CSS
+const printStyles = `
+@media print {
+  @page { size: landscape; margin: 10mm; }
+  body * { visibility: hidden; }
+  #printable-area, #printable-area * { visibility: visible; }
+  #printable-area { 
+    position: absolute; 
+    left: 0; 
+    top: 0; 
+    width: 100%;
+    padding: 10mm;
+  }
+  .no-print { display: none !important; }
+  .print-header { display: block !important; visibility: visible !important; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #333; padding: 8px; text-align: center; font-size: 11px; }
+  th { background-color: #142a42 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .badge-success, .badge-info, .badge-primary { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}`;
 
 const DAYS = ["السبت", "الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس"];
 
@@ -32,6 +55,7 @@ export default function StudentAttendance() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const portfolioEntryIdRef = useRef(null);
 
   const [formData, setFormData] = useState({
     day: DAYS[0],
@@ -80,6 +104,10 @@ export default function StudentAttendance() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const handleAddRecord = async (e) => {
     e.preventDefault();
     if (!formData.date || !formData.check_in || !formData.check_out) {
@@ -96,6 +124,11 @@ export default function StudentAttendance() {
         check_out: formData.check_out,
         lessons_count: formData.lessons_count ? Number(formData.lessons_count) : null,
         notes: formData.notes,
+      }).then((res) => {
+        if (res?.portfolio_entry_id) {
+          portfolioEntryIdRef.current = res.portfolio_entry_id;
+        }
+        return res;
       });
       setSuccess("تم إضافة سجل الحضور بنجاح.");
       setFormData({
@@ -107,6 +140,8 @@ export default function StudentAttendance() {
         notes: "",
       });
       await fetchData();
+      // Generate and upload PDF to portfolio
+      await syncPdfToPortfolio(portfolioEntryIdRef.current);
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Failed to save:", err);
@@ -122,15 +157,43 @@ export default function StudentAttendance() {
       await deleteAttendance(id);
       setSuccess("تم حذف السجل.");
       await fetchData();
+      // Update PDF in portfolio
+      await syncPdfToPortfolio(portfolioEntryIdRef.current);
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       setError("تعذر حذف السجل.");
     }
   };
 
+  const generatePdf = async () => {
+    const element = document.getElementById('printable-area');
+    if (!element) return null;
+    const opt = {
+      margin: 10,
+      filename: 'attendance.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+    };
+    const blob = await html2pdf().set(opt).from(element).output('blob');
+    return blob;
+  };
+
+  const syncPdfToPortfolio = async (entryId) => {
+    try {
+      const pdfBlob = await generatePdf();
+      if (pdfBlob && entryId) {
+        await uploadPortfolioFile(entryId, pdfBlob, 'attendance.pdf');
+      }
+    } catch (err) {
+      console.error('PDF upload failed:', err);
+    }
+  };
+
   return (
     <>
-      <div className="content-header">
+      <style>{printStyles}</style>
+      <div className="content-header no-print">
         <h1 className="page-title">جدول حضور وغياب الطالب</h1>
         <p className="page-subtitle">
           سجل حضورك اليومي أثناء التدريب الميداني بما يتوافق مع نموذج الجامعة.
@@ -138,7 +201,7 @@ export default function StudentAttendance() {
       </div>
 
       {/* بطاقات الإحصائيات */}
-      <div className="dashboard-grid" style={{ marginBottom: 20 }}>
+      <div className="dashboard-grid no-print" style={{ marginBottom: 20 }}>
         <div className="stat-card primary">
           <div className="stat-top">
             <div>
@@ -180,7 +243,7 @@ export default function StudentAttendance() {
       </div>
 
       {/* نموذج إضافة سجل جديد */}
-      <div className="section-card" style={{ marginBottom: 20 }}>
+      <div className="section-card no-print" style={{ marginBottom: 20 }}>
         <h4 style={{ margin: "0 0 16px", color: "var(--secondary)", fontSize: "1.05rem", fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
           <ClipboardList size={18} />
           إضافة سجل حضور جديد
@@ -281,23 +344,46 @@ export default function StudentAttendance() {
 
       {/* رسائل التنبيه */}
       {error && (
-        <div className="alert-custom alert-danger" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="alert-custom alert-danger no-print" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <AlertCircle size={18} />
           {error}
         </div>
       )}
       {success && (
-        <div className="alert-custom alert-success" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="alert-custom alert-success no-print" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <CheckCircle2 size={18} />
           {success}
         </div>
       )}
 
       {/* جدول سجلات الحضور */}
-      <div className="section-card">
-        <h4 style={{ margin: "0 0 16px", color: "var(--secondary)", fontSize: "1.05rem", fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
+      <div id="printable-area" className="section-card">
+        {/* Print-only header */}
+        <div style={{ display: 'none' }} className="print-header">
+          <h1 style={{ textAlign: 'center', marginBottom: '10px', fontSize: '18px' }}>سجل الحضور والغياب — نموذج رقم (2)</h1>
+        </div>
+        <h4 className="no-print" style={{ margin: "0 0 16px", color: "var(--secondary)", fontSize: "1.05rem", fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
           <CalendarCheck size={18} />
           سجل الحضور والغياب — نموذج رقم (2)
+          <button
+            onClick={handlePrint}
+            style={{
+              marginRight: "auto",
+              padding: "0.4rem 0.8rem",
+              backgroundColor: "#1565c0",
+              color: "white",
+              border: "none",
+              borderRadius: "20px",
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              cursor: "pointer",
+            }}
+          >
+            <Printer size={14} /> طباعة
+          </button>
         </h4>
 
         <div className="table-wrapper">
@@ -309,7 +395,7 @@ export default function StudentAttendance() {
                 <th style={{ width: "14%" }}>ساعة المغادرة</th>
                 <th style={{ width: "12%" }}>عدد الحصص</th>
                 <th style={{ width: "28%" }}>ملاحظات</th>
-                <th style={{ width: "14%" }}>إجراءات</th>
+                <th className="no-print" style={{ width: "14%" }}>إجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -358,7 +444,7 @@ export default function StudentAttendance() {
                     <td>
                       {rec.notes || <span style={{ color: "var(--text-faint)" }}>—</span>}
                     </td>
-                    <td style={{ textAlign: "center" }}>
+                    <td className="no-print" style={{ textAlign: "center" }}>
                       <button
                         onClick={() => handleDelete(rec.id)}
                         className="btn-danger-custom btn-sm-custom"
@@ -377,6 +463,7 @@ export default function StudentAttendance() {
 
         {/* ملاحظات توضيحية */}
         <div
+          className="no-print"
           style={{
             marginTop: 22,
             padding: "14px 18px",

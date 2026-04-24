@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { getStudentEForms, saveStudentTrainingProgram, saveStudentEForm, addPortfolioEntry } from "../../services/api";
-import { Loader2, Save, Plus, Trash2, RotateCcw } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { getStudentEForms, saveStudentTrainingProgram, saveStudentEForm, addPortfolioEntry, uploadPortfolioFile } from "../../services/api";
+import html2pdf from "html2pdf.js";
+import { Loader2, Save, Plus, Trash2, RotateCcw, BookOpen, FileText, ClipboardCheck, FileBarChart, FileSpreadsheet, GraduationCap, ArrowRight, CheckCircle2, Clock, Edit3 } from "lucide-react";
 
 // CSS Animation for smooth form appearance
 const fadeInStyles = `
@@ -14,15 +15,19 @@ const fadeInStyles = `
     transform: translateY(0);
   }
 }
+@media print {
+  .no-print { display: none !important; }
+  #printable-area { padding: 0 !important; }
+}
 `;
 
 const availableForms = [
-  { key: "weekly_reflection", title: "نموذج التأمل الأسبوعي" },
-  { key: "field_visit_summary", title: "نموذج ملخص الزيارة الميدانية" },
-  { key: "learning_experience_review", title: "نموذج نقد خبرات التعلم" },
-  { key: "weekly_brief_report", title: "تقرير مختصر أسبوعي" },
-  { key: "weekly_full_report", title: "التقرير الأسبوعي" },
-  { key: "classes_count", title: "عدد الحصص التي درسها الطالب" },
+  { key: "weekly_reflection", title: "نموذج التأمل الأسبوعي", desc: "تأمل ذاتي أسبوعي في التجربة التدريبية", icon: BookOpen, color: "#6366f1", gradient: "linear-gradient(135deg, #6366f1, #8b5cf6)" },
+  { key: "field_visit_summary", title: "ملخص الزيارة الميدانية", desc: "توثيق الزيارات الميدانية والملاحظات", icon: ClipboardCheck, color: "#0891b2", gradient: "linear-gradient(135deg, #0891b2, #06b6d4)" },
+  { key: "learning_experience_review", title: "نقد خبرات التعلم", desc: "تقييم وتقويم الخبرات التعليمية المكتسبة", icon: FileText, color: "#059669", gradient: "linear-gradient(135deg, #059669, #34d399)" },
+  { key: "weekly_brief_report", title: "التقرير المختصر الأسبوعي", desc: "تقرير شامل عن الأنشطة والتأمل الذاتي", icon: FileBarChart, color: "#d97706", gradient: "linear-gradient(135deg, #d97706, #fbbf24)" },
+  { key: "weekly_full_report", title: "التقرير الأسبوعي", desc: "تقرير مفصل عن الأنشطة والمهام المنفذة", icon: FileSpreadsheet, color: "#dc2626", gradient: "linear-gradient(135deg, #e11d48, #f43f5e)" },
+  { key: "classes_count", title: "عدد الحصص التي درسها الطالب", desc: "تسجيل الحصص النوعية التي قام الطالب بتدريسها", icon: GraduationCap, color: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed, #a78bfa)" },
 ];
 
 export default function EForms() {
@@ -32,6 +37,7 @@ export default function EForms() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [selectedForm, setSelectedForm] = useState("");
+  const portfolioEntryIdRef = useRef(null);
 
   // Teaching sessions state (الحصص النوعية)
   const [teachingSessions, setTeachingSessions] = useState([
@@ -227,6 +233,20 @@ export default function EForms() {
     ]);
   };
 
+  const generatePdf = async () => {
+    const element = document.getElementById('printable-area');
+    if (!element) return null;
+    const opt = {
+      margin: 10,
+      filename: `${availableForms.find(f => f.key === selectedForm)?.title || 'form'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    };
+    const blob = await html2pdf().set(opt).from(element).output('blob');
+    return blob;
+  };
+
   // Helper function to add form entry to portfolio
   const addToPortfolio = async (formKey, formData, formTitle) => {
     try {
@@ -234,15 +254,16 @@ export default function EForms() {
       const fd = new FormData();
       fd.append("title", `${formTitle} - ${dateStr}`);
       fd.append("content", JSON.stringify(formData, null, 2));
-      // Add metadata as JSON
       fd.append("metadata", JSON.stringify({
         form_key: formKey,
         saved_at: new Date().toISOString(),
         type: "e-form"
       }));
-      await addPortfolioEntry(fd);
+      const res = await addPortfolioEntry(fd);
+      return res?.data?.id || res?.id || null;
     } catch (e) {
       console.error("Failed to add to portfolio:", e);
+      return null;
     }
   };
 
@@ -251,45 +272,34 @@ export default function EForms() {
     setError("");
     setSuccess("");
     try {
+      let entryId = null;
       if (selectedForm === "classes_count") {
-        // Save teaching sessions (number of classes)
-        await saveStudentTrainingProgram({
-          schedule: {},
-          teachingSessions
-        });
-        // Add to portfolio
-        await addToPortfolio("classes_count", teachingSessions, "عدد الحصص التي درسها الطالب");
-        setSuccess("تم حفظ عدد الحصص وإضافته للملف الإنجازي بنجاح!");
+        await saveStudentTrainingProgram({ schedule: {}, teachingSessions });
+        entryId = await addToPortfolio("classes_count", teachingSessions, "عدد الحصص التي درسها الطالب");
+        setSuccess("تم حفظ عدد الحصص وإضافته للملف الإنجاز بنجاح!");
       } else if (selectedForm === "learning_experience_review") {
-        // Save learning experience review
-        await saveStudentEForm({
-          form_key: "learning_experience_review",
-          form_data: learningExperience,
-          status: "draft"
-        });
-        // Add to portfolio
-        await addToPortfolio("learning_experience_review", learningExperience, "نموذج نقد خبرات التعلم");
-        setSuccess("تم حفظ نموذج نقد خبرات التعلم وإضافته للملف الإنجازي بنجاح!");
+        await saveStudentEForm({ form_key: "learning_experience_review", title: "نموذج نقد خبرات التعلم", payload: learningExperience });
+        entryId = await addToPortfolio("learning_experience_review", learningExperience, "نموذج نقد خبرات التعلم");
+        setSuccess("تم حفظ نموذج نقد خبرات التعلم وإضافته للملف الإنجاز بنجاح!");
       } else if (selectedForm === "weekly_full_report") {
-        // Save weekly full report
-        await saveStudentEForm({
-          form_key: "weekly_full_report",
-          form_data: weeklyReport,
-          status: "draft"
-        });
-        // Add to portfolio
-        await addToPortfolio("weekly_full_report", weeklyReport, "التقرير الأسبوعي");
-        setSuccess("تم حفظ التقرير الأسبوعي وإضافته للملف الإنجازي بنجاح!");
+        await saveStudentEForm({ form_key: "weekly_full_report", title: "التقرير الأسبوعي", payload: weeklyReport });
+        entryId = await addToPortfolio("weekly_full_report", weeklyReport, "التقرير الأسبوعي");
+        setSuccess("تم حفظ التقرير الأسبوعي وإضافته للملف الإنجاز بنجاح!");
       } else if (selectedForm === "weekly_brief_report") {
-        // Save weekly brief report
-        await saveStudentEForm({
-          form_key: "weekly_brief_report",
-          form_data: weeklyBriefReport,
-          status: "draft"
-        });
-        // Add to portfolio
-        await addToPortfolio("weekly_brief_report", weeklyBriefReport, "التقرير المختصر الأسبوعي");
-        setSuccess("تم حفظ التقرير المختصر وإضافته للملف الإنجازي بنجاح!");
+        await saveStudentEForm({ form_key: "weekly_brief_report", title: "التقرير المختصر الأسبوعي", payload: weeklyBriefReport });
+        entryId = await addToPortfolio("weekly_brief_report", weeklyBriefReport, "التقرير المختصر الأسبوعي");
+        setSuccess("تم حفظ التقرير المختصر وإضافته للملف الإنجاز بنجاح!");
+      }
+      if (entryId) portfolioEntryIdRef.current = entryId;
+      // Generate PDF and upload to portfolio
+      try {
+        const pdfBlob = await generatePdf();
+        if (pdfBlob && portfolioEntryIdRef.current) {
+          const formTitle = availableForms.find(f => f.key === selectedForm)?.title || 'form';
+          await uploadPortfolioFile(portfolioEntryIdRef.current, pdfBlob, `${formTitle}.pdf`);
+        }
+      } catch (pdfErr) {
+        console.error('PDF upload failed:', pdfErr);
       }
     } catch (e) {
       setError(e?.response?.data?.message || "فشل حفظ النموذج.");
@@ -298,83 +308,150 @@ export default function EForms() {
     }
   };
 
+  const statusBadge = (status) => {
+    if (status === "submitted") return { bg: "#dcfce7", color: "#16a34a", icon: CheckCircle2, text: "مرسل" };
+    if (status === "draft") return { bg: "#fef3c7", color: "#d97706", icon: Edit3, text: "مسودة" };
+    return { bg: "#f1f5f9", color: "#64748b", icon: Clock, text: "جديد" };
+  };
+
   return (
     <>
       <style>{fadeInStyles}</style>
       <div className="content-header">
         <h1 className="page-title">النماذج والتقارير</h1>
-        <p className="page-subtitle">اختر النموذج أو التقرير المطلوب تعبئته.</p>
+        <p className="page-subtitle">اختر النموذج أو التقرير المطلوب تعبئته</p>
       </div>
 
       {error ? <div className="alert-custom alert-danger mb-3">{error}</div> : null}
       {success ? <div className="alert-custom alert-success mb-3">{success}</div> : null}
 
       {loading ? (
-        <div className="section-card">جاري التحميل...</div>
+        <div style={{ textAlign: "center", padding: "4rem" }}>
+          <Loader2 className="spin" size={40} color="var(--primary, #007bff)" />
+          <p style={{ color: "#666", marginTop: "1rem" }}>جاري التحميل...</p>
+        </div>
       ) : (
-        <div className="section-card">
-          <div className="panel-header mb-3">
-            <h3 className="panel-title">قائمة النماذج والتقارير المتاحة</h3>
-            <p className="panel-subtitle">اختر النموذج من القائمة أدناه</p>
+        <>
+          {/* بطاقات النماذج */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+            gap: "1.25rem",
+            marginBottom: selectedForm ? "2rem" : 0
+          }}>
+            {availableForms.map((f) => {
+              const status = getFormStatus(f.key);
+              const badge = statusBadge(status.status);
+              const BadgeIcon = badge.icon;
+              const FormIcon = f.icon;
+              const isActive = selectedForm === f.key;
+              return (
+                <div
+                  key={f.key}
+                  onClick={() => {
+                    setSelectedForm(f.key);
+                    if (f.key) handleFormSelect(f.key);
+                  }}
+                  style={{
+                    backgroundColor: isActive ? "#f8fafc" : "white",
+                    borderRadius: "16px",
+                    border: isActive ? `2px solid ${f.color}` : "2px solid #e9ecef",
+                    padding: "1.5rem",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    boxShadow: isActive ? `0 8px 24px ${f.color}22` : "0 2px 8px rgba(0,0,0,0.04)",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = `0 12px 32px ${f.color}18`;
+                      e.currentTarget.style.borderColor = `${f.color}88`;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                      e.currentTarget.style.borderColor = "#e9ecef";
+                    }
+                  }}
+                >
+                  {/* شريط لوني علوي */}
+                  <div style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    left: 0,
+                    height: "4px",
+                    background: f.gradient,
+                    borderRadius: "16px 16px 0 0",
+                  }} />
+
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+                    {/* أيقونة النموذج */}
+                    <div style={{
+                      width: "52px",
+                      height: "52px",
+                      borderRadius: "14px",
+                      background: f.gradient,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      boxShadow: `0 4px 12px ${f.color}33`,
+                    }}>
+                      <FormIcon size={26} color="white" />
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                        <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", flex: 1 }}>{f.title}</h4>
+                        {/* شارة الحالة */}
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.3rem",
+                          padding: "0.2rem 0.6rem",
+                          borderRadius: "20px",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          backgroundColor: badge.bg,
+                          color: badge.color,
+                          whiteSpace: "nowrap",
+                        }}>
+                          <BadgeIcon size={12} />
+                          {badge.text}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b", lineHeight: 1.5 }}>{f.desc}</p>
+                    </div>
+                  </div>
+
+                  {/* سهم فتح */}
+                  {isActive && (
+                    <div style={{
+                      position: "absolute",
+                      bottom: "1rem",
+                      left: "1rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.4rem",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      color: f.color,
+                    }}>
+                      <span>مفتوح الآن</span>
+                      <ArrowRight size={14} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <div style={{ maxWidth: "600px" }}>
-            <div style={{ position: "relative" }}>
-              <select
-                className="form-control-custom"
-                value={selectedForm}
-                onChange={(e) => {
-                  const formKey = e.target.value;
-                  setSelectedForm(formKey);
-                  if (formKey) {
-                    handleFormSelect(formKey);
-                  }
-                }}
-                style={{
-                  width: "100%",
-                  padding: "1rem 3rem 1rem 1rem",
-                  border: "2px solid #e0e0e0",
-                  borderRadius: "12px",
-                  fontSize: "1rem",
-                  backgroundColor: "white",
-                  cursor: "pointer",
-                  appearance: "none",
-                  transition: "all 0.3s ease",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "var(--primary, #007bff)";
-                  e.target.style.boxShadow = "0 4px 16px rgba(0,123,255,0.1)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "#e0e0e0";
-                  e.target.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-                }}
-              >
-                <option value="">-- اختر النموذج --</option>
-                {availableForms.map((f) => {
-                  const status = getFormStatus(f.key);
-                  return (
-                    <option key={f.key} value={f.key}>
-                      {f.title} {status.status !== "new" ? `(${status.label})` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-              <div style={{
-                position: "absolute",
-                left: "1rem",
-                top: "50%",
-                transform: "translateY(-50%)",
-                pointerEvents: "none",
-                color: "#666"
-              }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </div>
-            </div>
-
+          <div id="printable-area">
             {selectedForm === "classes_count" && (
               <div style={{
                 marginTop: "2rem",
@@ -620,7 +697,7 @@ export default function EForms() {
                     </table>
                   </div>
 
-                  <div style={{
+                  <div className="no-print" style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
@@ -808,7 +885,7 @@ export default function EForms() {
                     ))}
                   </div>
 
-                  <div style={{
+                  <div className="no-print" style={{
                     display: "flex",
                     justifyContent: "flex-end",
                     alignItems: "center",
@@ -1167,7 +1244,7 @@ export default function EForms() {
                     </div>
                   </div>
 
-                  <div style={{
+                  <div className="no-print" style={{
                     display: "flex",
                     justifyContent: "flex-end",
                     alignItems: "center",
@@ -1327,7 +1404,7 @@ export default function EForms() {
                     ))}
                   </div>
 
-                  <div style={{
+                  <div className="no-print" style={{
                     display: "flex",
                     justifyContent: "flex-end",
                     alignItems: "center",
@@ -1405,7 +1482,7 @@ export default function EForms() {
               </div>
             )}
           </div>
-        </div>
+        </>
       )}
     </>
   );

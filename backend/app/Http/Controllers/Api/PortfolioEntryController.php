@@ -17,7 +17,7 @@ class PortfolioEntryController extends Controller
     public function __construct()
     {
         // تطبيق سياسة الصلاحيات على جميع دوال الـ Resource
-        $this->authorizeResource(PortfolioEntry::class, 'portfolio_entry');
+        $this->authorizeResource(PortfolioEntry::class, 'entry');
     }
 
     /**
@@ -77,42 +77,47 @@ class PortfolioEntryController extends Controller
     /**
      * عرض مدخل معين
      */
-    public function show(PortfolioEntry $portfolioEntry)
+    public function show(PortfolioEntry $entry)
     {
-        return new PortfolioEntryResource($portfolioEntry->load('studentPortfolio'));
+        return new PortfolioEntryResource($entry->load('studentPortfolio'));
     }
 
     /**
      * تحديث مدخل موجود
      */
-    public function update(UpdatePortfolioEntryRequest $request, PortfolioEntry $portfolioEntry)
+    public function update(UpdatePortfolioEntryRequest $request, PortfolioEntry $entry)
     {
         $data = $request->validated();
+        
+        // حذف الملف المرفق إذا طُلب
+        if ($request->boolean('remove_file') && $entry->file_path) {
+            Storage::disk('public')->delete($entry->file_path);
+            $data['file_path'] = null;
+        }
         
         // رفع ملف جديد إذا وُجد
         if ($request->hasFile('file')) {
             // حذف الملف القديم إن وجد
-            if ($portfolioEntry->file_path) {
-                Storage::disk('public')->delete($portfolioEntry->file_path);
+            if ($entry->file_path) {
+                Storage::disk('public')->delete($entry->file_path);
             }
             $data['file_path'] = $request->file('file')->store('portfolio', 'public');
         }
         
-        $portfolioEntry->update($data);
-        return new PortfolioEntryResource($portfolioEntry);
+        $entry->update($data);
+        return new PortfolioEntryResource($entry);
     }
 
     /**
      * حذف مدخل
      */
-    public function destroy(PortfolioEntry $portfolioEntry)
+    public function destroy(PortfolioEntry $entry)
     {
         // حذف الملف المرتبط من التخزين
-        if ($portfolioEntry->file_path) {
-            Storage::disk('public')->delete($portfolioEntry->file_path);
+        if ($entry->file_path) {
+            Storage::disk('public')->delete($entry->file_path);
         }
-        
-        $portfolioEntry->delete();
-        return response()->json(['message' => 'تم حذف المدخل بنجاح']);
+        $entry->delete();
+        return response()->json(['message' => 'تم حذف المدخل بنجاح.']);
     }
 }

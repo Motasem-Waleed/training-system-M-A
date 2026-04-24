@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PortfolioEntry;
 use App\Models\StudentAttendance;
+use App\Models\StudentPortfolio;
 use App\Models\TrainingRequestStudent;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -141,9 +144,13 @@ class StudentAttendanceController extends Controller
             'status' => 'present',
         ]);
         
+        // مزامنة مع الملف الإنجازي
+        $portfolioEntry = $this->syncToPortfolio($user);
+
         return response()->json([
             'message' => 'تم تسجيل الحضور بنجاح.',
-            'data' => $attendance->load('trainingRequestStudent.trainingRequest.trainingSite')
+            'data' => $attendance->load('trainingRequestStudent.trainingRequest.trainingSite'),
+            'portfolio_entry_id' => $portfolioEntry?->id,
         ], 201);
     }
 
@@ -247,7 +254,10 @@ class StudentAttendanceController extends Controller
         }
         
         $attendance->delete();
-        
+
+        // تحديث الملف الإنجازي
+        $this->syncToPortfolio($user);
+
         return response()->json([
             'message' => 'تم حذف سجل الحضور بنجاح.'
         ]);
@@ -287,6 +297,39 @@ class StudentAttendanceController extends Controller
             'year' => $year,
             'statistics' => $stats
         ]);
+    }
+
+    /**
+     * حفظ/تحديث سجل الحضور والغياب في الملف الإنجازي
+     */
+    protected function syncToPortfolio($user)
+    {
+        $portfolio = StudentPortfolio::where('user_id', $user->id)->first();
+
+        if (! $portfolio) {
+            try {
+                $assignmentId = $user->currentTrainingAssignment()?->id;
+                $portfolio = StudentPortfolio::create([
+                    'user_id' => $user->id,
+                    'training_assignment_id' => $assignmentId,
+                ]);
+            } catch (QueryException $e) {
+                return null;
+            }
+        }
+
+        $title = 'سجل الحضور والغياب';
+        $content = 'سجل الحضور والغياب اليومي — يتم تحديثه تلقائياً';
+
+        return PortfolioEntry::updateOrCreate(
+            [
+                'student_portfolio_id' => $portfolio->id,
+                'title' => $title,
+            ],
+            [
+                'content' => $content,
+            ]
+        );
     }
 
     /**

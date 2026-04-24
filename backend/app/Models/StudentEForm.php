@@ -9,6 +9,8 @@ class StudentEForm extends Model
 {
     use HasFactory;
 
+    protected $table = 'student_eforms';
+
     protected $fillable = [
         'user_id',
         'form_key',

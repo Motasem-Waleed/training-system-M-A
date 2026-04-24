@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { getStudentTrainingProgram, saveStudentTrainingProgram } from "../../services/api";
+import { useCallback, useEffect, useState, useRef } from "react";
+import { getStudentTrainingProgram, saveStudentTrainingProgram, uploadPortfolioFile } from "../../services/api";
+import html2pdf from "html2pdf.js";
 import { Calendar, Clock, Lock, Edit3, Save, RotateCcw, Loader2, AlertCircle, CheckCircle, Printer } from "lucide-react";
 
 // Print-specific CSS
@@ -62,6 +63,7 @@ export default function Schedule() {
   const [studentInfo, setStudentInfo] = useState({ name: "—", university_id: "—", school: "—", semester: "—" });
   const [schedule, setSchedule] = useState(buildEmptySchedule);
   const [hasSavedProgram, setHasSavedProgram] = useState(false);
+  const portfolioEntryIdRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,14 +114,40 @@ export default function Schedule() {
     setSuccess("");
   };
 
+  const generatePdf = async () => {
+    const element = document.getElementById('printable-area');
+    if (!element) return null;
+    const opt = {
+      margin: 10,
+      filename: 'training-program.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+    };
+    const blob = await html2pdf().set(opt).from(element).output('blob');
+    return blob;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError("");
     setSuccess("");
     try {
-      await saveStudentTrainingProgram(schedule);
+      const res = await saveStudentTrainingProgram(schedule);
       setHasSavedProgram(true);
-      setSuccess("تم حفظ برنامج التدريب بنجاح وإضافته للملف الإنجازي كملف PDF.");
+      if (res?.data?.portfolio_entry_id) {
+        portfolioEntryIdRef.current = res.data.portfolio_entry_id;
+      }
+      // Generate PDF and upload to portfolio
+      try {
+        const pdfBlob = await generatePdf();
+        if (pdfBlob && portfolioEntryIdRef.current) {
+          await uploadPortfolioFile(portfolioEntryIdRef.current, pdfBlob, 'training-program.pdf');
+        }
+      } catch (pdfErr) {
+        console.error('PDF upload failed:', pdfErr);
+      }
+      setSuccess("تم حفظ برنامج التدريب بنجاح وإضافته للملف الإنجاز.");
     } catch (e) {
       setError(e?.response?.data?.message || "تعذر حفظ برنامج التدريب.");
     } finally {
@@ -480,7 +508,7 @@ export default function Schedule() {
         <div className="no-print" style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
           <p style={{ margin: 0, color: "#666", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Clock size={16} />
-            <strong>ملاحظة:</strong> عند الحفظ يتم إضافة البرنامج تلقائياً للملف الإنجازي وإرساله للمنسق للمراجعة.
+            <strong>ملاحظة:</strong> عند الحفظ يتم إضافة البرنامج تلقائياً لملف الإنجاز وإرساله للمنسق للمراجعة.
             المنسق يتحكم بفتح وإغلاق التعبئة.
           </p>
         </div>

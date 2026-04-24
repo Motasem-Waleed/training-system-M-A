@@ -17,6 +17,7 @@ class UpdatePortfolioEntryRequest extends FormRequest
             'title' => 'sometimes|string|max:255',
             'content' => 'nullable|string',
             'file' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:5120',
+            'remove_file' => 'nullable|boolean',
         ];
     }
 }

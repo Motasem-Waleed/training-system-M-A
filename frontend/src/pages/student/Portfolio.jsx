@@ -5,7 +5,7 @@ import {
   deletePortfolioEntry,
   getStudentPortfolio,
 } from "../../services/api";
-import { Loader2, Upload, FileText, Trash2, ExternalLink, Plus, FolderOpen } from "lucide-react";
+import { Loader2, Upload, FileText, Trash2, ExternalLink, Plus, FolderOpen, Calendar, FileCheck, BookOpen, ClipboardCheck, FileBarChart, FileSpreadsheet, GraduationCap } from "lucide-react";
 
 // CSS Animation
 const fadeInStyles = `
@@ -113,20 +113,23 @@ export default function Portfolio() {
     }
   };
 
-  const getFileIcon = (filename) => {
-    if (!filename) return <FileText size={20} />;
-    const ext = filename.split('.').pop().toLowerCase();
-    if (['pdf'].includes(ext)) return <FileText size={20} color="#dc3545" />;
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return <FileText size={20} color="#28a745" />;
-    if (['doc', 'docx'].includes(ext)) return <FileText size={20} color="#007bff" />;
-    return <FileText size={20} />;
+  const getEntryStyle = (title) => {
+    const t = (title || '').toString();
+    if (t.includes('برنامج التدريب')) return { icon: Calendar, color: '#667eea', gradient: 'linear-gradient(135deg, #667eea, #764ba2)', bg: '#f5f3ff' };
+    if (t.includes('حضور') || t.includes('غياب')) return { icon: ClipboardCheck, color: '#0891b2', gradient: 'linear-gradient(135deg, #0891b2, #06b6d4)', bg: '#ecfeff' };
+    if (t.includes('نقد خبرات') || t.includes('خبرات التعلم')) return { icon: BookOpen, color: '#059669', gradient: 'linear-gradient(135deg, #059669, #34d399)', bg: '#ecfdf5' };
+    if (t.includes('تقرير مختصر') || t.includes('المختصر')) return { icon: FileBarChart, color: '#d97706', gradient: 'linear-gradient(135deg, #d97706, #fbbf24)', bg: '#fffbeb' };
+    if (t.includes('تقرير الأسبوعي') || t.includes('الأسبوعي')) return { icon: FileSpreadsheet, color: '#e11d48', gradient: 'linear-gradient(135deg, #e11d48, #f43f5e)', bg: '#fff1f2' };
+    if (t.includes('حصص')) return { icon: GraduationCap, color: '#7c3aed', gradient: 'linear-gradient(135deg, #7c3aed, #a78bfa)', bg: '#f5f3ff' };
+    if (t.includes('زيارة') || t.includes('ميدان')) return { icon: FileCheck, color: '#0284c7', gradient: 'linear-gradient(135deg, #0284c7, #38bdf8)', bg: '#f0f9ff' };
+    return { icon: FolderOpen, color: '#6b7280', gradient: 'linear-gradient(135deg, #6b7280, #9ca3af)', bg: '#f9fafb' };
   };
 
   return (
     <>
       <style>{fadeInStyles}</style>
       <div className="content-header">
-        <h1 className="page-title">الملف الإنجازي</h1>
+        <h1 className="page-title">ملف الإنجاز</h1>
         <p className="page-subtitle">إرفاق شواهد وأعمال تتعلق بتدريبك الميداني</p>
       </div>
 
@@ -381,127 +384,159 @@ export default function Portfolio() {
           </div>
         ) : (
           <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-            gap: "1rem"
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem"
           }}>
-            {entries.map((en) => (
-              <div
-                key={en.id}
-                style={{
-                  backgroundColor: "white",
-                  borderRadius: "12px",
-                  border: "1px solid #e9ecef",
-                  padding: "1.25rem",
-                  transition: "all 0.3s ease",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-                }}
-              >
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: "0.75rem"
-                }}>
-                  <h5 style={{
-                    margin: 0,
-                    fontSize: "1.1rem",
-                    fontWeight: 700,
-                    color: "#212529",
-                    flex: 1
-                  }}>
-                    {en.title}
-                  </h5>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(en.id)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "#dc3545",
-                      padding: "4px",
-                      borderRadius: "4px",
-                      transition: "all 0.2s"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#ffebee";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }}
-                    title="حذف"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+            {entries.map((en) => {
+              const style = getEntryStyle(en.title);
+              const EntryIcon = style.icon;
+              return (
+                <div
+                  key={en.id}
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: "14px",
+                    border: "1px solid #e9ecef",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                    overflow: "hidden",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-3px)";
+                    e.currentTarget.style.boxShadow = `0 10px 24px ${style.color}20`;
+                    e.currentTarget.style.borderColor = `${style.color}55`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                    e.currentTarget.style.borderColor = "#e9ecef";
+                  }}
+                >
+                  {/* شريط لوني علوي */}
+                  <div style={{ height: "4px", background: style.gradient }} />
 
-                <p style={{
-                  color: "#6c757d",
-                  fontSize: "0.9rem",
-                  margin: "0 0 1rem 0",
-                  lineHeight: 1.6,
-                  minHeight: en.content ? "auto" : "1.5rem"
-                }}>
-                  {en.content || <span style={{ color: "#adb5bd", fontStyle: "italic" }}>لا يوجد وصف</span>}
-                </p>
-
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingTop: "0.75rem",
-                  borderTop: "1px solid #e9ecef"
-                }}>
-                  <span style={{
-                    fontSize: "0.8rem",
-                    color: "#adb5bd"
-                  }}>
-                    {en.created_at ? new Date(en.created_at).toLocaleDateString('ar-SA') : "—"}
-                  </span>
-
-                  {en.file_path ? (
-                    <a
-                      href={fileHref(en.file_path)}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
+                  <div style={{ padding: "1.1rem 1.25rem" }}>
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                    }}>
+                      {/* أيقونة النموذج */}
+                      <div style={{
+                        width: "42px",
+                        height: "42px",
+                        borderRadius: "11px",
+                        background: style.gradient,
                         display: "flex",
                         alignItems: "center",
-                        gap: "0.25rem",
-                        color: "var(--primary, #007bff)",
-                        textDecoration: "none",
-                        fontSize: "0.9rem",
-                        fontWeight: 500,
-                        padding: "0.5rem 0.75rem",
-                        borderRadius: "6px",
-                        transition: "all 0.2s"
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(0,123,255,0.1)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }}
-                    >
-                      {getFileIcon(en.file_path)}
-                      <span>عرض المرفق</span>
-                      <ExternalLink size={14} />
-                    </a>
-                  ) : (
-                    <span style={{ color: "#adb5bd", fontSize: "0.85rem" }}>لا يوجد مرفق</span>
-                  )}
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        boxShadow: `0 3px 10px ${style.color}30`,
+                      }}>
+                        <EntryIcon size={20} color="white" />
+                      </div>
+
+                      {/* اسم النموذج + التاريخ */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h5 style={{
+                          margin: 0,
+                          fontSize: "1rem",
+                          fontWeight: 700,
+                          color: "#1e293b",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {en.title}
+                        </h5>
+                        <span style={{
+                          fontSize: "0.72rem",
+                          color: "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.25rem",
+                          marginTop: "0.15rem",
+                        }}>
+                          <Calendar size={11} />
+                          {en.created_at ? new Date(en.created_at).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' }) : "—"}
+                        </span>
+                      </div>
+
+                      {/* أزرار المرفق والحذف */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}>
+                        {en.file_path ? (
+                          <a
+                            href={fileHref(en.file_path)}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.35rem",
+                              color: style.color,
+                              textDecoration: "none",
+                              fontSize: "0.82rem",
+                              fontWeight: 600,
+                              padding: "0.35rem 0.7rem",
+                              borderRadius: "8px",
+                              backgroundColor: style.bg,
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = `${style.color}18`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = style.bg;
+                            }}
+                          >
+                            <FileText size={15} />
+                            المرفق
+                            <ExternalLink size={12} />
+                          </a>
+                        ) : (
+                          <span style={{
+                            color: "#cbd5e1",
+                            fontSize: "0.78rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.25rem",
+                            padding: "0.35rem 0.5rem",
+                          }}>
+                            <FileText size={14} />
+                            بدون مرفق
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(en.id)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "#cbd5e1",
+                            padding: "4px",
+                            borderRadius: "6px",
+                            transition: "all 0.2s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = "#ef4444";
+                            e.currentTarget.style.backgroundColor = "#fef2f2";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = "#cbd5e1";
+                            e.currentTarget.style.backgroundColor = "transparent";
+                          }}
+                          title="حذف"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
