@@ -21,8 +21,11 @@ enum BookStatus: string
     case SENT_TO_HEALTH_MINISTRY = 'sent_to_health_ministry';
 
     case DIRECTORATE_APPROVED = 'directorate_approved';
+    case DIRECTORATE_REJECTED = 'directorate_rejected';
+    case HEALTH_MINISTRY_REJECTED = 'health_ministry_rejected';
     case SENT_TO_SCHOOL = 'sent_to_school';
     case SCHOOL_APPROVED = 'school_approved';
+    case SCHOOL_REJECTED = 'school_rejected';
     case REJECTED = 'rejected';
 
     public function label(): string
@@ -38,8 +41,11 @@ enum BookStatus: string
             self::SENT_TO_DIRECTORATE => 'مرسل إلى المديرية',
             self::SENT_TO_HEALTH_MINISTRY => 'مرسل إلى وزارة الصحة',
             self::DIRECTORATE_APPROVED => 'موافقة الجهة الرسمية',
+            self::DIRECTORATE_REJECTED => 'مرفوض من المديرية',
+            self::HEALTH_MINISTRY_REJECTED => 'مرفوض من وزارة الصحة',
             self::SENT_TO_SCHOOL => 'مرسل إلى جهة التدريب',
             self::SCHOOL_APPROVED => 'موافقة جهة التدريب',
+            self::SCHOOL_REJECTED => 'مرفوض من جهة التدريب',
             self::REJECTED => 'مرفوض',
         };
     }
@@ -50,6 +56,8 @@ enum BookStatus: string
             self::DRAFT,
             self::REJECTED,
             self::COORDINATOR_REJECTED,
+            self::DIRECTORATE_REJECTED,
+            self::SCHOOL_REJECTED,
         ], true);
     }
 }

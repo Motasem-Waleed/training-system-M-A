@@ -98,7 +98,7 @@ export const siteLabels = (siteType = "school") => {
     mentorSelect: isHealth ? "اختر الأخصائي النفسي المرشد" : "اختر المعلم المرشد",
     mentorCol: isHealth ? "الأخصائي النفسي المرشد" : "المعلم المرشد",
     traineeTitle: isHealth ? "المتدربون في المركز" : "الطلبة المتدربون",
-    governingBody: isHealth ? "health_directorate" : "directorate_of_education",
+    governingBody: isHealth ? "ministry_of_health" : "directorate_of_education",
     directorateName: isHealth ? "مديرية الصحة" : "مديرية التربية",
   };
 };

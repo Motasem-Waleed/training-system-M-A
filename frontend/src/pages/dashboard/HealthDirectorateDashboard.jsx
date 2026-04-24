@@ -39,8 +39,8 @@ const HealthDirectorateDashboard = () => {
           getTrainingSites().catch(() => []),
           getAnnouncements().catch(() => []),
           getTrainingRequests({
-            book_status: "sent_to_directorate",
-            governing_body: "health_directorate",
+            book_status: "sent_to_health_ministry",
+            governing_body: "ministry_of_health",
             per_page: 100,
           }).catch(() => []),
         ]);

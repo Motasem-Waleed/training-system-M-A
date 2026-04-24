@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, CheckCircle2, AlertTriangle, XCircle, Loader2 } from "lucide-react";
+import { X, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { COORDINATOR_DECISIONS } from "../../config/coordinator/workflowSteps";
 import { GOVERNING_BODIES } from "../../config/coordinator/governingBodies";
@@ -60,7 +60,6 @@ export default function RequestReviewDrawer({
 
   const decisionIcons = {
     prelim_approved: <CheckCircle2 size={16} />,
-    needs_edit: <AlertTriangle size={16} />,
     rejected: <XCircle size={16} />,
   };
 
@@ -255,7 +254,7 @@ export default function RequestReviewDrawer({
         {decision && decision !== "prelim_approved" && (
           <div style={{ marginBottom: 16 }}>
             <label className="form-label" style={{ fontWeight: 700 }}>
-              {decision === "rejected" ? "سبب الرفض" : "سبب طلب التعديل"}
+              {decision === "rejected" ? "سبب الرفض (اختياري)" : "سبب طلب التعديل"}
             </label>
             <textarea
               className="form-control"
@@ -302,7 +301,7 @@ export default function RequestReviewDrawer({
           <button
             className="btn-primary"
             onClick={handleSubmit}
-            disabled={!decision || saving || (decision !== "prelim_approved" && !reason.trim())}
+            disabled={!decision || saving}
             style={{ display: "flex", alignItems: "center", gap: 6 }}
           >
             {saving && <Loader2 className="spin" size={16} />}

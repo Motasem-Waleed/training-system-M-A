@@ -120,7 +120,7 @@ export default function HealthTrainingSites() {
         is_active: true,
         directorate: formData.directorate,
         site_type: "health_center",
-        governing_body: "health_directorate",
+        governing_body: "ministry_of_health",
       });
 
       setFormData({
@@ -179,7 +179,7 @@ export default function HealthTrainingSites() {
         is_active: editFormData.is_active,
         directorate: editFormData.directorate,
         site_type: "health_center",
-        governing_body: "health_directorate",
+        governing_body: "ministry_of_health",
       });
 
       setSavedMessage("تم تعديل مكان التدريب بنجاح.");

@@ -57,7 +57,6 @@ export const INCOMING_STATUSES = [
 
 export const COORDINATOR_DECISIONS = [
   { value: "prelim_approved", label: "اعتماد مبدئي", variant: "primary" },
-  { value: "needs_edit", label: "بحاجة تعديل", variant: "warning" },
   { value: "rejected", label: "رفض", variant: "danger" },
 ];
 

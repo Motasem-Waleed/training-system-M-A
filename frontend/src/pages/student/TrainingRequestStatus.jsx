@@ -98,6 +98,26 @@ export default function TrainingRequestStatus() {
         icon: CheckCircle2,
         text: "موافقة المديرية",
       },
+      directorate_rejected: {
+        className: "badge-danger",
+        icon: XCircle,
+        text: "مرفوض من المديرية",
+      },
+      sent_to_health_ministry: {
+        className: "badge-info",
+        icon: Send,
+        text: "مرسل لوزارة الصحة",
+      },
+      health_ministry_rejected: {
+        className: "badge-danger",
+        icon: XCircle,
+        text: "مرفوض من وزارة الصحة",
+      },
+      school_rejected: {
+        className: "badge-danger",
+        icon: XCircle,
+        text: "مرفوض من جهة التدريب",
+      },
       sent_to_coordinator: {
         className: "badge-primary",
         icon: Send,

@@ -48,7 +48,7 @@ class TrainingRequestPolicy
         }
 
         if ($user->role?->name === 'education_directorate'
-            && in_array($trainingRequest->book_status, ['sent_to_directorate', 'directorate_approved', 'sent_to_school', 'school_approved', 'rejected'], true)) {
+            && in_array($trainingRequest->book_status, ['sent_to_directorate', 'directorate_approved', 'directorate_rejected', 'sent_to_school', 'school_approved', 'school_rejected', 'rejected'], true)) {
             if (!empty($user->directorate)) {
                 $siteDirectorate = (string) data_get($trainingRequest, 'trainingSite.directorate', '');
                 return trim($siteDirectorate) === trim((string) $user->directorate);
@@ -57,7 +57,7 @@ class TrainingRequestPolicy
         }
 
         if (in_array($user->role?->name, ['health_directorate', 'ministry_of_health'], true)
-            && in_array($trainingRequest->book_status, ['sent_to_health_ministry', 'directorate_approved', 'sent_to_school', 'school_approved', 'rejected'], true)) {
+            && in_array($trainingRequest->book_status, ['sent_to_health_ministry', 'directorate_approved', 'directorate_rejected', 'health_ministry_rejected', 'sent_to_school', 'school_approved', 'school_rejected', 'rejected'], true)) {
             return true;
         }
 
@@ -67,6 +67,7 @@ class TrainingRequestPolicy
             $inSchoolFlow = in_array($trainingRequest->book_status, [
                 'sent_to_school',
                 'school_approved',
+                'school_rejected',
             ], true);
 
             return $sameSite && $inSchoolFlow;
@@ -97,7 +98,7 @@ class TrainingRequestPolicy
     {
         return $user->role?->name === 'student'
             && (int) $trainingRequest->requested_by === (int) $user->id
-            && in_array($trainingRequest->book_status, ['needs_edit', 'rejected', 'coordinator_rejected'], true);
+            && in_array($trainingRequest->book_status, ['needs_edit', 'coordinator_rejected', 'directorate_rejected', 'health_ministry_rejected', 'school_rejected'], true);
     }
 
     /**
@@ -146,7 +147,7 @@ class TrainingRequestPolicy
     public function sendToDirectorate(User $user, TrainingRequest $trainingRequest): bool
     {
         return in_array($user->role?->name, ['coordinator', 'training_coordinator'], true)
-            && $trainingRequest->book_status === 'draft';
+            && $trainingRequest->book_status === 'prelim_approved';
     }
 
     public function approveByDirectorate(User $user, TrainingRequest $trainingRequest): bool
@@ -154,8 +155,9 @@ class TrainingRequestPolicy
         if ($user->role?->name === 'education_directorate'
             && $trainingRequest->book_status === 'sent_to_directorate') {
             if (!empty($user->directorate)) {
-                $siteDirectorate = (string) data_get($trainingRequest, 'trainingSite.directorate', '');
-                if (trim($siteDirectorate) !== trim((string) $user->directorate)) {
+                $siteDirectorate = trim((string) ($trainingRequest->directorate
+                    ?? data_get($trainingRequest, 'trainingSite.directorate', '')));
+                if ($siteDirectorate !== trim((string) $user->directorate)) {
                     return false;
                 }
             }

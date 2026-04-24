@@ -54,7 +54,7 @@ export function getTrainingRequestStatusMeta(status, fallbackLabel = "") {
 }
 
 export function isTrainingRequestEditable(status) {
-  return ["needs_edit", "rejected", "coordinator_rejected"].includes(status);
+  return ["needs_edit", "coordinator_rejected", "directorate_rejected", "health_ministry_rejected", "school_rejected"].includes(status);
 }
 
 export function isTrainingRequestCancelable(status) {

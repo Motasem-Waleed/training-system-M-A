@@ -1,10 +1,9 @@
-import { Eye, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { Eye } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { getGoverningBodyLabel } from "../../config/coordinator/governingBodies";
 
 export default function RequestsTable({
   requests = [],
-  onDecisionSelect,
   onView,
   saving = false,
   showActions = true,
@@ -62,7 +61,7 @@ export default function RequestsTable({
                   <StatusBadge status={r.book_status} />
                 </td>
                 {showActions && (
-                  <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <td>
                     {onView && (
                       <button
                         className="btn-sm btn-secondary"
@@ -73,42 +72,6 @@ export default function RequestsTable({
                         <Eye size={14} />
                         عرض
                       </button>
-                    )}
-                    {onDecisionSelect && (
-                      <>
-                        <button
-                          className="btn-sm btn-primary"
-                          disabled={saving}
-                          onClick={() => onDecisionSelect(r, "prelim_approved")}
-                          style={{ display: "flex", alignItems: "center", gap: 4 }}
-                        >
-                          <CheckCircle2 size={14} />
-                          اعتماد
-                        </button>
-                        <button
-                          className="btn-sm btn-secondary"
-                          disabled={saving}
-                          onClick={() => onDecisionSelect(r, "needs_edit")}
-                          style={{ display: "flex", alignItems: "center", gap: 4 }}
-                        >
-                          <AlertTriangle size={14} />
-                          تعديل
-                        </button>
-                        <button
-                          className="btn-sm btn-secondary"
-                          disabled={saving}
-                          onClick={() => onDecisionSelect(r, "rejected")}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            color: "var(--danger)",
-                          }}
-                        >
-                          <XCircle size={14} />
-                          رفض
-                        </button>
-                      </>
                     )}
                   </td>
                 )}

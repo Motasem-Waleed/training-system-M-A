@@ -129,19 +129,23 @@ export const createTrainingRequest = async (data) => {
 };
 
 export const sendToDirectorate = async (id, letterData) => {
-  return apiClient.post(`/training-requests/${id}/send-to-directorate`, letterData);
+  const response = await apiClient.post(`/training-requests/${id}/send-to-directorate`, letterData);
+  return response.data;
 };
 
 export const directorateApprove = async (id, data) => {
-  return apiClient.post(`/training-requests/${id}/directorate-approve`, data);
+  const response = await apiClient.post(`/training-requests/${id}/directorate-approve`, data);
+  return response.data;
 };
 
 export const sendToSchool = async (id, letterData) => {
-  return apiClient.post(`/training-requests/${id}/send-to-school`, letterData);
+  const response = await apiClient.post(`/training-requests/${id}/send-to-school`, letterData);
+  return response.data;
 };
 
 export const schoolApprove = async (id, data) => {
-  return apiClient.post(`/training-requests/${id}/school-approve`, data);
+  const response = await apiClient.post(`/training-requests/${id}/school-approve`, data);
+  return response.data;
 };
 
 export const coordinatorReviewTrainingRequest = (id, data) =>
@@ -539,7 +543,8 @@ export const getSchoolManagerTeachers = async (params = {}) => {
 };
 
 export const schoolManagerApproveRequest = async (id, data) => {
-  return apiClient.post(`/school-manager/mentor-requests/${id}/approve`, data);
+  const response = await apiClient.post(`/school-manager/mentor-requests/${id}/approve`, data);
+  return response.data;
 };
 
 // ==================== Student Attendance ====================

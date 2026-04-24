@@ -33,6 +33,8 @@ export default function CoordinatorTrainingRequests() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [presetDecision, setPresetDecision] = useState("");
   const [batchSendForm, setBatchSendForm] = useState({});
+
+  const today = new Date().toISOString().slice(0, 10);
   const [filters, setFilters] = useState({
     status: "",
     search: "",
@@ -70,13 +72,15 @@ export default function CoordinatorTrainingRequests() {
 
   async function handleSendBatch(batchId) {
     const data = batchSendForm[batchId] || {};
+    const letterNumber = data.letter_number?.trim() || `كتاب-${batchId}/${new Date().getFullYear()}`;
+    const letterDate = data.letter_date || today;
     const payload = {
-      letter_number: data.letter_number?.trim() || "",
-      letter_date: data.letter_date || "",
+      letter_number: letterNumber,
+      letter_date: letterDate,
       content: data.content?.trim() || "",
     };
 
-    if (!payload.letter_number || !payload.letter_date || !payload.content) {
+    if (!payload.content) {
       return;
     }
 
@@ -217,10 +221,13 @@ export default function CoordinatorTrainingRequests() {
                     {batches.map((b) => {
                       const statusLabel = BATCH_STATUS_LABELS[b.status] || b.status;
                       const statusColors = BATCH_STATUS_COLORS[b.status] || { bg: "#e9ecef", text: "#495057" };
+                      const defaultLetterNumber = `كتاب-${b.id}/${new Date().getFullYear()}`;
                       const batchDraft = batchSendForm[b.id] || {};
+                      const effectiveLetterNumber = batchDraft.letter_number?.trim() || defaultLetterNumber;
+                      const effectiveLetterDate = batchDraft.letter_date || today;
                       const isBatchFormComplete = Boolean(
-                        batchDraft.letter_number?.trim() &&
-                        batchDraft.letter_date &&
+                        effectiveLetterNumber &&
+                        effectiveLetterDate &&
                         batchDraft.content?.trim()
                       );
                       return (
@@ -248,15 +255,15 @@ export default function CoordinatorTrainingRequests() {
                               <div style={{ display: "grid", gap: 8 }}>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                                   <input
-                                    placeholder="رقم الكتاب"
-                                    value={batchSendForm[b.id]?.letter_number || ""}
+                                    placeholder="رقم الكتاب (تلقائي)"
+                                    value={effectiveLetterNumber}
                                     onChange={(e) =>
                                       setBatchSendField(b.id, "letter_number", e.target.value)
                                     }
                                   />
                                   <input
                                     type="date"
-                                    value={batchSendForm[b.id]?.letter_date || ""}
+                                    value={effectiveLetterDate}
                                     onChange={(e) =>
                                       setBatchSendField(b.id, "letter_date", e.target.value)
                                     }
@@ -277,7 +284,7 @@ export default function CoordinatorTrainingRequests() {
                                   title={
                                     isBatchFormComplete
                                       ? "إرسال الدفعة"
-                                      : "أدخل رقم الكتاب وتاريخه ومحتواه قبل الإرسال"
+                                      : "أدخل محتوى الكتاب قبل الإرسال"
                                   }
                                 >
                                   إرسال الدفعة

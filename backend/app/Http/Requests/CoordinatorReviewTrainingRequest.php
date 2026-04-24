@@ -14,9 +14,8 @@ class CoordinatorReviewTrainingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'decision' => 'required|in:needs_edit,rejected,prelim_approved',
+            'decision' => 'required|in:needs_edit,rejected,prelim_approved,approved',
             'reason' => 'nullable|string',
         ];
     }
 }
-

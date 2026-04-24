@@ -94,6 +94,11 @@ class TrainingRequestController extends Controller
         return trim($v);
     }
 
+    private function isAllowedDirectorate(?string $value): bool
+    {
+        return in_array($this->normalizeDirectorate($value), ['وسط', 'شمال', 'جنوب', 'يطا'], true);
+    }
+
     protected $trainingRequestService;
 
     public function __construct(TrainingRequestService $trainingRequestService)
@@ -221,10 +226,16 @@ class TrainingRequestController extends Controller
 
     public function directorateApprove(DirectorateApproveTrainingRequest $request, TrainingRequest $trainingRequest)
     {
+        $trainingRequest->loadMissing('trainingSite');
         $this->authorize('approveByDirectorate', $trainingRequest);
         if ($request->status === 'rejected') {
-            $this->trainingRequestService->reject($trainingRequest, $request->rejection_reason, $request->user()->id);
-            return response()->json(['message' => 'تم رفض الكتاب']);
+            $reason = $request->rejection_reason ?? '';
+            if ($trainingRequest->governing_body === 'ministry_of_health') {
+                $this->trainingRequestService->healthMinistryReject($trainingRequest, $reason, $request->user()->id);
+                return response()->json(['message' => 'تم رفض الكتاب من وزارة الصحة']);
+            }
+            $this->trainingRequestService->directorateReject($trainingRequest, $reason, $request->user()->id);
+            return response()->json(['message' => 'تم رفض الكتاب من المديرية']);
         }
         $this->trainingRequestService->directorateApprove($trainingRequest, $request->user()->id);
         return response()->json(['message' => 'تمت موافقة المديرية على الكتاب']);
@@ -243,9 +254,10 @@ class TrainingRequestController extends Controller
 
     public function schoolApprove(SchoolApproveTrainingRequest $request, TrainingRequest $trainingRequest)
     {
+        $trainingRequest->loadMissing('trainingSite');
         $this->authorize('approveBySchool', $trainingRequest);
         if ($request->status === 'rejected') {
-            $this->trainingRequestService->reject($trainingRequest, $request->rejection_reason, $request->user()->id);
+            $this->trainingRequestService->schoolReject($trainingRequest, $request->rejection_reason, $request->user()->id);
             return response()->json(['message' => 'تم رفض الكتاب من قبل المدرسة']);
         }
         $this->trainingRequestService->schoolApprove($trainingRequest, $request->user()->id, $request->students);
@@ -264,6 +276,9 @@ class TrainingRequestController extends Controller
         $this->authorize('coordinateReview', $trainingRequest);
 
         $decision = $request->validated()['decision'];
+        if ($decision === 'approved') {
+            $decision = 'prelim_approved';
+        }
         $reason = $request->validated()['reason'] ?? null;
 
         if ($decision === 'needs_edit') {
@@ -362,7 +377,7 @@ class TrainingRequestController extends Controller
             'training_site_id' => 'required|exists:training_sites,id',
             'training_period_id' => 'nullable|exists:training_periods,id',
             'course_id' => 'nullable|exists:courses,id',
-            'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
+            'directorate' => 'nullable|string',
             'notes' => 'nullable|string',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after:start_date',
@@ -390,6 +405,14 @@ class TrainingRequestController extends Controller
         if ($track === 'education' && empty($data['directorate'])) {
             return response()->json([
                 'message' => 'لطالب أصول التربية يجب اختيار المديرية أولاً.',
+            ], 422);
+        }
+        if (! empty($data['directorate']) && ! $this->isAllowedDirectorate($data['directorate'])) {
+            return response()->json([
+                'message' => 'المديرية المحددة غير صالحة.',
+                'errors' => [
+                    'directorate' => ['المديرية المحددة غير صالحة.'],
+                ],
             ], 422);
         }
         if (
@@ -462,7 +485,7 @@ class TrainingRequestController extends Controller
             'training_site_id' => 'required|exists:training_sites,id',
             'training_period_id' => 'nullable|exists:training_periods,id',
             'course_id' => 'nullable|exists:courses,id',
-            'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
+            'directorate' => 'nullable|string',
             'notes' => 'nullable|string',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after:start_date',
@@ -491,6 +514,14 @@ class TrainingRequestController extends Controller
                 'message' => 'لطالب أصول التربية يجب اختيار المديرية أولاً.',
             ], 422);
         }
+        if (! empty($data['directorate']) && ! $this->isAllowedDirectorate($data['directorate'])) {
+            return response()->json([
+                'message' => 'المديرية المحددة غير صالحة.',
+                'errors' => [
+                    'directorate' => ['المديرية المحددة غير صالحة.'],
+                ],
+            ], 422);
+        }
         if (
             $track === 'education'
             && ! empty($data['directorate'])
@@ -513,8 +544,16 @@ class TrainingRequestController extends Controller
             'directorate' => $data['directorate'] ?? null,
             'attachment_path' => $data['attachment_path'] ?? $trainingRequest->attachment_path,
             'book_status' => 'sent_to_coordinator',
+            'status' => 'pending',
+            'rejection_reason' => null,
             'needs_edit_reason' => null,
+            'coordinator_rejection_reason' => null,
             'coordinator_reviewed_at' => null,
+            'batched_at' => null,
+            'sent_to_directorate_at' => null,
+            'directorate_approved_at' => null,
+            'sent_to_school_at' => null,
+            'school_approved_at' => null,
         ]);
 
         $row = TrainingRequestStudent::query()
@@ -529,6 +568,8 @@ class TrainingRequestController extends Controller
                 'end_date' => $data['end_date'],
                 'notes' => $data['notes'] ?? null,
                 'status' => 'pending',
+                'rejection_reason' => null,
+                'assigned_teacher_id' => null,
             ]);
         }
 
@@ -646,7 +687,7 @@ class TrainingRequestController extends Controller
         $this->authorize('approveBySchool', $trainingRequest);
 
         if ($request->status === 'rejected') {
-            $this->trainingRequestService->reject($trainingRequest, $request->rejection_reason, $request->user()->id);
+            $this->trainingRequestService->schoolReject($trainingRequest, $request->rejection_reason, $request->user()->id);
             return response()->json(['message' => 'تم رفض الكتاب من قبل المدرسة']);
         }
 

@@ -71,8 +71,17 @@ class TrainingRequestBatchController extends Controller
 
             $attached = 0;
 
+            $existingBatchIds = DB::table('training_request_batch_items')
+                ->whereIn('training_request_id', $data['training_request_ids'])
+                ->pluck('training_request_id')
+                ->toArray();
+
             foreach ($requests as $tr) {
                 if ($tr->book_status !== 'prelim_approved') {
+                    continue;
+                }
+
+                if (in_array($tr->id, $existingBatchIds)) {
                     continue;
                 }
 

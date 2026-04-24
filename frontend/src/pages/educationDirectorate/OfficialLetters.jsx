@@ -39,6 +39,7 @@ const OfficialLetters = ({ siteType = "school" }) => {
   const [loading, setLoading] = useState(true);
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [approvedRequests, setApprovedRequests] = useState([]);
+  const [rejectedRequests, setRejectedRequests] = useState([]);
   const [requestDecision, setRequestDecision] = useState({});
   const [requestReason, setRequestReason] = useState({});
   const [requestSavingId, setRequestSavingId] = useState(null);
@@ -52,21 +53,19 @@ const OfficialLetters = ({ siteType = "school" }) => {
   const fetchTrainingRequests = async () => {
     try {
       setLoading(true);
-      const [incomingRes, approvedRes] = await Promise.all([
-        getTrainingRequests({ book_status: "sent_to_directorate", governing_body: governingBody, per_page: 100 }),
+      const rejectedStatus = isHealth ? "health_ministry_rejected" : "directorate_rejected";
+      const incomingStatus = isHealth ? "sent_to_health_ministry" : "sent_to_directorate";
+      const [incomingRes, approvedRes, rejectedRes] = await Promise.all([
+        getTrainingRequests({ book_status: incomingStatus, governing_body: governingBody, per_page: 100 }),
         getTrainingRequests({ book_status: "directorate_approved", governing_body: governingBody, per_page: 100 }),
+        getTrainingRequests({ book_status: rejectedStatus, governing_body: governingBody, per_page: 100 }),
       ]);
       const incomingItems = itemsFromPagedResponse(incomingRes);
       const approvedItems = itemsFromPagedResponse(approvedRes);
-      console.log("OfficialLetters fetched requests:", {
-        governingBody,
-        incomingCount: incomingItems.length,
-        approvedCount: approvedItems.length,
-        incomingRes,
-        approvedRes,
-      });
+      const rejectedItems = itemsFromPagedResponse(rejectedRes);
       setIncomingRequests(incomingItems);
       setApprovedRequests(approvedItems);
+      setRejectedRequests(rejectedItems);
     } catch (error) {
       console.error("Failed to load training requests:", error);
       setErrorMessage(getApiErrorMessage(error, "تعذر تحميل طلبات التدريب."));
@@ -78,7 +77,7 @@ const OfficialLetters = ({ siteType = "school" }) => {
   const getRequestStatusClass = (bookStatus) => {
     if (bookStatus === "directorate_approved") return "badge-custom badge-success";
     if (bookStatus === "sent_to_school") return "badge-custom badge-info";
-    if (bookStatus === "rejected") return "badge-custom badge-danger";
+    if (["rejected", "directorate_rejected", "health_ministry_rejected", "school_rejected"].includes(bookStatus)) return "badge-custom badge-danger";
     return "badge-custom badge-warning";
   };
 
@@ -341,6 +340,48 @@ const OfficialLetters = ({ siteType = "school" }) => {
                 <tr>
                   <td colSpan="7" className="text-center text-muted">
                     لا توجد طلبات معتمدة جاهزة للإرسال حاليًا
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Rejected Requests */}
+      <div className="section-card mt-3">
+        <h4>❌ الطلبات المرفوضة</h4>
+        <div className="table-wrapper">
+          <table className="table-custom">
+            <thead>
+              <tr>
+                <th>رقم الطلب</th>
+                <th>الموقع التدريبي</th>
+                <th>الطالب</th>
+                <th>المساق</th>
+                <th>حالة الكتاب</th>
+                <th>سبب الرفض</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rejectedRequests.map((request) => (
+                <tr key={request.id}>
+                  <td>{request.letter_number || `#${request.id}`}</td>
+                  <td>{request.training_site?.data?.name || request.training_site?.name || "—"}</td>
+                  <td>{request.students?.[0]?.user?.name || "—"}</td>
+                  <td>{request.students?.[0]?.course?.name || "—"}</td>
+                  <td>
+                    <span className={getRequestStatusClass(request.book_status)}>
+                      {request.book_status_label || request.book_status}
+                    </span>
+                  </td>
+                  <td>{request.rejection_reason || "—"}</td>
+                </tr>
+              ))}
+              {rejectedRequests.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center text-muted">
+                    لا توجد طلبات مرفوضة حاليًا
                   </td>
                 </tr>
               )}
