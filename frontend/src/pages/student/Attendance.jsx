@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { getStudentAttendances, createAttendance, updateAttendance, deleteAttendance, uploadPortfolioFile } from "../../services/api";
+import { getStudentAttendances, createAttendance, deleteAttendance, uploadPortfolioFile } from "../../services/api";
 import html2pdf from "html2pdf.js";
 import {
   CalendarCheck,
@@ -89,11 +89,11 @@ export default function StudentAttendance() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError("");
       const res = await getStudentAttendances();
-      setRecords(res?.data || []);
+      setRecords(Array.isArray(res?.data) ? res.data : []);
     } catch (err) {
-      console.error("Failed to load attendance:", err);
-      setError("تعذر تحميل سجل الحضور.");
+      setError(err?.response?.data?.message || "تعذر تحميل سجل الحضور.");
     } finally {
       setLoading(false);
     }
@@ -144,8 +144,9 @@ export default function StudentAttendance() {
       await syncPdfToPortfolio(portfolioEntryIdRef.current);
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      console.error("Failed to save:", err);
-      setError(err?.response?.data?.message || "تعذر حفظ سجل الحضور.");
+      setError(err?.response?.data?.errors
+        ? Object.values(err.response.data.errors).flat().join(" | ")
+        : err?.response?.data?.message || "تعذر حفظ سجل الحضور.");
     } finally {
       setSaving(false);
     }
@@ -185,8 +186,8 @@ export default function StudentAttendance() {
       if (pdfBlob && entryId) {
         await uploadPortfolioFile(entryId, pdfBlob, 'attendance.pdf');
       }
-    } catch (err) {
-      console.error('PDF upload failed:', err);
+    } catch {
+      // PDF upload failure is non-critical
     }
   };
 

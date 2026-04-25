@@ -1,23 +1,28 @@
-import { useEffect, useState, useRef } from "react";
-import { getStudentEForms, saveStudentTrainingProgram, saveStudentEForm, addPortfolioEntry, uploadPortfolioFile } from "../../services/api";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { getStudentEForms, saveStudentTrainingProgram, saveStudentEForm, addPortfolioEntry, uploadPortfolioFile, updatePortfolioEntry } from "../../services/api";
 import html2pdf from "html2pdf.js";
 import { Loader2, Save, Plus, Trash2, RotateCcw, BookOpen, FileText, ClipboardCheck, FileBarChart, FileSpreadsheet, GraduationCap, ArrowRight, CheckCircle2, Clock, Edit3 } from "lucide-react";
 
 // CSS Animation for smooth form appearance
 const fadeInStyles = `
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 @media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  body * { visibility: hidden; }
+  #printable-area, #printable-area * { visibility: visible; }
+  #printable-area { position: absolute; left: 0; top: 0; width: 100%; direction: rtl; }
   .no-print { display: none !important; }
-  #printable-area { padding: 0 !important; }
+  .form-section-header { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  input, textarea { border: 1px solid #ccc !important; padding: 4px 8px !important; font-size: 11px !important; width: 100% !important; background: white !important; box-shadow: none !important; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #aaa !important; padding: 6px 8px !important; font-size: 11px !important; }
+  th { background-color: #e0e0e0 !important; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h4, h5 { font-size: 13px !important; }
+  label { font-size: 11px !important; font-weight: 600; }
 }
 `;
 
@@ -31,13 +36,14 @@ const availableForms = [
 ];
 
 export default function EForms() {
+  const location = useLocation();
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [selectedForm, setSelectedForm] = useState("");
-  const portfolioEntryIdRef = useRef(null);
+  const [editingEntry, setEditingEntry] = useState(null);
 
   // Teaching sessions state (الحصص النوعية)
   const [teachingSessions, setTeachingSessions] = useState([
@@ -115,6 +121,35 @@ export default function EForms() {
     load();
   }, []);
 
+  // Handle edit entry from Portfolio page
+  useEffect(() => {
+    const editData = location.state?.editEntry;
+    if (!editData) return;
+
+    const { formKey, content } = editData;
+    setEditingEntry(editData);
+    setSelectedForm(formKey);
+
+    // Parse saved form data and load it
+    try {
+      const parsed = typeof content === "string" ? JSON.parse(content) : content;
+      if (formKey === "learning_experience_review" && parsed) {
+        setLearningExperience(prev => ({ ...prev, ...parsed }));
+      } else if (formKey === "weekly_full_report" && parsed) {
+        setWeeklyReport(prev => ({ ...prev, ...parsed }));
+      } else if (formKey === "weekly_brief_report" && parsed) {
+        setWeeklyBriefReport(prev => ({ ...prev, ...parsed }));
+      } else if (formKey === "classes_count" && Array.isArray(parsed)) {
+        setTeachingSessions(parsed);
+      }
+    } catch {
+      // Content may not be valid JSON — ignore
+    }
+
+    // Clear the navigation state so it doesn't reload on re-render
+    window.history.replaceState({}, "");
+  }, [location.state]);
+
   const getFormStatus = (formKey) => {
     const form = forms.find(f => f.form_key === formKey);
     if (!form) return { status: "new", label: "جديد" };
@@ -125,21 +160,11 @@ export default function EForms() {
 
   const handleFormSelect = (formKey) => {
     if (!formKey) return;
-    // Load existing data if available
-    const existingForm = forms.find(f => f.form_key === formKey);
-    if (existingForm?.form_data) {
-      if (formKey === "learning_experience_review") {
-        setLearningExperience(prev => ({ ...prev, ...existingForm.form_data }));
-      } else if (formKey === "weekly_full_report") {
-        setWeeklyReport(prev => ({ ...prev, ...existingForm.form_data }));
-      } else if (formKey === "weekly_brief_report") {
-        setWeeklyBriefReport(prev => ({ ...prev, ...existingForm.form_data }));
-      }
-    }
-    // For other forms, show alert (will be implemented later)
-    if (formKey !== "classes_count" && formKey !== "learning_experience_review" && formKey !== "weekly_full_report" && formKey !== "weekly_brief_report") {
-      alert(`سيتم فتح: ${availableForms.find(f => f.key === formKey)?.title}`);
-    }
+    // Reset form state to allow a fresh entry every time
+    if (formKey === "learning_experience_review") resetLearningExperience();
+    else if (formKey === "weekly_full_report") resetWeeklyReport();
+    else if (formKey === "weekly_brief_report") resetWeeklyBriefReport();
+    else if (formKey === "classes_count") resetTeachingSessions();
   };
 
   // Weekly brief report handlers
@@ -236,73 +261,106 @@ export default function EForms() {
   const generatePdf = async () => {
     const element = document.getElementById('printable-area');
     if (!element) return null;
+    const formTitle = availableForms.find(f => f.key === selectedForm)?.title || 'form';
+
+    // Inject a temporary style that hides no-print elements and buttons
+    const tempStyle = document.createElement('style');
+    tempStyle.id = 'pdf-hide-style';
+    tempStyle.textContent = `
+      #printable-area .no-print,
+      #printable-area .no-print * { display: none !important; height: 0 !important; overflow: hidden !important; }
+      #printable-area button { display: none !important; }
+    `;
+    document.head.appendChild(tempStyle);
+
+    // Small delay to let the browser apply the CSS
+    await new Promise(r => setTimeout(r, 100));
+
     const opt = {
       margin: 10,
-      filename: `${availableForms.find(f => f.key === selectedForm)?.title || 'form'}.pdf`,
+      filename: `${formTitle}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     };
-    const blob = await html2pdf().set(opt).from(element).output('blob');
-    return blob;
-  };
 
-  // Helper function to add form entry to portfolio
-  const addToPortfolio = async (formKey, formData, formTitle) => {
     try {
-      const dateStr = new Date().toLocaleDateString('ar-SA');
-      const fd = new FormData();
-      fd.append("title", `${formTitle} - ${dateStr}`);
-      fd.append("content", JSON.stringify(formData, null, 2));
-      fd.append("metadata", JSON.stringify({
-        form_key: formKey,
-        saved_at: new Date().toISOString(),
-        type: "e-form"
-      }));
-      const res = await addPortfolioEntry(fd);
-      return res?.data?.id || res?.id || null;
-    } catch (e) {
-      console.error("Failed to add to portfolio:", e);
-      return null;
+      const blob = await html2pdf().set(opt).from(element).output('blob');
+      return blob;
+    } finally {
+      // Remove the temporary style to restore UI
+      const s = document.getElementById('pdf-hide-style');
+      if (s) s.remove();
     }
   };
+
 
   const handleSave = async () => {
     setSaving(true);
     setError("");
     setSuccess("");
     try {
-      let entryId = null;
+      const formTitle = availableForms.find(f => f.key === selectedForm)?.title || 'نموذج';
+      const dateStr = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      const entryTitle = `${formTitle} — ${dateStr}`;
+      let entryId = editingEntry?.id || null;
+      let formData = null;
+
       if (selectedForm === "classes_count") {
         await saveStudentTrainingProgram({ schedule: {}, teachingSessions });
-        entryId = await addToPortfolio("classes_count", teachingSessions, "عدد الحصص التي درسها الطالب");
-        setSuccess("تم حفظ عدد الحصص وإضافته للملف الإنجاز بنجاح!");
+        formData = teachingSessions;
       } else if (selectedForm === "learning_experience_review") {
-        await saveStudentEForm({ form_key: "learning_experience_review", title: "نموذج نقد خبرات التعلم", payload: learningExperience });
-        entryId = await addToPortfolio("learning_experience_review", learningExperience, "نموذج نقد خبرات التعلم");
-        setSuccess("تم حفظ نموذج نقد خبرات التعلم وإضافته للملف الإنجاز بنجاح!");
+        await saveStudentEForm({ form_key: "learning_experience_review", title: formTitle, payload: learningExperience });
+        formData = learningExperience;
       } else if (selectedForm === "weekly_full_report") {
-        await saveStudentEForm({ form_key: "weekly_full_report", title: "التقرير الأسبوعي", payload: weeklyReport });
-        entryId = await addToPortfolio("weekly_full_report", weeklyReport, "التقرير الأسبوعي");
-        setSuccess("تم حفظ التقرير الأسبوعي وإضافته للملف الإنجاز بنجاح!");
+        await saveStudentEForm({ form_key: "weekly_full_report", title: formTitle, payload: weeklyReport });
+        formData = weeklyReport;
       } else if (selectedForm === "weekly_brief_report") {
-        await saveStudentEForm({ form_key: "weekly_brief_report", title: "التقرير المختصر الأسبوعي", payload: weeklyBriefReport });
-        entryId = await addToPortfolio("weekly_brief_report", weeklyBriefReport, "التقرير المختصر الأسبوعي");
-        setSuccess("تم حفظ التقرير المختصر وإضافته للملف الإنجاز بنجاح!");
+        await saveStudentEForm({ form_key: "weekly_brief_report", title: formTitle, payload: weeklyBriefReport });
+        formData = weeklyBriefReport;
       }
-      if (entryId) portfolioEntryIdRef.current = entryId;
-      // Generate PDF and upload to portfolio
+
+      // Update existing entry or add new one to portfolio
+      try {
+        if (editingEntry && entryId) {
+          // Update existing portfolio entry
+          await updatePortfolioEntry(entryId, {
+            title: entryTitle,
+            content: JSON.stringify(formData, null, 2),
+          });
+        } else if (formData) {
+          // Create new portfolio entry
+          const fd = new FormData();
+          fd.append("title", entryTitle);
+          fd.append("content", JSON.stringify(formData, null, 2));
+          const res = await addPortfolioEntry(fd);
+          entryId = res?.data?.id || res?.id || null;
+        }
+      } catch {
+        // Portfolio operation failure is non-critical
+      }
+
+      // Generate PDF and upload to the portfolio entry
       try {
         const pdfBlob = await generatePdf();
-        if (pdfBlob && portfolioEntryIdRef.current) {
-          const formTitle = availableForms.find(f => f.key === selectedForm)?.title || 'form';
-          await uploadPortfolioFile(portfolioEntryIdRef.current, pdfBlob, `${formTitle}.pdf`);
+        if (pdfBlob && entryId) {
+          await uploadPortfolioFile(entryId, pdfBlob, `${formTitle}.pdf`);
         }
-      } catch (pdfErr) {
-        console.error('PDF upload failed:', pdfErr);
+      } catch {
+        // PDF upload failure is non-critical
       }
+
+      const actionText = editingEntry ? "تعديل" : "حفظ";
+      setSuccess(`تم ${actionText} "${formTitle}" وإضافته لملف الإنجاز بنجاح!`);
+      setEditingEntry(null);
+      setTimeout(() => {
+        setSuccess("");
+        setSelectedForm("");
+      }, 2500);
+      await load();
     } catch (e) {
       setError(e?.response?.data?.message || "فشل حفظ النموذج.");
+      setTimeout(() => setError(""), 4000);
     } finally {
       setSaving(false);
     }
@@ -450,6 +508,35 @@ export default function EForms() {
               );
             })}
           </div>
+
+          {selectedForm && (
+            <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              {editingEntry && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "8px 16px", borderRadius: 99,
+                  background: "#fef3c7", border: "1.5px solid #f59e0b",
+                  color: "#92400e", fontSize: "0.85rem", fontWeight: 600,
+                }}>
+                  <Edit3 size={15} />
+                  وضع التعديل — يتم تحديث المدخل الموجود في ملف الإنجاز
+                </div>
+              )}
+              {!editingEntry && <div />}
+              <button
+                onClick={() => setSelectedForm("")}
+                style={{
+                  padding: "8px 18px", border: "1.5px solid #e2e8f0", borderRadius: 99,
+                  background: "white", color: "#64748b", fontSize: "0.85rem", fontWeight: 600,
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.borderColor = "#94a3b8"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
+              >
+                ✕ إغلاق النموذج
+              </button>
+            </div>
+          )}
 
           <div id="printable-area">
             {selectedForm === "classes_count" && (
@@ -799,7 +886,7 @@ export default function EForms() {
                         }}
                       >
                         {saving ? <Loader2 className="spin" size={18} /> : <Save size={18} />}
-                        {saving ? "جاري الحفظ..." : "حفظ النموذج"}
+                        {saving ? "جاري الحفظ..." : editingEntry ? "حفظ التعديل" : "حفظ النموذج"}
                       </button>
                     </div>
                   </div>
@@ -991,7 +1078,7 @@ export default function EForms() {
                 }}>
                   {/* القسم الأول: التخطيط والتحضير */}
                   <div style={{ marginBottom: "2rem" }}>
-                    <h5 style={{
+                    <h5 className="form-section-header" style={{
                       fontSize: "1.1rem",
                       fontWeight: 700,
                       color: "#495057",
@@ -1055,7 +1142,7 @@ export default function EForms() {
 
                   {/* القسم الثاني: العمل والإنجاز الصفي */}
                   <div style={{ marginBottom: "2rem" }}>
-                    <h5 style={{
+                    <h5 className="form-section-header" style={{
                       fontSize: "1.1rem",
                       fontWeight: 700,
                       color: "#495057",
@@ -1118,7 +1205,7 @@ export default function EForms() {
 
                   {/* القسم الثالث: الجوانب السلوكي والمهني */}
                   <div style={{ marginBottom: "2rem" }}>
-                    <h5 style={{
+                    <h5 className="form-section-header" style={{
                       fontSize: "1.1rem",
                       fontWeight: 700,
                       color: "#495057",
@@ -1183,7 +1270,7 @@ export default function EForms() {
 
                   {/* القسم الرابع: التقييم والتأمل الذاتي */}
                   <div style={{ marginBottom: "2rem" }}>
-                    <h5 style={{
+                    <h5 className="form-section-header" style={{
                       fontSize: "1.1rem",
                       fontWeight: 700,
                       color: "#495057",

@@ -12,15 +12,12 @@ import {
   ChevronUp,
   RefreshCw,
   Loader2,
-  Download,
   MessageSquare,
-  Star,
   Calendar,
   BookOpen,
   FileCheck,
   TrendingUp,
   Award,
-  MoreVertical,
   Paperclip,
 } from "lucide-react";
 import {
@@ -88,6 +85,7 @@ export default function Assignments() {
   const [savingId, setSavingId] = useState(null);
   const [success, setSuccess] = useState("");
   const [expandedTaskId, setExpandedTaskId] = useState(null);
+  const [filter, setFilter] = useState("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -123,9 +121,12 @@ export default function Assignments() {
       setSuccess("تم تسليم التكليف بنجاح.");
       setFiles((prev) => ({ ...prev, [id]: null }));
       setNotes((prev) => ({ ...prev, [id]: "" }));
+      setExpandedTaskId(null);
       await load();
+      setTimeout(() => setSuccess(""), 4000);
     } catch (e) {
       setError(e?.response?.data?.message || "فشل التسليم.");
+      setTimeout(() => setError(""), 4000);
     } finally {
       setSavingId(null);
     }
@@ -149,20 +150,30 @@ export default function Assignments() {
       setSuccess("تم إعادة تسليم التكليف بنجاح.");
       setFiles((prev) => ({ ...prev, [task.id]: null }));
       setNotes((prev) => ({ ...prev, [task.id]: "" }));
+      setExpandedTaskId(null);
       await load();
+      setTimeout(() => setSuccess(""), 4000);
     } catch (e) {
       setError(e?.response?.data?.message || "فشل إعادة التسليم.");
+      setTimeout(() => setError(""), 4000);
     } finally {
       setSavingId(null);
     }
   };
 
-  const statusLabel = (t) => t.status_label || t.status || "—";
   const canSubmit = (t) => !["submitted", "graded"].includes(t.status);
   const canResubmit = (t) => {
     const sub = t.submissions?.[0];
     return t.status === "submitted" && sub && sub.grade === null;
   };
+
+  const filteredTasks = tasks.filter((t) => {
+    if (filter === "all") return true;
+    if (filter === "pending") return !["submitted", "graded"].includes(t.status);
+    if (filter === "submitted") return t.status === "submitted";
+    if (filter === "graded") return t.status === "graded";
+    return true;
+  });
 
   const toggleExpand = (id) => {
     setExpandedTaskId((prev) => (prev === id ? null : id));
@@ -238,18 +249,22 @@ export default function Assignments() {
               </p>
             </div>
           </div>
-          <div className="d-flex gap-4 mt-4" style={{ fontSize: "0.9rem" }}>
+          <div className="d-flex gap-4 mt-4 flex-wrap" style={{ fontSize: "0.9rem" }}>
             <span className="d-flex align-items-center gap-2">
               <ClipboardList size={16} />
-              {tasks.length} تكليف
+              {tasks.length} تكليف إجمالي
             </span>
             <span className="d-flex align-items-center gap-2">
               <Clock size={16} />
-              {tasks.filter((t) => !t.submissions?.length).length} قيد الانتظار
+              {tasks.filter((t) => !["submitted","graded"].includes(t.status)).length} قيد الانتظار
             </span>
             <span className="d-flex align-items-center gap-2">
               <CheckCircle2 size={16} />
-              {tasks.filter((t) => t.submissions?.length).length} مُسلَّم
+              {tasks.filter((t) => t.status === "submitted").length} مُسلَّم
+            </span>
+            <span className="d-flex align-items-center gap-2">
+              <Award size={16} />
+              {tasks.filter((t) => t.status === "graded").length} مُقيَّم
             </span>
           </div>
         </div>
@@ -305,6 +320,42 @@ export default function Assignments() {
         </div>
       )}
 
+      {/* Filter Tabs */}
+      {!loading && tasks.length > 0 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          {[
+            { key: "all", label: "الكل", count: tasks.length },
+            { key: "pending", label: "قيد الانتظار", count: tasks.filter(t => !["submitted","graded"].includes(t.status)).length },
+            { key: "submitted", label: "تم التسليم", count: tasks.filter(t => t.status === "submitted").length },
+            { key: "graded", label: "تم التقييم", count: tasks.filter(t => t.status === "graded").length },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              style={{
+                padding: "8px 18px",
+                borderRadius: 99,
+                border: filter === tab.key ? "2px solid #4f46e5" : "1px solid #e5e7eb",
+                background: filter === tab.key ? "#4f46e5" : "white",
+                color: filter === tab.key ? "white" : "#6b7280",
+                fontWeight: filter === tab.key ? 700 : 500,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              {tab.label}
+              <span style={{
+                background: filter === tab.key ? "rgba(255,255,255,0.25)" : "#f3f4f6",
+                color: filter === tab.key ? "white" : "#374151",
+                borderRadius: 99, padding: "1px 7px", fontSize: "0.78rem", fontWeight: 700,
+              }}>{tab.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Content */}
       {loading ? (
         <div
@@ -346,9 +397,14 @@ export default function Assignments() {
           <h5 style={{ color: "#374151", marginBottom: 8 }}>لا توجد تكليفات</h5>
           <p style={{ color: "#9ca3af", margin: 0 }}>لم يتم إرسال تكليفات مرتبطة بتدريبك حاليًا.</p>
         </div>
+      ) : filteredTasks.length === 0 ? (
+        <div style={{ background: "white", borderRadius: 16, padding: 48, textAlign: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
+          <ClipboardList size={44} style={{ color: "#d1d5db", marginBottom: 12 }} />
+          <p style={{ color: "#9ca3af", margin: 0, fontSize: "0.95rem" }}>لا توجد تكليفات في هذه الفئة.</p>
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {tasks.map((task) => {
+          {filteredTasks.map((task) => {
             const statusConf = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
             const StatusIcon = statusConf.icon;
             const assigner = task.assigned_by;
@@ -541,12 +597,12 @@ export default function Assignments() {
                         flexShrink: 0,
                       }}
                       onMouseEnter={(e) => {
-                        e.target.style.background = "#f3f4f6";
-                        e.target.style.borderColor = "#9ca3af";
+                        e.currentTarget.style.background = "#f3f4f6";
+                        e.currentTarget.style.borderColor = "#9ca3af";
                       }}
                       onMouseLeave={(e) => {
-                        e.target.style.background = isExpanded ? "#f3f4f6" : "white";
-                        e.target.style.borderColor = "#d1d5db";
+                        e.currentTarget.style.background = isExpanded ? "#f3f4f6" : "white";
+                        e.currentTarget.style.borderColor = "#d1d5db";
                       }}
                     >
                       {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -610,12 +666,12 @@ export default function Assignments() {
                             transition: "all 0.2s",
                           }}
                           onMouseEnter={(e) => {
-                            e.target.style.background = "#f9fafb";
-                            e.target.style.borderColor = "#9ca3af";
+                            e.currentTarget.style.background = "#f9fafb";
+                            e.currentTarget.style.borderColor = "#9ca3af";
                           }}
                           onMouseLeave={(e) => {
-                            e.target.style.background = "white";
-                            e.target.style.borderColor = "#d1d5db";
+                            e.currentTarget.style.background = "white";
+                            e.currentTarget.style.borderColor = "#d1d5db";
                           }}
                         >
                           <Paperclip size={16} style={{ color: "#6b7280" }} />
@@ -834,13 +890,13 @@ export default function Assignments() {
                             }}
                             onMouseEnter={(e) => {
                               if (savingId !== task.id) {
-                                e.target.style.background = "#4338ca";
-                                e.target.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.background = "#4338ca";
+                                e.currentTarget.style.transform = "translateY(-1px)";
                               }
                             }}
                             onMouseLeave={(e) => {
-                              e.target.style.background = savingId === task.id ? "#9ca3af" : "#4f46e5";
-                              e.target.style.transform = "translateY(0)";
+                              e.currentTarget.style.background = savingId === task.id ? "#9ca3af" : "#4f46e5";
+                              e.currentTarget.style.transform = "translateY(0)";
                             }}
                           >
                             {savingId === task.id ? (
@@ -1012,13 +1068,13 @@ export default function Assignments() {
                             }}
                             onMouseEnter={(e) => {
                               if (savingId !== task.id) {
-                                e.target.style.background = "#d97706";
-                                e.target.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.background = "#d97706";
+                                e.currentTarget.style.transform = "translateY(-1px)";
                               }
                             }}
                             onMouseLeave={(e) => {
-                              e.target.style.background = savingId === task.id ? "#9ca3af" : "#f59e0b";
-                              e.target.style.transform = "translateY(0)";
+                              e.currentTarget.style.background = savingId === task.id ? "#9ca3af" : "#f59e0b";
+                              e.currentTarget.style.transform = "translateY(0)";
                             }}
                           >
                             {savingId === task.id ? (

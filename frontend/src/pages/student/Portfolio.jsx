@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   addPortfolioEntry,
   apiOrigin,
   deletePortfolioEntry,
   getStudentPortfolio,
+  updatePortfolioEntry,
 } from "../../services/api";
-import { Loader2, Upload, FileText, Trash2, ExternalLink, Plus, FolderOpen, Calendar, FileCheck, BookOpen, ClipboardCheck, FileBarChart, FileSpreadsheet, GraduationCap } from "lucide-react";
+import { Loader2, Upload, FileText, Trash2, ExternalLink, Plus, FolderOpen, Calendar, FileCheck, BookOpen, ClipboardCheck, FileBarChart, FileSpreadsheet, GraduationCap, Edit3, Save as SaveIcon } from "lucide-react";
 
 // CSS Animation
 const fadeInStyles = `
@@ -21,6 +23,7 @@ const fadeInStyles = `
 `;
 
 export default function Portfolio() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -29,6 +32,9 @@ export default function Portfolio() {
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,8 +81,13 @@ export default function Portfolio() {
       setForm({ title: "", content: "" });
       setFile(null);
       await load();
+      setTimeout(() => setSuccess(""), 3000);
     } catch (e2) {
-      setError(e2?.response?.data?.message || "فشل الحفظ.");
+      setError(
+        e2?.response?.data?.errors
+          ? Object.values(e2.response.data.errors).flat().join(" | ")
+          : e2?.response?.data?.message || "فشل الحفظ."
+      );
     } finally {
       setSaving(false);
     }
@@ -89,8 +100,54 @@ export default function Portfolio() {
       await deletePortfolioEntry(id);
       setSuccess("تم الحذف بنجاح.");
       await load();
+      setTimeout(() => setSuccess(""), 3000);
     } catch (e) {
       setError(e?.response?.data?.message || "فشل الحذف.");
+    }
+  };
+
+  const startEdit = (en) => {
+    // Determine the form key from the title
+    const title = (en.title || "").toString();
+    let formKey = null;
+    if (title.includes("نقد خبرات") || title.includes("خبرات التعلم")) formKey = "learning_experience_review";
+    else if (title.includes("تقرير مختصر") || title.includes("المختصر")) formKey = "weekly_brief_report";
+    else if (title.includes("تقرير الأسبوعي") || title.includes("الأسبوعي")) formKey = "weekly_full_report";
+    else if (title.includes("حصص")) formKey = "classes_count";
+
+    if (formKey) {
+      navigate("/student/e-forms", { state: { editEntry: { id: en.id, formKey, title: en.title, content: en.content } } });
+    } else {
+      // Generic entry — use inline editing
+      setEditingId(en.id);
+      setEditTitle(en.title || "");
+      setEditContent(en.content || "");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTitle("");
+    setEditContent("");
+  };
+
+  const handleEditUpdate = async (id) => {
+    if (!editTitle.trim()) {
+      setError("أدخل عنوانًا للمدخل.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await updatePortfolioEntry(id, { title: editTitle.trim(), content: editContent.trim() });
+      setSuccess("تم تعديل المدخل بنجاح!");
+      cancelEdit();
+      await load();
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (e) {
+      setError(e?.response?.data?.message || "فشل التعديل.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -417,122 +474,208 @@ export default function Portfolio() {
                   <div style={{ height: "4px", background: style.gradient }} />
 
                   <div style={{ padding: "1.1rem 1.25rem" }}>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.75rem",
-                    }}>
-                      {/* أيقونة النموذج */}
-                      <div style={{
-                        width: "42px",
-                        height: "42px",
-                        borderRadius: "11px",
-                        background: style.gradient,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        boxShadow: `0 3px 10px ${style.color}30`,
-                      }}>
-                        <EntryIcon size={20} color="white" />
-                      </div>
-
-                      {/* اسم النموذج + التاريخ */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <h5 style={{
-                          margin: 0,
-                          fontSize: "1rem",
-                          fontWeight: 700,
-                          color: "#1e293b",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {en.title}
-                        </h5>
-                        <span style={{
-                          fontSize: "0.72rem",
-                          color: "#94a3b8",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.25rem",
-                          marginTop: "0.15rem",
-                        }}>
-                          <Calendar size={11} />
-                          {en.created_at ? new Date(en.created_at).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' }) : "—"}
-                        </span>
-                      </div>
-
-                      {/* أزرار المرفق والحذف */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}>
-                        {en.file_path ? (
-                          <a
-                            href={fileHref(en.file_path)}
-                            target="_blank"
-                            rel="noreferrer"
+                    {editingId === en.id ? (
+                      /* وضع التعديل */
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <div style={{
+                            width: "36px", height: "36px", borderRadius: "9px",
+                            background: style.gradient, display: "flex", alignItems: "center",
+                            justifyContent: "center", flexShrink: 0,
+                          }}>
+                            <Edit3 size={16} color="white" />
+                          </div>
+                          <span style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.95rem" }}>تعديل المدخل</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          style={{
+                            width: "100%", padding: "10px 14px", border: "1.5px solid #d1d5db",
+                            borderRadius: 8, fontSize: "0.9rem", fontWeight: 600,
+                          }}
+                          placeholder="عنوان المدخل"
+                        />
+                        <textarea
+                          rows={4}
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          style={{
+                            width: "100%", padding: "10px 14px", border: "1.5px solid #d1d5db",
+                            borderRadius: 8, fontSize: "0.85rem", resize: "vertical",
+                          }}
+                          placeholder="المحتوى أو الوصف..."
+                        />
+                        <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                          <button
+                            onClick={cancelEdit}
                             style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.35rem",
-                              color: style.color,
-                              textDecoration: "none",
-                              fontSize: "0.82rem",
-                              fontWeight: 600,
-                              padding: "0.35rem 0.7rem",
-                              borderRadius: "8px",
-                              backgroundColor: style.bg,
-                              transition: "all 0.2s",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = `${style.color}18`;
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = style.bg;
+                              padding: "8px 18px", border: "1px solid #e2e8f0", borderRadius: 8,
+                              background: "white", color: "#64748b", fontSize: "0.85rem",
+                              fontWeight: 600, cursor: "pointer",
                             }}
                           >
-                            <FileText size={15} />
-                            المرفق
-                            <ExternalLink size={12} />
-                          </a>
-                        ) : (
+                            إلغاء
+                          </button>
+                          <button
+                            onClick={() => handleEditUpdate(en.id)}
+                            disabled={saving}
+                            style={{
+                              padding: "8px 18px", border: "none", borderRadius: 8,
+                              background: saving ? "#9ca3af" : style.color, color: "white",
+                              fontSize: "0.85rem", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer",
+                              display: "flex", alignItems: "center", gap: 6,
+                            }}
+                          >
+                            {saving ? <Loader2 className="spin" size={14} /> : <SaveIcon size={14} />}
+                            {saving ? "جاري الحفظ..." : "حفظ التعديل"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* وضع العرض */
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                      }}>
+                        {/* أيقونة النموذج */}
+                        <div style={{
+                          width: "42px",
+                          height: "42px",
+                          borderRadius: "11px",
+                          background: style.gradient,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          boxShadow: `0 3px 10px ${style.color}30`,
+                        }}>
+                          <EntryIcon size={20} color="white" />
+                        </div>
+
+                        {/* اسم النموذج + التاريخ */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h5 style={{
+                            margin: 0,
+                            fontSize: "1rem",
+                            fontWeight: 700,
+                            color: "#1e293b",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}>
+                            {en.title}
+                          </h5>
                           <span style={{
-                            color: "#cbd5e1",
-                            fontSize: "0.78rem",
+                            fontSize: "0.72rem",
+                            color: "#94a3b8",
                             display: "flex",
                             alignItems: "center",
                             gap: "0.25rem",
-                            padding: "0.35rem 0.5rem",
+                            marginTop: "0.15rem",
                           }}>
-                            <FileText size={14} />
-                            بدون مرفق
+                            <Calendar size={11} />
+                            {en.created_at ? new Date(en.created_at).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' }) : "—"}
                           </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(en.id)}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            color: "#cbd5e1",
-                            padding: "4px",
-                            borderRadius: "6px",
-                            transition: "all 0.2s",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = "#ef4444";
-                            e.currentTarget.style.backgroundColor = "#fef2f2";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = "#cbd5e1";
-                            e.currentTarget.style.backgroundColor = "transparent";
-                          }}
-                          title="حذف"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        </div>
+
+                        {/* أزرار المرفق والتعديل والحذف */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}>
+                          {en.file_path ? (
+                            <a
+                              href={fileHref(en.file_path)}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.35rem",
+                                color: style.color,
+                                textDecoration: "none",
+                                fontSize: "0.82rem",
+                                fontWeight: 600,
+                                padding: "0.35rem 0.7rem",
+                                borderRadius: "8px",
+                                backgroundColor: style.bg,
+                                transition: "all 0.2s",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = `${style.color}18`;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = style.bg;
+                              }}
+                            >
+                              <FileText size={15} />
+                              المرفق
+                              <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <span style={{
+                              color: "#cbd5e1",
+                              fontSize: "0.78rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.25rem",
+                              padding: "0.35rem 0.5rem",
+                            }}>
+                              <FileText size={14} />
+                              بدون مرفق
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => startEdit(en)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "#94a3b8",
+                              padding: "4px",
+                              borderRadius: "6px",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = "#3b82f6";
+                              e.currentTarget.style.backgroundColor = "#eff6ff";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = "#94a3b8";
+                              e.currentTarget.style.backgroundColor = "transparent";
+                            }}
+                            title="تعديل"
+                          >
+                            <Edit3 size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(en.id)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "#cbd5e1",
+                              padding: "4px",
+                              borderRadius: "6px",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = "#ef4444";
+                              e.currentTarget.style.backgroundColor = "#fef2f2";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = "#cbd5e1";
+                              e.currentTarget.style.backgroundColor = "transparent";
+                            }}
+                            title="حذف"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               );

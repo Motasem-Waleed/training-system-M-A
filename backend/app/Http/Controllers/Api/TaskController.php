@@ -49,9 +49,7 @@ class TaskController extends Controller
         ->latest()
         ->get();
 
-        return response()->json([
-            'data' => $tasks
-        ]);
+        return TaskResource::collection($tasks);
     }
 
     /**
