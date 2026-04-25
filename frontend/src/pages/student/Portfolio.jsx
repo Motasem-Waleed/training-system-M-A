@@ -110,6 +110,14 @@ export default function Portfolio() {
     // Determine the form key from the title
     const title = (en.title || "").toString();
     let formKey = null;
+    if (title.includes("برنامج التدريب") || title.includes("برنامج تدريب")) {
+      navigate("/student/schedule", { state: { editEntry: { id: en.id, title: en.title, content: en.content } } });
+      return;
+    }
+    if (title.includes("حضور") || title.includes("غياب")) {
+      navigate("/student/attendance", { state: { editEntry: { id: en.id, title: en.title, content: en.content } } });
+      return;
+    }
     if (title.includes("نقد خبرات") || title.includes("خبرات التعلم")) formKey = "learning_experience_review";
     else if (title.includes("تقرير مختصر") || title.includes("المختصر")) formKey = "weekly_brief_report";
     else if (title.includes("تقرير الأسبوعي") || title.includes("الأسبوعي")) formKey = "weekly_full_report";

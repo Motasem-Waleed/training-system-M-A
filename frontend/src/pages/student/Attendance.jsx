@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { getStudentAttendances, createAttendance, deleteAttendance, uploadPortfolioFile } from "../../services/api";
+import { useLocation } from "react-router-dom";
+import { getStudentAttendances, createAttendance, deleteAttendance, uploadPortfolioFile, updatePortfolioEntry, updateAttendance } from "../../services/api";
 import html2pdf from "html2pdf.js";
 import {
   CalendarCheck,
@@ -12,6 +13,8 @@ import {
   ClipboardList,
   Info,
   Printer,
+  Edit3,
+  Loader2,
 } from "lucide-react";
 
 // Print-specific CSS
@@ -50,11 +53,15 @@ const todayISO = () => {
 };
 
 export default function StudentAttendance() {
+  const location = useLocation();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [editingRecordId, setEditingRecordId] = useState(null);
+  const [editRecord, setEditRecord] = useState({});
   const portfolioEntryIdRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -69,6 +76,20 @@ export default function StudentAttendance() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Handle edit entry from Portfolio page
+  useEffect(() => {
+    const editData = location.state?.editEntry;
+    if (!editData) return;
+
+    setEditingEntry(editData);
+    if (editData.id) {
+      portfolioEntryIdRef.current = editData.id;
+    }
+
+    // Clear navigation state
+    window.history.replaceState({}, "");
+  }, [location.state]);
 
   const stats = useMemo(() => {
     const total = records.length;
@@ -91,9 +112,16 @@ export default function StudentAttendance() {
       setLoading(true);
       setError("");
       const res = await getStudentAttendances();
-      setRecords(Array.isArray(res?.data) ? res.data : []);
+      const data = Array.isArray(res?.data) ? res.data : [];
+      setRecords(data);
+      // Store portfolio entry id if returned from backend
+      if (res?.portfolio_entry_id) {
+        portfolioEntryIdRef.current = res.portfolio_entry_id;
+      }
+      return data;
     } catch (err) {
       setError(err?.response?.data?.message || "تعذر تحميل سجل الحضور.");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -117,20 +145,18 @@ export default function StudentAttendance() {
     try {
       setSaving(true);
       setError("");
-      await createAttendance({
+      const res = await createAttendance({
         day: formData.day,
         date: formData.date,
         check_in: formData.check_in,
         check_out: formData.check_out,
         lessons_count: formData.lessons_count ? Number(formData.lessons_count) : null,
         notes: formData.notes,
-      }).then((res) => {
-        if (res?.portfolio_entry_id) {
-          portfolioEntryIdRef.current = res.portfolio_entry_id;
-        }
-        return res;
       });
-      setSuccess("تم إضافة سجل الحضور بنجاح.");
+      if (res?.portfolio_entry_id) {
+        portfolioEntryIdRef.current = res.portfolio_entry_id;
+      }
+      setSuccess(editingEntry ? "تم تعديل سجل الحضور بنجاح." : "تم إضافة سجل الحضور بنجاح.");
       setFormData({
         day: DAYS[0],
         date: todayISO(),
@@ -139,9 +165,9 @@ export default function StudentAttendance() {
         lessons_count: "",
         notes: "",
       });
-      await fetchData();
-      // Generate and upload PDF to portfolio
-      await syncPdfToPortfolio(portfolioEntryIdRef.current);
+      const latestRecords = await fetchData();
+      await syncPdfToPortfolio(portfolioEntryIdRef.current, latestRecords);
+      setEditingEntry(null);
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       setError(err?.response?.data?.errors
@@ -157,32 +183,105 @@ export default function StudentAttendance() {
     try {
       await deleteAttendance(id);
       setSuccess("تم حذف السجل.");
-      await fetchData();
-      // Update PDF in portfolio
-      await syncPdfToPortfolio(portfolioEntryIdRef.current);
+      const latestRecords = await fetchData();
+      await syncPdfToPortfolio(portfolioEntryIdRef.current, latestRecords);
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       setError("تعذر حذف السجل.");
     }
   };
 
-  const generatePdf = async () => {
-    const element = document.getElementById('printable-area');
-    if (!element) return null;
+  const startEditRecord = (rec) => {
+    setEditingRecordId(rec.id);
+    setEditRecord({
+      day: rec.day || DAYS[0],
+      date: rec.date ? rec.date.slice(0, 10) : todayISO(),
+      check_in: rec.check_in || "",
+      check_out: rec.check_out || "",
+      lessons_count: rec.lessons_count ?? "",
+      notes: rec.notes || "",
+    });
+  };
+
+  const cancelEditRecord = () => {
+    setEditingRecordId(null);
+    setEditRecord({});
+  };
+
+  const handleUpdateRecord = async (id) => {
+    try {
+      setSaving(true);
+      setError("");
+      await updateAttendance(id, {
+        day: editRecord.day,
+        date: editRecord.date,
+        check_in: editRecord.check_in,
+        check_out: editRecord.check_out,
+        lessons_count: editRecord.lessons_count ? Number(editRecord.lessons_count) : null,
+        notes: editRecord.notes,
+      });
+      setSuccess("تم تعديل السجل بنجاح.");
+      setEditingRecordId(null);
+      setEditRecord({});
+      const latestRecords = await fetchData();
+      await syncPdfToPortfolio(portfolioEntryIdRef.current, latestRecords);
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError(err?.response?.data?.errors
+        ? Object.values(err.response.data.errors).flat().join(" | ")
+        : err?.response?.data?.message || "تعذر تعديل السجل.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const generatePdfFromRecords = async (currentRecords) => {
+    // Build an HTML string directly from the data — no dependency on DOM state
+    const rows = currentRecords.map((rec) => `
+      <tr>
+        <td style="padding:6px;border:1px solid #ccc;text-align:center;">${rec.day || ''}<br/><small>${rec.date ? rec.date.slice(0,10) : ''}</small></td>
+        <td style="padding:6px;border:1px solid #ccc;text-align:center;">${rec.check_in || ''}</td>
+        <td style="padding:6px;border:1px solid #ccc;text-align:center;">${rec.check_out || ''}</td>
+        <td style="padding:6px;border:1px solid #ccc;text-align:center;">${rec.lessons_count ?? ''}</td>
+        <td style="padding:6px;border:1px solid #ccc;text-align:right;">${rec.notes || ''}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      <div dir="rtl" style="font-family:Arial,sans-serif;padding:16px;">
+        <h2 style="text-align:center;margin-bottom:12px;">سجل الحضور والغياب — نموذج رقم (2)</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:#142a42;color:white;">
+              <th style="padding:8px;border:1px solid #ccc;">اليوم والتاريخ</th>
+              <th style="padding:8px;border:1px solid #ccc;">ساعة الحضور</th>
+              <th style="padding:8px;border:1px solid #ccc;">ساعة المغادرة</th>
+              <th style="padding:8px;border:1px solid #ccc;">عدد الحصص</th>
+              <th style="padding:8px;border:1px solid #ccc;">ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.length ? rows : '<tr><td colspan="5" style="text-align:center;padding:12px;border:1px solid #ccc;">لا توجد سجلات</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+
     const opt = {
       margin: 10,
       filename: 'attendance.pdf',
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
     };
-    const blob = await html2pdf().set(opt).from(element).output('blob');
+
+    const blob = await html2pdf().set(opt).from(html).output('blob');
     return blob;
   };
 
-  const syncPdfToPortfolio = async (entryId) => {
+  const syncPdfToPortfolio = async (entryId, latestRecords) => {
     try {
-      const pdfBlob = await generatePdf();
+      const pdfBlob = await generatePdfFromRecords(latestRecords || []);
       if (pdfBlob && entryId) {
         await uploadPortfolioFile(entryId, pdfBlob, 'attendance.pdf');
       }
@@ -357,6 +456,13 @@ export default function StudentAttendance() {
         </div>
       )}
 
+      {editingEntry && (
+        <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, padding: "0.75rem 1rem", background: "#fef3c7", border: "1.5px solid #f59e0b", color: "#92400e", borderRadius: 8, fontWeight: 600, fontSize: "0.9rem" }}>
+          <Edit3 size={18} />
+          وضع التعديل — يتم تحديث المدخل الموجود في ملف الإنجاز
+        </div>
+      )}
+
       {/* جدول سجلات الحضور */}
       <div id="printable-area" className="section-card">
         {/* Print-only header */}
@@ -419,42 +525,138 @@ export default function StudentAttendance() {
               ) : (
                 records.map((rec, idx) => (
                   <tr key={rec.id}>
-                    <td>
-                      <div style={{ fontWeight: 700, color: "var(--secondary)" }}>{rec.day}</div>
-                      <div style={{ fontSize: "0.82rem", color: "var(--text-faint)", marginTop: 2 }}>
-                        {formatDate(rec.date)}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <span className="badge-custom badge-success" style={{ fontSize: "0.85rem" }}>
-                        {rec.check_in}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <span className="badge-custom badge-info" style={{ fontSize: "0.85rem" }}>
-                        {rec.check_out}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      {rec.lessons_count ? (
-                        <span className="badge-custom badge-primary">{rec.lessons_count}</span>
-                      ) : (
-                        <span style={{ color: "var(--text-faint)" }}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      {rec.notes || <span style={{ color: "var(--text-faint)" }}>—</span>}
-                    </td>
-                    <td className="no-print" style={{ textAlign: "center" }}>
-                      <button
-                        onClick={() => handleDelete(rec.id)}
-                        className="btn-danger-custom btn-sm-custom"
-                        style={{ minHeight: 34, fontSize: "0.82rem" }}
-                      >
-                        <Trash2 size={14} />
-                        حذف
-                      </button>
-                    </td>
+                    {editingRecordId === rec.id ? (
+                      <>
+                        <td>
+                          <select
+                            value={editRecord.day}
+                            onChange={(e) => setEditRecord((prev) => ({ ...prev, day: e.target.value }))}
+                            className="form-select-custom"
+                            style={{ fontSize: "0.82rem", marginBottom: 4 }}
+                          >
+                            {DAYS.map((d) => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="date"
+                            value={editRecord.date}
+                            onChange={(e) => setEditRecord((prev) => ({ ...prev, date: e.target.value }))}
+                            className="form-input-custom"
+                            style={{ fontSize: "0.78rem" }}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            type="time"
+                            value={editRecord.check_in}
+                            onChange={(e) => setEditRecord((prev) => ({ ...prev, check_in: e.target.value }))}
+                            className="form-input-custom"
+                            style={{ fontSize: "0.82rem", textAlign: "center" }}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            type="time"
+                            value={editRecord.check_out}
+                            onChange={(e) => setEditRecord((prev) => ({ ...prev, check_out: e.target.value }))}
+                            className="form-input-custom"
+                            style={{ fontSize: "0.82rem", textAlign: "center" }}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="15"
+                            value={editRecord.lessons_count}
+                            onChange={(e) => setEditRecord((prev) => ({ ...prev, lessons_count: e.target.value }))}
+                            className="form-input-custom"
+                            style={{ fontSize: "0.82rem", textAlign: "center", width: 60 }}
+                            placeholder="—"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={editRecord.notes}
+                            onChange={(e) => setEditRecord((prev) => ({ ...prev, notes: e.target.value }))}
+                            className="form-input-custom"
+                            style={{ fontSize: "0.82rem" }}
+                            placeholder="ملاحظات..."
+                          />
+                        </td>
+                        <td className="no-print" style={{ textAlign: "center" }}>
+                          <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                            <button
+                              onClick={() => handleUpdateRecord(rec.id)}
+                              disabled={saving}
+                              className="btn-primary-custom btn-sm-custom"
+                              style={{ minHeight: 34, fontSize: "0.78rem", opacity: saving ? 0.6 : 1 }}
+                            >
+                              {saving ? <Loader2 className="spin" size={14} /> : <CheckCircle2 size={14} />}
+                              حفظ
+                            </button>
+                            <button
+                              onClick={cancelEditRecord}
+                              className="btn-danger-custom btn-sm-custom"
+                              style={{ minHeight: 34, fontSize: "0.78rem" }}
+                            >
+                              إلغاء
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>
+                          <div style={{ fontWeight: 700, color: "var(--secondary)" }}>{rec.day}</div>
+                          <div style={{ fontSize: "0.82rem", color: "var(--text-faint)", marginTop: 2 }}>
+                            {formatDate(rec.date)}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className="badge-custom badge-success" style={{ fontSize: "0.85rem" }}>
+                            {rec.check_in}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className="badge-custom badge-info" style={{ fontSize: "0.85rem" }}>
+                            {rec.check_out}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {rec.lessons_count ? (
+                            <span className="badge-custom badge-primary">{rec.lessons_count}</span>
+                          ) : (
+                            <span style={{ color: "var(--text-faint)" }}>—</span>
+                          )}
+                        </td>
+                        <td>
+                          {rec.notes || <span style={{ color: "var(--text-faint)" }}>—</span>}
+                        </td>
+                        <td className="no-print" style={{ textAlign: "center" }}>
+                          <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                            <button
+                              onClick={() => startEditRecord(rec)}
+                              className="btn-primary-custom btn-sm-custom"
+                              style={{ minHeight: 34, fontSize: "0.82rem" }}
+                            >
+                              <Edit3 size={14} />
+                              تعديل
+                            </button>
+                            <button
+                              onClick={() => handleDelete(rec.id)}
+                              className="btn-danger-custom btn-sm-custom"
+                              style={{ minHeight: 34, fontSize: "0.82rem" }}
+                            >
+                              <Trash2 size={14} />
+                              حذف
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))
               )}

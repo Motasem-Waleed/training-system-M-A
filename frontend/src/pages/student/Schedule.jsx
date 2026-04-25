@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
-import { getStudentTrainingProgram, saveStudentTrainingProgram, uploadPortfolioFile } from "../../services/api";
+import { useLocation } from "react-router-dom";
+import { getStudentTrainingProgram, saveStudentTrainingProgram, uploadPortfolioFile, updatePortfolioEntry } from "../../services/api";
 import html2pdf from "html2pdf.js";
 import { Calendar, Clock, Lock, Edit3, Save, RotateCcw, Loader2, AlertCircle, CheckCircle, Printer } from "lucide-react";
 
@@ -55,6 +56,7 @@ const buildEmptySchedule = () => {
 };
 
 export default function Schedule() {
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -63,6 +65,7 @@ export default function Schedule() {
   const [studentInfo, setStudentInfo] = useState({ name: "—", university_id: "—", school: "—", semester: "—" });
   const [schedule, setSchedule] = useState(buildEmptySchedule);
   const [hasSavedProgram, setHasSavedProgram] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
   const portfolioEntryIdRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -106,6 +109,41 @@ export default function Schedule() {
     load();
   }, [load]);
 
+  // Handle edit entry from Portfolio page
+  useEffect(() => {
+    const editData = location.state?.editEntry;
+    if (!editData) return;
+
+    setEditingEntry(editData);
+    if (editData.id) {
+      portfolioEntryIdRef.current = editData.id;
+    }
+
+    // Try to parse schedule from content
+    try {
+      const parsed = typeof editData.content === "string" ? JSON.parse(editData.content) : editData.content;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const merged = buildEmptySchedule();
+        Object.keys(parsed).forEach((dayId) => {
+          if (merged[dayId]) {
+            Object.keys(parsed[dayId] || {}).forEach((periodId) => {
+              if (merged[dayId][periodId] !== undefined) {
+                merged[dayId][periodId] = parsed[dayId][periodId] || "";
+              }
+            });
+          }
+        });
+        setSchedule(merged);
+        setHasSavedProgram(true);
+      }
+    } catch {
+      // Content may not be valid schedule JSON — ignore, will load from API
+    }
+
+    // Clear navigation state
+    window.history.replaceState({}, "");
+  }, [location.state]);
+
   const handleCellChange = (dayId, periodId, value) => {
     setSchedule((prev) => ({
       ...prev,
@@ -138,8 +176,16 @@ export default function Schedule() {
       if (res?.data?.portfolio_entry_id) {
         portfolioEntryIdRef.current = res.data.portfolio_entry_id;
       }
-      // Generate PDF and upload to portfolio
+
+      // Update existing portfolio entry or generate PDF for new one
       try {
+        if (editingEntry && portfolioEntryIdRef.current) {
+          const dateStr = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+          await updatePortfolioEntry(portfolioEntryIdRef.current, {
+            title: `برنامج التدريب — ${dateStr}`,
+            content: JSON.stringify(schedule, null, 2),
+          });
+        }
         const pdfBlob = await generatePdf();
         if (pdfBlob && portfolioEntryIdRef.current) {
           await uploadPortfolioFile(portfolioEntryIdRef.current, pdfBlob, 'training-program.pdf');
@@ -147,7 +193,10 @@ export default function Schedule() {
       } catch (pdfErr) {
         console.error('PDF upload failed:', pdfErr);
       }
-      setSuccess("تم حفظ برنامج التدريب بنجاح وإضافته للملف الإنجاز.");
+
+      const actionText = editingEntry ? "تعديل" : "حفظ";
+      setSuccess(`تم ${actionText} برنامج التدريب بنجاح وإضافته للملف الإنجاز.`);
+      setEditingEntry(null);
     } catch (e) {
       setError(e?.response?.data?.message || "تعذر حفظ برنامج التدريب.");
     } finally {
@@ -208,6 +257,13 @@ export default function Schedule() {
         <div className="alert-custom alert-info mb-3 no-print" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Edit3 size={18} />
           تعبئة برنامج التدريب مفتوحة — يمكنك تعديل الجدول وحفظه.
+        </div>
+      )}
+
+      {editingEntry && (
+        <div className="alert-custom alert-warning mb-3 no-print" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "#fef3c7", border: "1.5px solid #f59e0b", color: "#92400e", borderRadius: 8, padding: "0.75rem 1rem" }}>
+          <Edit3 size={18} />
+          وضع التعديل — يتم تحديث المدخل الموجود في ملف الإنجاز
         </div>
       )}
 
@@ -499,7 +555,7 @@ export default function Schedule() {
                 }}
               >
                 {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />}
-                {saving ? "جاري الحفظ..." : "حفظ وإرسال للمنسق"}
+                {saving ? "جاري الحفظ..." : "حفظ"}
               </button>
           </div>
         )}

@@ -63,6 +63,15 @@ class StudentAttendanceController extends Controller
             ];
         }
         
+        // جلب معرف مدخل الملف الإنجازي لسجل الحضور
+        $portfolio = StudentPortfolio::where('user_id', $user->id)->first();
+        $portfolioEntryId = null;
+        if ($portfolio) {
+            $portfolioEntryId = PortfolioEntry::where('student_portfolio_id', $portfolio->id)
+                ->where('title', 'سجل الحضور والغياب')
+                ->value('id');
+        }
+
         return response()->json([
             'data' => $attendances->items(),
             'meta' => [
@@ -72,6 +81,7 @@ class StudentAttendanceController extends Controller
                 'total' => $attendances->total(),
             ],
             'training_site' => $trainingSite,
+            'portfolio_entry_id' => $portfolioEntryId,
         ]);
     }
 
