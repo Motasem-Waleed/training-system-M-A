@@ -18,7 +18,8 @@ class SectionController extends Controller
 
     public function index(Request $request)
     {
-        $query = Section::with(['course', 'supervisor', 'createdBy', 'students']);
+        $query = Section::with(['course', 'academicSupervisor', 'createdBy', 'students'])
+            ->withCount('enrollments');
         if ($request->has('course_id')) $query->where('course_id', $request->course_id);
         if ($request->has('semester')) $query->where('semester', $request->semester);
         if ($request->has('academic_year')) $query->where('academic_year', $request->academic_year);
@@ -38,18 +39,18 @@ class SectionController extends Controller
         }
         
         $section = Section::create($data);
-        return new SectionResource($section->load(['course', 'supervisor', 'createdBy']));
+        return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
 
     public function show(Section $section)
     {
-        return new SectionResource($section->load(['course', 'supervisor', 'createdBy', 'students']));
+        return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy', 'students']));
     }
 
     public function update(UpdateSectionRequest $request, Section $section)
     {
         $section->update($request->validated());
-        return new SectionResource($section->load(['course', 'supervisor', 'createdBy']));
+        return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
 
     public function destroy(Section $section)
@@ -174,6 +175,6 @@ class SectionController extends Controller
             }])
             ->get();
         
-        return response()->json(['data' => $enrollments]);
+        return response()->json(['data' => EnrollmentResource::collection($enrollments)]);
     }
 }
