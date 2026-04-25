@@ -94,7 +94,7 @@ class TrainingRequestService
             TrainingRequestNotifications::forDirectorate(
                 $trainingRequest->governing_body,
                 'training_request_received_from_coordinator',
-                'ط·ظ„ط¨ طھط¯ط±ظٹط¨ ط¬ط¯ظٹط¯ ط¨ط§ظ†طھط¸ط§ط± ط§ظ„ظ…ظˆط§ظپظ‚ط©. ظƒطھط§ط¨ ط±ظ‚ظ…: ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}"),
+                'طلب تدريب جديد بانتظار الموافقة. كتاب رقم: ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}"),
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::SENT_TO_DIRECTORATE->value,
@@ -136,7 +136,7 @@ class TrainingRequestService
             $this->notifyCoordinator(
                 $trainingRequest,
                 'training_request_directorate_approved',
-                'طھظ…طھ ظ…ظˆط§ظپظ‚ط© ط§ظ„ط¬ظ‡ط© ط§ظ„ط±ط³ظ…ظٹط© ط¹ظ„ظ‰ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ط±ظ‚ظ… ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . '.',
+                'تمت موافقة الجهة الرسمية على طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . '.',
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::DIRECTORATE_APPROVED->value,
@@ -147,7 +147,7 @@ class TrainingRequestService
             TrainingRequestNotifications::forStudents(
                 $trainingRequest,
                 'training_request_directorate_approved_student',
-                'طھظ…طھ ظ…ظˆط§ظپظ‚ط© ط§ظ„ط¬ظ‡ط© ط§ظ„ط±ط³ظ…ظٹط© ط¹ظ„ظ‰ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ط§ظ„ط®ط§طµ ط¨ظƒ.',
+                'تمت موافقة الجهة الرسمية على طلب التدريب الخاص بك.',
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::DIRECTORATE_APPROVED->value,
@@ -183,7 +183,7 @@ class TrainingRequestService
             TrainingRequestNotifications::forSchoolManager(
                 $trainingRequest->training_site_id,
                 'training_request_received_from_directorate',
-                'طھظ… ط¥ط±ط³ط§ظ„ ط·ظ„ط¨ طھط¯ط±ظٹط¨ ظ…ظ† ط§ظ„ط¬ظ‡ط© ط§ظ„ط±ط³ظ…ظٹط© ط¨ط§ظ†طھط¸ط§ط± ظ…ظˆط§ظپظ‚طھظƒ ظˆطھط¹ظٹظٹظ† ط§ظ„ظ…ط¹ظ„ظ…ظٹظ† ط§ظ„ظ…ط±ط´ط¯ظٹظ†.',
+                'تم إرسال طلب تدريب من الجهة الرسمية بانتظار موافقتك وتعيين المعلمين المرشدين.',
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::SENT_TO_SCHOOL->value,
@@ -233,7 +233,7 @@ class TrainingRequestService
             TrainingRequestNotifications::forStudents(
                 $trainingRequest,
                 'training_request_school_approved_student',
-                'طھظ…طھ ظ…ظˆط§ظپظ‚ط© ط¬ظ‡ط© ط§ظ„طھط¯ط±ظٹط¨ ظˆظٹظ…ظƒظ†ظƒ ظ…طھط§ط¨ط¹ط© ط§ظ„طھط¯ط±ظٹط¨ ط§ظ„ظ…ظٹط¯ط§ظ†ظٹ ظپظٹ ط§ظ„ظ†ط¸ط§ظ….',
+                'تمت موافقة جهة التدريب ويمكنك متابعة التدريب الميداني في النظام.',
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::SCHOOL_APPROVED->value,
@@ -278,7 +278,7 @@ class TrainingRequestService
             $this->notifyCoordinator(
                 $trainingRequest,
                 'training_request_directorate_rejected',
-                'طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ط±ظ‚ظ… ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . ' ظ…ظ† ط§ظ„ظ…ط¯ظٹط±ظٹط©. ط³ط¨ط¨ ط§ظ„ط±ظپط¶: ' . $reason,
+                'تم رفض طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . ' من المديرية. سبب الرفض: ' . $reason,
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::DIRECTORATE_REJECTED->value,
@@ -290,7 +290,7 @@ class TrainingRequestService
             TrainingRequestNotifications::forStudents(
                 $trainingRequest,
                 'training_request_directorate_rejected_student',
-                'طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ظ…ظ† ط§ظ„ظ…ط¯ظٹط±ظٹط©. ط§ظ„ط³ط¨ط¨: ' . $reason,
+                'تم رفض طلب التدريب من المديرية. السبب: ' . $reason,
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::DIRECTORATE_REJECTED->value,
@@ -328,7 +328,7 @@ class TrainingRequestService
             $this->notifyCoordinator(
                 $trainingRequest,
                 'training_request_health_ministry_rejected',
-                'طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ط±ظ‚ظ… ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . ' ظ…ظ† ظˆط²ط§ط±ط© ط§ظ„طµط­ط©. ط³ط¨ط¨ ط§ظ„ط±ظپط¶: ' . $reason,
+                'تم رفض طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . ' من وزارة الصحة. سبب الرفض: ' . $reason,
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::HEALTH_MINISTRY_REJECTED->value,
@@ -340,7 +340,7 @@ class TrainingRequestService
             TrainingRequestNotifications::forStudents(
                 $trainingRequest,
                 'training_request_health_ministry_rejected_student',
-                'طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ظ…ظ† ظˆط²ط§ط±ط© ط§ظ„طµط­ط©. ط§ظ„ط³ط¨ط¨: ' . $reason,
+                'تم رفض طلب التدريب من وزارة الصحة. السبب: ' . $reason,
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::HEALTH_MINISTRY_REJECTED->value,
@@ -378,7 +378,7 @@ class TrainingRequestService
             $this->notifyCoordinator(
                 $trainingRequest,
                 'training_request_school_rejected',
-                'طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ط±ظ‚ظ… ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . ' ظ…ظ† ط¬ظ‡ط© ط§ظ„طھط¯ط±ظٹط¨. ط³ط¨ط¨ ط§ظ„ط±ظپط¶: ' . $reason,
+                'تم رفض طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . ' من جهة التدريب. سبب الرفض: ' . $reason,
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::SCHOOL_REJECTED->value,
@@ -390,7 +390,7 @@ class TrainingRequestService
             TrainingRequestNotifications::forStudents(
                 $trainingRequest,
                 'training_request_school_rejected_student',
-                'طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ظ…ظ† ط¬ظ‡ط© ط§ظ„طھط¯ط±ظٹط¨. ط§ظ„ط³ط¨ط¨: ' . $reason,
+                'تم رفض طلب التدريب من جهة التدريب. السبب: ' . $reason,
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::SCHOOL_REJECTED->value,
@@ -428,7 +428,7 @@ class TrainingRequestService
             $this->notifyCoordinator(
                 $trainingRequest,
                 'training_request_directorate_rejected',
-                'طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨ ط±ظ‚ظ… ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . '. ط³ط¨ط¨ ط§ظ„ط±ظپط¶: ' . $reason,
+                'تم رفض طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . '. سبب الرفض: ' . $reason,
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::REJECTED->value,
@@ -440,7 +440,7 @@ class TrainingRequestService
             TrainingRequestNotifications::forStudents(
                 $trainingRequest,
                 'training_request_rejected_student',
-                'طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„طھط¯ط±ظٹط¨. ط§ظ„ط³ط¨ط¨: ' . $reason,
+                'تم رفض طلب التدريب. السبب: ' . $reason,
                 [
                     'training_request_id' => $trainingRequest->id,
                     'book_status' => BookStatus::REJECTED->value,
@@ -513,7 +513,7 @@ class TrainingRequestService
 
         throw ValidationException::withMessages([
             'students' => [
-                "ظ„ط§ ظٹظ…ظƒظ† ط§ط¹طھظ…ط§ط¯ ط§ظ„ط·ط§ظ„ط¨ {$studentRequest->user_id} ظ„ط¹ط¯ظ… ظˆط¬ظˆط¯ طھط³ط¬ظٹظ„ ط£ظƒط§ط¯ظٹظ…ظٹ ظ…ط±طھط¨ط· ط¨ط§ظ„ظ…ط³ط§ظ‚ ط§ظ„ظ…ط·ظ„ظˆط¨.",
+                "لا يمكن اعتماد الطالب {$studentRequest->user_id} لعدم وجود تسجيل أكاديمي مرتبط بالمساق المطلوب.",
             ],
         ]);
     }
@@ -534,7 +534,7 @@ class TrainingRequestService
         }
 
         throw ValidationException::withMessages([
-            'training_period' => ['ظ„ط§ ظٹظ…ظƒظ† ط§ط¹طھظ…ط§ط¯ ط§ظ„ط·ظ„ط¨ ظ„ط¹ط¯ظ… ظˆط¬ظˆط¯ ظپطھط±ط© طھط¯ط±ظٹط¨ ظ…ظپط¹ظ„ط©.'],
+            'training_period' => ['لا يمكن اعتماد الطلب لعدم وجود فترة تدريب مفعلة.'],
         ]);
     }
 

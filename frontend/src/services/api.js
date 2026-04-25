@@ -448,8 +448,8 @@ export const getStudentTrainingProgramById = async (studentId) => {
     return response.data;
 };
 
-export const getStudentTrainingLogs = async () => {
-    const response = await apiClient.get('/student/training-logs');
+export const getStudentTrainingLogs = async (config = {}) => {
+    const response = await apiClient.get('/student/training-logs', config);
     return response.data;
 };
 
@@ -468,8 +468,8 @@ export const submitStudentTrainingLog = async (id) => {
     return response.data;
 };
 
-export const getStudentPortfolio = async () => {
-    const response = await apiClient.get('/my-portfolio');
+export const getStudentPortfolio = async (config = {}) => {
+    const response = await apiClient.get('/my-portfolio', config);
     return response.data;
 };
 
@@ -498,8 +498,8 @@ export const deletePortfolioEntry = async (id) => {
     return response.data;
 };
 
-export const getStudentTasks = async () => {
-    const response = await apiClient.get('/student/tasks');
+export const getStudentTasks = async (config = {}) => {
+    const response = await apiClient.get('/student/tasks', config);
     return response.data;
 };
 

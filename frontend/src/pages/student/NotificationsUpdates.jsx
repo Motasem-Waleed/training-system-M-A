@@ -34,10 +34,35 @@ export default function NotificationsUpdates() {
     }
   };
 
+  const messageFor = (n) => {
+    // أولاً: الحقل message المباشر (إذا كان نصاً عربياً سليماً)
+    if (n.message && /[\u0600-\u06FF]/.test(n.message)) return n.message;
+    // ثانياً: data.message (Laravel built-in notifications)
+    if (n.data?.message) return n.data.message;
+    // ثالثاً: محاولة parse إذا كان message نص JSON
+    if (n.message) {
+      try {
+        const parsed = JSON.parse(n.message);
+        return parsed?.message || parsed?.body || n.message;
+      } catch {
+        return n.message;
+      }
+    }
+    return "—";
+  };
+
   const titleFor = (n) => {
-    if (n.type === "training_request_approved") return "تحديث على طلب التدريب";
-    if (n.type === "training_request_coordinator_review") return "مراجعة منسق";
-    return n.type || "إشعار";
+    const typeMap = {
+      training_request_approved: "تحديث على طلب التدريب",
+      training_request_coordinator_review: "مراجعة منسق",
+      training_request_new_from_student: "طلب جديد",
+      training_request_student_resubmitted: "تعديل طلب",
+      training_request_directorate_approved: "موافقة الجهة الرسمية",
+      training_request_school_approved_student: "موافقة جهة التدريب",
+      training_request_directorate_rejected: "رفض الجهة الرسمية",
+      training_request_rejected_student: "رفض طلب",
+    };
+    return typeMap[n.type] || n.data?.title || "تحديث جديد";
   };
 
   return (
@@ -71,7 +96,7 @@ export default function NotificationsUpdates() {
                 <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
                   <div>
                     <h5 className="mb-2">{titleFor(item)}</h5>
-                    <p className="text-muted mb-2">{item.message || "—"}</p>
+                    <p className="text-muted mb-2">{messageFor(item)}</p>
                   </div>
                   <div className="text-end">
                     <small className="text-muted d-block">

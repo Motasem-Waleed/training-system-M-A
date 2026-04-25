@@ -5,7 +5,7 @@ import {
   getStudentTrainingRequests,
   getStudentTasks,
   getStudentPortfolio,
-  getStudentTrainingLogs,
+  getStudentTrainingProgram,
   getStudentNotifications,
   itemsFromPagedResponse,
 } from "../../services/api";
@@ -86,13 +86,12 @@ export default function StudentDashboard({ forcedTrack = null }) {
   });
   const [summaryCards, setSummaryCards] = useState([
     { title: "طلب التدريب", value: "جاري التحميل...", desc: "حالة طلب التدريب الحالي", className: "warning", icon: ClipboardList, link: "/student/training-request" },
-    { title: "برنامج التدريب", value: "0 أيام مسجلة", desc: "عدد الأيام المضافة في البرنامج", className: "primary", icon: Calendar, link: "/student/training-logs" },
+    { title: "برنامج التدريب", value: "0 أيام مسجلة", desc: "عدد الأيام المضافة في البرنامج", className: "primary", icon: Calendar, link: "/student/schedule" },
     { title: "ملف الإنجاز", value: "0 ملفات", desc: "عدد الملفات المرفوعة", className: "success", icon: Award, link: "/student/portfolio" },
-    { title: "المهام", value: "0 مهمة متبقية", desc: "المهام التي تحتاج متابعة", className: "accent", icon: CheckCircle2, link: "/student/tasks" },
+    { title: "التكليفات", value: "0 تكليف متبقي", desc: "التكليفات التي تحتاج متابعة", className: "accent", icon: CheckCircle2, link: "/student/assignments" },
   ]);
   const [latestItems, setLatestItems] = useState([]);
   const [latestTasks, setLatestTasks] = useState([]);
-  const [latestLogs, setLatestLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const abortControllerRef = useRef(null);
   const currentUser = useMemo(() => readStoredUser(), []);
@@ -115,17 +114,16 @@ export default function StudentDashboard({ forcedTrack = null }) {
     setLoading(true);
     try {
       // جلب جميع البيانات بالتوازي (أسرع)
-      const [user, requestsRes, tasksRes, portfolioRes, logsRes, notifRes] = await Promise.all([
+      const [user, requestsRes, tasksRes, portfolioRes, programRes, notifRes] = await Promise.all([
         getCurrentUser({ signal }),
         getStudentTrainingRequests({ signal }),
         getStudentTasks({ signal }),
         getStudentPortfolio({ signal }),
-        getStudentTrainingLogs({ signal }),
+        getStudentTrainingProgram(),
         getStudentNotifications({ signal }),
       ]);
 
       // 1. بيانات المستخدم
-      console.log("بيانات المستخدم من API:", user); // للتشخيص
       setStudentInfo(prev => ({
         ...prev,
         name: user?.name || user?.data?.name || "",
@@ -159,10 +157,10 @@ export default function StudentDashboard({ forcedTrack = null }) {
       setSummaryCards(prev =>
         prev.map(card => {
           if (card.title === "طلب التدريب") return { ...card, value: requestStatus };
-          if (card.title === "المهام") {
+          if (card.title === "التكليفات") {
             const tasks = itemsFromPagedResponse(tasksRes);
             const pendingTasks = tasks.filter((task) => isTaskPending(task.status)).length;
-            return { ...card, value: `${pendingTasks} مهمة متبقية` };
+            return { ...card, value: `${pendingTasks} تكليف متبقي` };
           }
           if (card.title === "ملف الإنجاز") {
             const portfolioData = portfolioRes?.data || portfolioRes || {};
@@ -170,9 +168,10 @@ export default function StudentDashboard({ forcedTrack = null }) {
             return { ...card, value: `${entriesCount} ملفات` };
           }
           if (card.title === "برنامج التدريب") {
-            const logs = itemsFromPagedResponse(logsRes);
-            const logsCount = logs.length;
-            return { ...card, value: `${logsCount} أيام مسجلة` };
+            const hasProgram = !!programRes?.data?.schedule;
+            const isEditable = programRes?.is_editable;
+            if (!hasProgram) return { ...card, value: "لم يُعبَّأ بعد", desc: "الجدول الأسبوعي للحصص التدريبية" };
+            return { ...card, value: isEditable ? "مفتوح للتعديل" : "معبأ ✓", desc: "الجدول الأسبوعي للحصص التدريبية" };
           }
           return card;
         })
@@ -181,15 +180,34 @@ export default function StudentDashboard({ forcedTrack = null }) {
       // 4. آخر الإشعارات
       const notifications = itemsFromPagedResponse(notifRes);
       const tasks = itemsFromPagedResponse(tasksRes);
-      const logs = itemsFromPagedResponse(logsRes);
-      const formattedNotif = notifications.slice(0, 5).map(notif => ({
-        title: notif.type === "training_request_approved" ? "تم قبول طلب التدريب" : (notif.title || "تحديث جديد"),
-        text: notif.message || notif.data?.message || "لا يوجد محتوى",
-        type: notif.type === "warning" ? "إشعار" : "تحديث",
-      }));
+      const typeLabels = {
+        training_request_approved: { title: "موافقة على طلب التدريب", color: "#10b981", bg: "#ecfdf5", dot: "#10b981" },
+        training_request_coordinator_review: { title: "مراجعة منسق", color: "#f59e0b", bg: "#fffbeb", dot: "#f59e0b" },
+        training_request_directorate_approved: { title: "موافقة الجهة الرسمية", color: "#6366f1", bg: "#eef2ff", dot: "#6366f1" },
+        training_request_directorate_approved_student: { title: "موافقة الجهة الرسمية", color: "#6366f1", bg: "#eef2ff", dot: "#6366f1" },
+        training_request_school_approved_student: { title: "موافقة جهة التدريب", color: "#10b981", bg: "#ecfdf5", dot: "#10b981" },
+        training_request_received_from_directorate: { title: "كتاب من الجهة الرسمية", color: "#0ea5e9", bg: "#f0f9ff", dot: "#0ea5e9" },
+        training_request_directorate_rejected: { title: "رفض من الجهة الرسمية", color: "#ef4444", bg: "#fef2f2", dot: "#ef4444" },
+        training_request_directorate_rejected_student: { title: "رفض من الجهة الرسمية", color: "#ef4444", bg: "#fef2f2", dot: "#ef4444" },
+        training_request_school_rejected_student: { title: "رفض من جهة التدريب", color: "#ef4444", bg: "#fef2f2", dot: "#ef4444" },
+        training_request_rejected_student: { title: "رفض طلب التدريب", color: "#ef4444", bg: "#fef2f2", dot: "#ef4444" },
+        training_request_new_from_student: { title: "طلب جديد", color: "#0ea5e9", bg: "#f0f9ff", dot: "#0ea5e9" },
+        training_request_student_resubmitted: { title: "إعادة تقديم طلب", color: "#f59e0b", bg: "#fffbeb", dot: "#f59e0b" },
+      };
+      const formattedNotif = notifications.slice(0, 3).map(notif => {
+        const meta = typeLabels[notif.type] || { title: "تحديث جديد", color: "#6b7280", bg: "#f9fafb", dot: "#6b7280" };
+        return {
+          title: meta.title,
+          text: notif.message || notif.data?.message || "لا يوجد محتوى",
+          color: meta.color,
+          bg: meta.bg,
+          dot: meta.dot,
+          time: notif.created_at ? new Date(notif.created_at).toLocaleDateString("ar-SA", { month: "short", day: "numeric" }) : "",
+          read: !!notif.read_at,
+        };
+      });
       setLatestItems(formattedNotif);
       setLatestTasks(tasks.slice(0, 4));
-      setLatestLogs(logs.slice(0, 4));
     } catch (error) {
       if (error.name === "CanceledError" || error.code === "ERR_CANCELED") {
         console.log("تم إلغاء الطلب السابق");
@@ -213,11 +231,6 @@ export default function StudentDashboard({ forcedTrack = null }) {
       }
     };
   }, [fetchDashboardData]);
-
-  const getBadgeClass = (type) => {
-    if (type === "إشعار") return "badge-custom badge-info";
-    return "badge-custom badge-soft";
-  };
 
   if (loading) {
     return (
@@ -356,18 +369,54 @@ export default function StudentDashboard({ forcedTrack = null }) {
       </div>
 
       <div className="section-card">
-        <h4>آخر الإشعارات والتحديثات</h4>
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className="d-flex align-items-center gap-2">
+            <div className="section-icon"><Bell size={20} /></div>
+            <h4 className="mb-0">آخر الإشعارات والتحديثات</h4>
+          </div>
+          <Link to="/student/notifications-updates" style={{ fontSize: "0.82rem", color: "#6366f1", fontWeight: 600, textDecoration: "none" }}>عرض الكل ←</Link>
+        </div>
         {latestItems.length === 0 ? (
-          <p>لا توجد إشعارات حديثة.</p>
+          <div style={{ textAlign: "center", padding: "2rem 1rem", color: "#94a3b8" }}>
+            <Bell size={32} style={{ marginBottom: "0.5rem", opacity: 0.4 }} />
+            <p style={{ margin: 0, fontSize: "0.9rem" }}>لا توجد إشعارات حديثة.</p>
+          </div>
         ) : (
-          <div className="activity-list">
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
             {latestItems.map((item, index) => (
-              <div key={index} className="activity-item">
-                <div className="mb-1">
-                  <span className={getBadgeClass(item.type)}>{item.type}</span>
+              <div
+                key={index}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "0.85rem",
+                  padding: "0.85rem 1rem",
+                  borderRadius: "12px",
+                  backgroundColor: item.bg,
+                  border: `1px solid ${item.color}22`,
+                  transition: "box-shadow 0.2s",
+                }}
+              >
+                <div style={{
+                  width: "10px", height: "10px", borderRadius: "50%",
+                  backgroundColor: item.dot, marginTop: "5px", flexShrink: 0,
+                  boxShadow: `0 0 0 3px ${item.dot}33`,
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", marginBottom: "0.2rem" }}>
+                    <span style={{ fontWeight: 700, fontSize: "0.87rem", color: item.color }}>{item.title}</span>
+                    {item.time && <span style={{ fontSize: "0.73rem", color: "#94a3b8", flexShrink: 0 }}>{item.time}</span>}
+                  </div>
+                  <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569", lineHeight: 1.5,
+                    overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
+                    WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    {item.text}
+                  </p>
                 </div>
-                <h6>{item.title}</h6>
-                <p>{item.text}</p>
+                {!item.read && (
+                  <div style={{ width: "7px", height: "7px", borderRadius: "50%",
+                    backgroundColor: "#6366f1", flexShrink: 0, marginTop: "6px" }} />
+                )}
               </div>
             ))}
           </div>
@@ -375,36 +424,41 @@ export default function StudentDashboard({ forcedTrack = null }) {
       </div>
 
       <div className="section-card mt-3">
-        <h4>آخر المهام المطلوبة</h4>
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className="d-flex align-items-center gap-2">
+            <div className="section-icon"><FileText size={20} /></div>
+            <h4 className="mb-0">آخر التكليفات</h4>
+          </div>
+          <Link to="/student/assignments" style={{ fontSize: "0.82rem", color: "#6366f1", fontWeight: 600, textDecoration: "none" }}>عرض الكل ←</Link>
+        </div>
         {latestTasks.length === 0 ? (
-          <p>لا توجد مهام حديثة.</p>
+          <div style={{ textAlign: "center", padding: "1.5rem 1rem", color: "#94a3b8" }}>
+            <FileText size={28} style={{ marginBottom: "0.4rem", opacity: 0.4 }} />
+            <p style={{ margin: 0, fontSize: "0.9rem" }}>لا توجد تكليفات حديثة.</p>
+          </div>
         ) : (
-          <div className="activity-list">
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {latestTasks.map((task) => (
-              <div key={task.id} className="activity-item">
-                <h6>{task.title || "مهمة"}</h6>
-                <p>الموعد النهائي: {task.due_date || "—"} | الحالة: {task.status_label || task.status || "—"}</p>
+              <div key={task.id} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "0.75rem 1rem", borderRadius: "10px",
+                backgroundColor: "#f8fafc", border: "1px solid #e2e8f0",
+              }}>
+                <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "#1e293b" }}>{task.title || "تكليف"}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
+                  {task.due_date && <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{task.due_date}</span>}
+                  <span style={{
+                    fontSize: "0.73rem", fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
+                    backgroundColor: isTaskPending(task.status) ? "#fef3c7" : "#dcfce7",
+                    color: isTaskPending(task.status) ? "#92400e" : "#166534",
+                  }}>{task.status_label || task.status || "—"}</span>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="section-card mt-3">
-        <h4>حالة السجل اليومي الأخيرة</h4>
-        {latestLogs.length === 0 ? (
-          <p>لا توجد سجلات يومية بعد.</p>
-        ) : (
-          <div className="activity-list">
-            {latestLogs.map((log) => (
-              <div key={log.id} className="activity-item">
-                <h6>{log.log_date || "سجل يومي"}</h6>
-                <p>الحالة: {log.status_label || log.status || "—"}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </>
   );
 }
