@@ -61,10 +61,9 @@ const menus = {
   admin: [
     { name: "الرئيسية", path: "/dashboard" },
     
-    // إدارة المستخدمين والصلاحيات
+    // إدارة المستخدمين
     { name: "إدارة المستخدمين", path: "/admin/users" },
     { name: "إدارة الأدوار", path: "/admin/roles" },
-    { name: "إدارة الصلاحيات", path: "/admin/permissions" },
     
     // إدارة الهيكل الأكاديمي
     { name: "إدارة الأقسام", path: "/admin/departments" },
@@ -115,6 +114,19 @@ const menus = {
     { name: "الملف الإنجازي", path: "/student/portfolio" },
     { name: "التكليفات", path: "/student/assignments" },
     { name: "النماذج والتقارير", path: "/student/e-forms" },
+    { name: "دليل الموظفين", path: "/student/staff-directory" },
+  ],
+
+  head_of_department: [
+    { name: "الرئيسية", path: "/head-department/dashboard" },
+    { name: "الطلاب", path: "/head-department/students" },
+    { name: "حالة التوزيع", path: "/head-department/distribution-status" },
+    { name: "التقارير", path: "/head-department/reports" },
+    { name: "الحالات المرفوضة", path: "/head-department/rejected-cases" },
+    { name: "إدارة المساقات", path: "/head-department/courses" },
+    { name: "إدارة الشعب", path: "/head-department/sections" },
+    { name: "تسجيل الطلاب", path: "/head-department/enrollments/create" },
+    { name: "الملف الشخصي", path: "/profile" },
   ],
 
   coordinator: [

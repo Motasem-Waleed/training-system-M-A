@@ -13,7 +13,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'university_id', 'name', 'email', 'password', 'status',
-        'department_id', 'role_id', 'phone', 'training_site_id', 'directorate',
+        'department_id', 'role_id', 'phone', 'training_site_id', 'directorate', 'major',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -31,6 +31,18 @@ class User extends Authenticatable
     public function trainingSite()
     {
         return $this->belongsTo(TrainingSite::class);
+    }
+
+    public function sectionStudents()
+    {
+        return $this->hasMany(SectionStudent::class, 'student_id');
+    }
+
+    public function sections()
+    {
+        return $this->belongsToMany(Section::class, 'section_students', 'student_id', 'section_id')
+            ->withPivot('status', 'notes')
+            ->withTimestamps();
     }
     public function hasPermission($permission)
 {

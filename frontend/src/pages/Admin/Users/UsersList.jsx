@@ -13,10 +13,10 @@ export default function UsersList() {
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
-    per_page: 10,
+    per_page: 50, // Static page size for better performance
     total: 0,
   });
-  const [perPage, setPerPage] = useState(10);
+  const STATIC_PAGE_SIZE = 50; // Fixed page size
 
   const fetchUsers = async (page = 1) => {
     setLoading(true);
@@ -27,7 +27,7 @@ export default function UsersList() {
       const response = await getUsers({
         ...cleanFilters,
         page,
-        per_page: perPage,
+        per_page: STATIC_PAGE_SIZE,
       });
 
       const usersArray = response.data || [];
@@ -37,7 +37,7 @@ export default function UsersList() {
       setPagination({
         current_page: meta.current_page || 1,
         last_page: meta.last_page || 1,
-        per_page: meta.per_page || perPage,
+        per_page: STATIC_PAGE_SIZE,
         total: meta.total || 0,
       });
       setError("");
@@ -51,7 +51,7 @@ export default function UsersList() {
 
   useEffect(() => {
     fetchUsers(1);
-  }, [filters, perPage, location.key]);
+  }, [filters, location.key]);
 
   const goToPage = (page) => {
     if (page < 1 || page > pagination.last_page) return;
@@ -160,16 +160,9 @@ export default function UsersList() {
           <option value="suspended">موقوف</option>
         </select>
 
-        <select
-          value={perPage}
-          onChange={(e) => setPerPage(Number(e.target.value))}
-          style={{ width: "auto" }}
-        >
-          <option value="10">10 مستخدمين</option>
-          <option value="20">20 مستخدم</option>
-          <option value="50">50 مستخدم</option>
-          <option value="100">100 مستخدم</option>
-        </select>
+        <div style={{ color: "#666", fontSize: "12px" }}>
+          عرض {STATIC_PAGE_SIZE} مستخدم لكل صفحة (ثابت)
+        </div>
       </div>
 
       {/* جدول المستخدمين */}

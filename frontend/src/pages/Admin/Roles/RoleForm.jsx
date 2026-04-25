@@ -50,7 +50,8 @@ export default function RoleForm() {
       try {
         // جلب جميع الصلاحيات أولاً
         const permsRes = await getPermissions();
-        const allPerms = permsRes.data || permsRes || [];
+        // Handle paginated response - extract data from data.data if it exists
+        const allPerms = permsRes.data?.data || permsRes.data || permsRes || [];
         setAllPermissions(allPerms);
 
         if (id) {

@@ -169,6 +169,7 @@ export const sendTrainingRequestBatch = (id, data) =>
 export const getDashboardStats = () => apiClient.get('/dashboard/stats').then(res => res.data);
 // ==================== Users ====================
 export const getUsers = (params) => apiClient.get('/users', { params }).then(res => res.data);
+export const searchSupervisors = (query) => apiClient.get('/users/search', { params: { query, role: 'academic_supervisor' } }).then(res => res.data);
 export const createUser = (data) => apiClient.post('/users', data).then(res => res.data);
 export const updateUser = (id, data) => apiClient.put(`/users/${id}`, data).then(res => res.data);
 export const deleteUser = (id) => apiClient.delete(`/users/${id}`).then(res => res.data);
@@ -180,7 +181,7 @@ export const getRoles = () => apiClient.get('/roles').then(res => res.data);
 export const createRole = (data) => apiClient.post('/roles', data).then(res => res.data);
 export const updateRole = (id, data) => apiClient.put(`/roles/${id}`, data).then(res => res.data);
 export const deleteRole = (id) => apiClient.delete(`/roles/${id}`).then(res => res.data);
-export const getPermissions = () => apiClient.get('/permissions').then(res => res.data);
+export const getPermissions = () => apiClient.get('/permissions?per_page=100').then(res => res.data);
 
 // ==================== Departments ====================
 export const getDepartments = () => apiClient.get('/departments').then(res => res.data);
@@ -193,6 +194,7 @@ export const getCourses = (params) => apiClient.get('/courses', { params }).then
 export const createCourse = (data) => apiClient.post('/courses', data).then(res => res.data);
 export const updateCourse = (id, data) => apiClient.put(`/courses/${id}`, data).then(res => res.data);
 export const deleteCourse = (id) => apiClient.delete(`/courses/${id}`).then(res => res.data);
+export const archiveCourse = (id) => apiClient.post(`/courses/${id}/archive`).then(res => res.data);
 
 // ==================== Sections ====================
 export const getSections = (params) => apiClient.get('/sections', { params }).then(res => res.data);
@@ -379,6 +381,11 @@ export const getCourse = async (id) => {
 export const getSection = async (id) => {
     const response = await apiClient.get(`/sections/${id}`);
     return unwrapResource(response.data);
+};
+
+export const getSectionEnrollments = async (sectionId) => {
+    const response = await apiClient.get(`/sections/${sectionId}/enrollments`);
+    return response.data;
 };
 
 export const getEnrollment = async (id) => {
@@ -607,6 +614,17 @@ export const updateOfficialLetter = (id, data) =>
 export const deleteOfficialLetter = (id) =>
   apiClient.delete(`/official-letters/${id}`).then((res) => res.data);
 
+// ==================== Head of Department ====================
+export const getHeadDepartmentDashboardStats = () => apiClient.get('/head-department/dashboard').then(res => res.data);
+export const getHeadDepartmentStudents = (params) => apiClient.get('/head-department/students', { params }).then(res => res.data);
+export const getHeadDepartmentStudentDetails = (studentId) => apiClient.get(`/head-department/students/${studentId}`).then(res => res.data);
+export const getDistributionStatus = (params) => apiClient.get('/head-department/distribution-status', { params }).then(res => res.data);
+export const getHeadDepartmentReports = (params) => apiClient.get('/head-department/reports', { params }).then(res => res.data);
+export const modifyStudentAssignment = (studentId, data) => apiClient.post(`/head-department/students/${studentId}/modify-assignment`, data).then(res => res.data);
+export const getRejectedCases = (params) => apiClient.get('/head-department/rejected-cases', { params }).then(res => res.data);
+export const bulkEnrollStudents = (data) => apiClient.post('/head-department/bulk-enroll', data).then(res => res.data);
+export const searchStudentsHeadDepartment = (query) => apiClient.get('/head-department/search-students', { params: { q: query } }).then(res => res.data);
+
 export const approveOfficialLetter = (id, data = {}) =>
   apiClient.post(`/official-letters/${id}/approve`, data).then((res) => res.data);
 
@@ -615,3 +633,8 @@ export const receiveOfficialLetter = (id, data = {}) =>
 
 export const sendOfficialLetter = (id, data = {}) =>
   apiClient.post(`/official-letters/${id}/send`, data).then((res) => res.data);
+
+// ==================== User Profile ====================
+export const updateUserProfile = (data) => apiClient.put('/profile', data).then(res => res.data);
+export const changePassword = (data) => apiClient.post('/change-password', data).then(res => res.data);
+export const getStaffDirectory = () => apiClient.get('/staff-directory').then(res => res.data);

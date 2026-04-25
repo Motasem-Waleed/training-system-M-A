@@ -38,11 +38,13 @@ class UserController extends Controller
         }
     }
 
-    // منسق التدريب والأخصائي النفسي يُسمح لهم بجلب الطلبة فقط (قائمة مرجعية).
-    if (in_array($request->user()->role?->name, ['training_coordinator', 'coordinator', 'psychologist'], true)) {
+    // منسق التدريب والأخصائي النفسي ورئيس القسم يُسمح لهم بجلب الطلبة فقط (قائمة مرجعية).
+    if (in_array($request->user()->role?->name, ['training_coordinator', 'coordinator', 'psychologist', 'head_of_department'], true)) {
         $users->whereHas('role', function ($q) {
             $q->where('name', 'student');
         });
+        // Only show active student accounts
+        $users->where('status', 'active');
     }
     
     $users->when($request->role_id, function ($q) use ($request) {
@@ -201,6 +203,186 @@ class UserController extends Controller
         return new UserResource($request->user()->load(['role', 'department', 'trainingSite', 'enrollments.section.course']));
     }
 
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+        
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|regex:/^(056|059)\d{7}$/',
+        ], [
+            'phone.regex' => 'رقم الهاتف يجب أن يكون مكون من 10 أرقام ويبدأ بـ 056 أو 059',
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+        ]);
+
+        ActivityLogger::log(
+            'user',
+            'profile_updated',
+            'تم تحديث الملف الشخصي',
+            $user,
+            ['name' => $user->name, 'email' => $user->email],
+            $user
+        );
+
+        return new UserResource($user->fresh(['role', 'department', 'trainingSite']));
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+        
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:8',
+            'new_password_confirmation' => 'required|same:new_password',
+        ]);
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json(['message' => 'كلمة المرور الحالية غير صحيحة'], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        ActivityLogger::log(
+            'user',
+            'password_changed',
+            'تم تغيير كلمة المرور',
+            $user,
+            [],
+            $user
+        );
+
+        return response()->json(['message' => 'تم تغيير كلمة المرور بنجاح']);
+    }
+
+    public function getStaffDirectory(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Get student's department and training site
+            $studentDepartmentId = $user->department_id;
+            $studentTrainingSiteId = $user->training_site_id;
+
+            $staff = [];
+
+            // Get Head of Department
+            $headOfDepartment = User::whereHas('role', function ($q) {
+                $q->where('name', 'head_of_department');
+            })->where('department_id', $studentDepartmentId)
+            ->with(['role', 'department'])
+            ->first();
+
+            if ($headOfDepartment) {
+                $staff[] = [
+                    'id' => $headOfDepartment->id,
+                    'name' => $headOfDepartment->name,
+                    'email' => $headOfDepartment->email,
+                    'phone' => $headOfDepartment->phone,
+                    'role' => 'رئيس القسم',
+                    'role_name' => $headOfDepartment->role->name,
+                    'department' => $headOfDepartment->department?->name,
+                ];
+            }
+
+            // Get Coordinator
+            $coordinator = User::whereHas('role', function ($q) {
+                $q->where('name', 'coordinator');
+            })->where('department_id', $studentDepartmentId)
+            ->with(['role', 'department'])
+            ->first();
+
+            if ($coordinator) {
+                $staff[] = [
+                    'id' => $coordinator->id,
+                    'name' => $coordinator->name,
+                    'email' => $coordinator->email,
+                    'phone' => $coordinator->phone,
+                    'role' => 'المنسق',
+                    'role_name' => $coordinator->role->name,
+                    'department' => $coordinator->department?->name,
+                ];
+            }
+
+            // Get Academic Supervisor
+            $academicSupervisor = User::whereHas('role', function ($q) {
+                $q->where('name', 'academic_supervisor');
+            })->where('department_id', $studentDepartmentId)
+            ->with(['role', 'department'])
+            ->first();
+
+            if ($academicSupervisor) {
+                $staff[] = [
+                    'id' => $academicSupervisor->id,
+                    'name' => $academicSupervisor->name,
+                    'email' => $academicSupervisor->email,
+                    'phone' => $academicSupervisor->phone,
+                    'role' => 'المشرف الأكاديمي',
+                    'role_name' => $academicSupervisor->role->name,
+                    'department' => $academicSupervisor->department?->name,
+                ];
+            }
+
+            // Get School Manager (from training site)
+            if ($studentTrainingSiteId) {
+                $schoolManager = User::whereHas('role', function ($q) {
+                    $q->where('name', 'school_manager');
+                })->where('training_site_id', $studentTrainingSiteId)
+                ->with(['role', 'trainingSite'])
+                ->first();
+
+                if ($schoolManager) {
+                    $staff[] = [
+                        'id' => $schoolManager->id,
+                        'name' => $schoolManager->name,
+                        'email' => $schoolManager->email,
+                        'phone' => $schoolManager->phone,
+                        'role' => 'مدير المدرسة',
+                        'role_name' => $schoolManager->role->name,
+                        'training_site' => $schoolManager->trainingSite?->name,
+                    ];
+                }
+
+                // Get Teachers (from training site)
+                $teachers = User::whereHas('role', function ($q) {
+                    $q->where('name', 'teacher');
+                })->where('training_site_id', $studentTrainingSiteId)
+                ->with(['role', 'trainingSite'])
+                ->get();
+
+                foreach ($teachers as $teacher) {
+                    $staff[] = [
+                        'id' => $teacher->id,
+                        'name' => $teacher->name,
+                        'email' => $teacher->email,
+                        'phone' => $teacher->phone,
+                        'role' => 'المعلم',
+                        'role_name' => $teacher->role->name,
+                        'training_site' => $teacher->trainingSite?->name,
+                    ];
+                }
+            }
+
+            return response()->json([
+                'data' => $staff,
+                'total' => count($staff),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'حدث خطأ في تحميل دليل الموظفين',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function logout(Request $request)
     {
         $user = $request->user();
@@ -254,5 +436,40 @@ class UserController extends Controller
         );
 
         return response()->json(['success' => $success, 'failed' => $failed]);
+    }
+
+    public function search(Request $request)
+    {
+        $query = $request->get('query');
+        $role = $request->get('role');
+        
+        if (!$query || strlen($query) < 1) {
+            return response()->json(['data' => []]);
+        }
+        
+        // First get the role ID
+        $roleId = null;
+        if ($role) {
+            $roleRecord = \App\Models\Role::where('name', $role)->first();
+            if ($roleRecord) {
+                $roleId = $roleRecord->id;
+            }
+        }
+        
+        $usersQuery = User::query()
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'LIKE', '%' . $query . '%')
+                  ->orWhere('university_id', 'LIKE', '%' . $query . '%');
+            })
+            ->where('status', 'active');
+        
+        // Filter by role if specified
+        if ($roleId) {
+            $usersQuery->where('role_id', $roleId);
+        }
+        
+        $users = $usersQuery->limit(20)->get(['id', 'name', 'university_id', 'email']);
+        
+        return response()->json(['data' => $users]);
     }
 }

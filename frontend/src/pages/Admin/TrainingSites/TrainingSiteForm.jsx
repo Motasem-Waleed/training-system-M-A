@@ -25,7 +25,21 @@ export default function TrainingSiteForm() {
   // تحميل البيانات إذا كان تعديل
   useEffect(() => {
     if (id) {
-      getTrainingSite(id).then((data) => setForm(data));
+      getTrainingSite(id).then((data) => {
+        // API response might be nested, extract the actual data
+        const siteData = data.data || data;
+        setForm({
+          name: siteData.name || "",
+          location: siteData.location || "",
+          phone: siteData.phone || "",
+          description: siteData.description || "",
+          directorate: siteData.directorate || "وسط",
+          capacity: siteData.capacity || 10,
+          site_type: siteData.site_type || "school",
+          governing_body: siteData.governing_body || "directorate_of_education",
+          is_active: siteData.is_active !== undefined ? siteData.is_active : true,
+        });
+      });
     }
   }, [id]);
 

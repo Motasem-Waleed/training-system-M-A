@@ -37,7 +37,8 @@ use App\Http\Controllers\Api\{
     PortfolioEntryController,
     TaskSubmissionController,
     StudentAttendanceController,
-    StudentEFormController
+    StudentEFormController,
+    HeadOfDepartmentController
 };
 
 // Routes publiques
@@ -51,7 +52,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/user', [UserController::class, 'currentUser']);
 
     // Utilisateurs, rôles, départements
+    Route::get('users/search', [UserController::class, 'search']);
     Route::apiResource('users', UserController::class);
+    Route::put('profile', [UserController::class, 'updateProfile']);
+    Route::post('change-password', [UserController::class, 'changePassword']);
+    Route::get('staff-directory', [UserController::class, 'getStaffDirectory']);
     Route::patch('users/{user}/status', [UserController::class, 'changeStatus']);
     Route::post('users/bulk-add', [UserController::class, 'bulkAdd']);
     Route::apiResource('roles', RoleController::class);
@@ -60,7 +65,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Cours, sections, inscriptions
     Route::apiResource('courses', CourseController::class);
+    Route::post('courses/{course}/archive', [CourseController::class, 'archive']);
     Route::apiResource('sections', SectionController::class);
+    Route::get('sections/{section}/enrollments', [SectionController::class, 'getEnrollments']);
+    Route::post('sections/{section}/add-student', [SectionController::class, 'addStudent']);
+    Route::post('sections/{section}/remove-student', [SectionController::class, 'removeStudent']);
+    Route::post('sections/{section}/move-student', [SectionController::class, 'moveStudent']);
+    Route::post('sections/{section}/assign-supervisor', [SectionController::class, 'assignSupervisor']);
     Route::apiResource('enrollments', EnrollmentController::class);
 
     // Sites et périodes de stage
@@ -312,4 +323,24 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Training Program - view student program (mentor/supervisor/coordinator)
     Route::get('/students/{studentId}/training-program', [TrainingProgramController::class, 'showForStudent']);
+
+    // ========== ROUTES HEAD OF DEPARTMENT ==========
+    Route::prefix('head-department')->group(function () {
+        // Test endpoint
+        Route::get('/test', [HeadOfDepartmentController::class, 'test']);
+        // Dashboard and Statistics
+        Route::get('/dashboard', [HeadOfDepartmentController::class, 'getDashboardStats']);
+        Route::get('/students', [HeadOfDepartmentController::class, 'getStudentsList']);
+        Route::get('/students/{studentId}', [HeadOfDepartmentController::class, 'getStudentDetails']);
+        Route::get('/distribution-status', [HeadOfDepartmentController::class, 'getDistributionStatus']);
+        Route::get('/reports', [HeadOfDepartmentController::class, 'getReports']);
+        
+        // Administrative Decisions
+        Route::post('/students/{studentId}/modify-assignment', [HeadOfDepartmentController::class, 'modifyStudentAssignment']);
+        Route::get('/rejected-cases', [HeadOfDepartmentController::class, 'reviewRejectedCases']);
+        Route::post('/bulk-enroll', [HeadOfDepartmentController::class, 'bulkEnrollStudents']);
+        
+        // Search students
+        Route::get('/search-students', [HeadOfDepartmentController::class, 'searchStudents']);
+    });
 });
