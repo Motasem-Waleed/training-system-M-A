@@ -4,6 +4,19 @@ import ProtectedRoute from "./ProtectedRoute";
 
 import Login from "../pages/auth/Login";
 
+// Head of Department
+import HeadOfDepartmentDashboard from "../pages/HeadOfDepartment/HeadOfDepartmentDashboard";
+import HeadOfDepartmentStudents from "../pages/HeadOfDepartment/HeadOfDepartmentStudents";
+import HeadOfDepartmentDistributionStatus from "../pages/HeadOfDepartment/HeadOfDepartmentDistributionStatus";
+import HeadOfDepartmentReports from "../pages/HeadOfDepartment/HeadOfDepartmentReports";
+import HeadOfDepartmentRejectedCases from "../pages/HeadOfDepartment/HeadOfDepartmentRejectedCases";
+import HeadOfDepartmentCourseForm from "../pages/HeadOfDepartment/HeadOfDepartmentCourseForm";
+import HeadOfDepartmentCoursesList from "../pages/HeadOfDepartment/HeadOfDepartmentCoursesList";
+import HeadOfDepartmentSectionForm from "../pages/HeadOfDepartment/HeadOfDepartmentSectionForm";
+import HeadOfDepartmentSectionsList from "../pages/HeadOfDepartment/HeadOfDepartmentSectionsList";
+import HeadOfDepartmentSectionDetails from "../pages/HeadOfDepartment/HeadOfDepartmentSectionDetails";
+import HeadOfDepartmentEnrollmentForm from "../pages/HeadOfDepartment/HeadOfDepartmentEnrollmentForm";
+
 // Admin
 import AdminDashboard from "../pages/dashboard/AdminDashboard";
 import UsersList from "../pages/Admin/Users/UsersList";
@@ -16,7 +29,6 @@ import AddAcademicSupervisor from "../pages/Admin/Users/AddAcademicSupervisor";
 import AddSchoolManager from "../pages/Admin/Users/AddSchoolManager";
 import RolesList from "../pages/Admin/Roles/RolesList";
 import RoleForm from "../pages/Admin/Roles/RoleForm";
-import PermissionsList from "../pages/Admin/Permissions/PermissionsList";
 import DepartmentsList from "../pages/Admin/Departments/DepartmentsList";
 import DepartmentForm from "../pages/Admin/Departments/DepartmentForm";
 import CoursesList from "../pages/Admin/Courses/CoursesList";
@@ -57,6 +69,7 @@ import StudentDashboardRedirect from "../pages/student/StudentDashboardRedirect"
 import EForms from "../pages/student/EForms";
 import StudentTrainingRequestEntry from "../pages/student/StudentTrainingRequestEntry";
 import TrainingRequestStatus from "../pages/student/TrainingRequestStatus";
+import StaffDirectory from "../pages/student/StaffDirectory";
 
 // Common
 import Profile from "../pages/common/Profile";
@@ -150,8 +163,6 @@ export default function AppRouter() {
           <Route path="/admin/roles/create" element={<RoleForm />} />
           <Route path="/admin/roles/edit/:id" element={<RoleForm />} />
 
-          <Route path="/admin/permissions" element={<PermissionsList />} />
-
           <Route path="/admin/departments" element={<DepartmentsList />} />
           <Route path="/admin/departments/create" element={<DepartmentForm />} />
           <Route path="/admin/departments/edit/:id" element={<DepartmentForm />} />
@@ -210,6 +221,7 @@ export default function AppRouter() {
           <Route path="/student/e-forms" element={<EForms />} />
           <Route path="/student/attendance" element={<StudentAttendance />} />
           <Route path="/student/notifications-updates" element={<NotificationsUpdates />} />
+          <Route path="/student/staff-directory" element={<StaffDirectory />} />
 
           {/* Supervisor Routes: مساحة عمل المشرف الأكاديمي الموحدة */}
           {/* مساحة العمل الموحدة - المركز الرئيسي */}
@@ -268,6 +280,22 @@ export default function AppRouter() {
           <Route path="/psychologist/students" element={<FieldStaffStudents />} />
           <Route path="/psychologist/guidance" element={<FieldStaffGuidance />} />
           <Route path="/psychologist/notes" element={<FieldStaffNotes />} />
+
+          {/* Head of Department */}
+          <Route path="/head-department/dashboard" element={<HeadOfDepartmentDashboard />} />
+          <Route path="/head-department/students" element={<HeadOfDepartmentStudents />} />
+          <Route path="/head-department/distribution-status" element={<HeadOfDepartmentDistributionStatus />} />
+          <Route path="/head-department/reports" element={<HeadOfDepartmentReports />} />
+          <Route path="/head-department/rejected-cases" element={<HeadOfDepartmentRejectedCases />} />
+          <Route path="/head-department/courses" element={<HeadOfDepartmentCoursesList />} />
+          <Route path="/head-department/courses/create" element={<HeadOfDepartmentCourseForm />} />
+          <Route path="/head-department/courses/edit/:id" element={<HeadOfDepartmentCourseForm />} />
+          <Route path="/head-department/sections" element={<HeadOfDepartmentSectionsList />} />
+          <Route path="/head-department/sections/create" element={<HeadOfDepartmentSectionForm />} />
+          <Route path="/head-department/sections/edit/:id" element={<HeadOfDepartmentSectionForm />} />
+          <Route path="/head-department/sections/:id" element={<HeadOfDepartmentSectionDetails />} />
+          <Route path="/head-department/enrollments/create" element={<HeadOfDepartmentEnrollmentForm />} />
+          <Route path="/head-department/enrollments/edit/:id" element={<HeadOfDepartmentEnrollmentForm />} />
 
           {/* Coordinator */}
           <Route path="/coordinator/dashboard" element={<CoordinatorDashboard />} />

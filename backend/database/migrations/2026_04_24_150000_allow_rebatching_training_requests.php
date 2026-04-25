@@ -41,8 +41,13 @@ return new class extends Migration
         }
 
         Schema::table('training_request_batch_items', function (Blueprint $table) {
-            $table->dropUnique(['training_request_id']);
-            $table->index('training_request_id');
+            // Drop the foreign key constraint first
+            $table->dropForeign(['batch_id']);
+            // Then drop the composite unique index
+            $table->dropUnique(['batch_id', 'training_request_id']);
+            // Add back the foreign key constraint
+            $table->foreign('batch_id')->references('id')->on('training_request_batches')->onDelete('cascade');
+            // The training_request_id index already exists from the previous migration
         });
     }
 

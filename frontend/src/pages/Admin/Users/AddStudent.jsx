@@ -121,12 +121,45 @@ export default function AddStudent() {
         if (rows.length === 0) { alert("الملف فارغ"); setBulkLoading(false); return; }
 
         const departmentMap = {};
-        departments.forEach(dept => { departmentMap[dept.name.trim()] = dept.id; departmentMap[dept.name.trim().toLowerCase()] = dept.id; });
+        departments.forEach(dept => { 
+          departmentMap[dept.name.trim()] = dept.id; 
+          departmentMap[dept.name.trim().toLowerCase()] = dept.id; 
+        });
+        
+        // Add Arabic to English mapping
+        const arabicToEnglish = {
+          "علم النفس": "psychology",
+          "التربية": "usool_tarbiah", 
+          "أصول التربية": "usool_tarbiah",
+          "الإدارة": "administration",
+          "إدارة": "administration"
+        };
+        
+        // Add Arabic mappings to departmentMap
+        Object.keys(arabicToEnglish).forEach(arabicName => {
+          const englishName = arabicToEnglish[arabicName];
+          if (departmentMap[englishName]) {
+            departmentMap[arabicName] = departmentMap[englishName];
+            departmentMap[arabicName.toLowerCase()] = departmentMap[englishName];
+          }
+        });
+        
+        // Debug: Log available departments
+        console.log("Available departments:", departments.map(d => d.name));
+        console.log("Department map:", departmentMap);
 
-        const students = rows.map(row => {
+        const students = rows.map((row, index) => {
           const clean = {};
           Object.keys(row).forEach(key => { clean[key.trim()] = row[key]; });
-          const deptName = (clean["القسم"] || clean["قسم"] || clean["department"] || "").trim();
+          const deptName = String(clean["القسم"] || clean["قسم"] || clean["department"] || "").trim();
+          const deptId = departmentMap[deptName] || departmentMap[deptName.toLowerCase()] || "";
+          
+          // Debug: Log department mapping for first few rows
+          if (index < 3) {
+            console.log(`Row ${index + 2}: deptName="${deptName}" -> deptId=${deptId}`);
+            console.log("Available keys:", Object.keys(clean));
+          }
+          
           return {
             name: clean["الاسم الكامل"] || clean["الاسم"] || clean["name"] || "",
             email: clean["البريد الإلكتروني"] || clean["البريد"] || clean["email"] || "",
@@ -134,7 +167,7 @@ export default function AddStudent() {
             password_confirmation: clean["كلمة المرور"] || clean["password"] || "12345678",
             university_id: String(clean["الرقم الجامعي"] || clean["university_id"] || ""),
             major: clean["التخصص"] || clean["major"] || "",
-            department_id: departmentMap[deptName] || departmentMap[deptName.toLowerCase()] || "",
+            department_id: deptId,
             role_id: 2,
             status: "active",
           };
@@ -146,7 +179,7 @@ export default function AddStudent() {
           if (!s.name) missing.push("الاسم");
           if (!s.email) missing.push("البريد");
           if (!s.university_id) missing.push("الرقم الجامعي");
-          if (!s.department_id) missing.push("القسم");
+          if (!s.department_id || s.department_id === "") missing.push("القسم");
           if (!s.major) missing.push("التخصص");
           missing.length === 0 ? validStudents.push(s) : invalidStudents.push({ row: idx + 2, email: s.email || "غير معروف", missing });
         });
@@ -157,10 +190,37 @@ export default function AddStudent() {
         if (validStudents.length === 0) { setBulkLoading(false); return; }
 
         const successList = [], errorList = [];
-        for (const student of validStudents) {
-          try { await createUser(student); successList.push({ email: student.email }); }
-          catch (err) { errorList.push({ email: student.email, error: err.response?.data?.message || err.message }); }
+        const BATCH_SIZE = 50; // Process 50 students at a time
+        
+        // Process in batches for better performance
+        for (let i = 0; i < validStudents.length; i += BATCH_SIZE) {
+          const batch = validStudents.slice(i, i + BATCH_SIZE);
+          const batchPromises = batch.map(async (student) => {
+            try {
+              await createUser(student);
+              return { success: true, email: student.email };
+            } catch (err) {
+              return { success: false, email: student.email, error: err.response?.data?.message || err.message };
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          batchResults.forEach(result => {
+            if (result.success) {
+              successList.push({ email: result.email });
+            } else {
+              errorList.push({ email: result.email, error: result.error });
+            }
+          });
+          
+          // Update progress
+          const processedCount = Math.min(i + BATCH_SIZE, validStudents.length);
+          setStatusMessage({ 
+            type: "info", 
+            text: `تم معالجة ${processedCount} من ${validStudents.length} طالب...` 
+          });
         }
+        
         setBulkResults({ success: successList, errors: errorList });
         if (successList.length) setFile(null);
       } catch (err) { alert("خطأ في معالجة الملف: " + err.message); }

@@ -25,7 +25,7 @@ export default function SectionForm() {
         setCourses(coursesData.data || []);
 
         // جلب المشرفين الأكاديميين (يمكن فلترتهم في الـ Backend أو Frontend)
-        const usersData = await getUsers({ role_id: 3 }); // افتراض أن role_id=3 للأكاديمي
+        const usersData = await getUsers({ role: 'academic_supervisor' });
         setSupervisors(usersData.data || []);
 
         if (id) {

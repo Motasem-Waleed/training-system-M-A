@@ -24,7 +24,9 @@ class StoreUserRequest extends FormRequest
             'department_id' => 'required_if:role_id,' . $this->getStudentRoleId() . '|exists:departments,id',
             'role_id' => 'required|exists:roles,id',
             'phone' => 'nullable|string|max:20',
+            'training_site_id' => 'nullable|exists:training_sites,id',
             'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
+            'major' => 'nullable|string|max:255',
         ];
     }
 

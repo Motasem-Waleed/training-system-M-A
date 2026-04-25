@@ -9,7 +9,20 @@ class Section extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'academic_year', 'academic_supervisor_id', 'semester', 'course_id'];
+    protected $fillable = [
+        'name', 
+        'academic_year', 
+        'academic_supervisor_id', 
+        'semester', 
+        'course_id',
+        'capacity',
+        'supervisor_id',
+        'created_by'
+    ];
+
+    protected $casts = [
+        'capacity' => 'integer',
+    ];
 
     public function course()
     {
@@ -21,8 +34,45 @@ class Section extends Model
         return $this->belongsTo(User::class, 'academic_supervisor_id');
     }
 
+    public function supervisor()
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function enrollments()
     {
         return $this->hasMany(Enrollment::class);
+    }
+
+    public function students()
+    {
+        return $this->belongsToMany(User::class, 'section_students', 'section_id', 'student_id')
+            ->withPivot('status', 'notes')
+            ->withTimestamps();
+    }
+
+    public function activeStudents()
+    {
+        return $this->students()->wherePivot('status', 'accepted');
+    }
+
+    public function getActiveStudentsCountAttribute()
+    {
+        return $this->activeStudents()->count();
+    }
+
+    public function getAvailableCapacityAttribute()
+    {
+        return $this->capacity - $this->active_students_count;
+    }
+
+    public function hasAvailableCapacity()
+    {
+        return $this->available_capacity > 0;
     }
 }

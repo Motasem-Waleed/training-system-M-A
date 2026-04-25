@@ -11,6 +11,7 @@ export const ROLES = {
   FIELD_SUPERVISOR: "field_supervisor",
   PSYCHOLOGIST: "psychologist",
   STUDENT: "student",
+  HEAD_OF_DEPARTMENT: "head_of_department",
 };
 
 export const ROLE_ALIASES = {
@@ -32,6 +33,7 @@ export const ROLE_LABELS = {
   [ROLES.HEALTH_DIRECTORATE]: "مديرية الصحة",
   [ROLES.EDUCATION_DIRECTORATE]: "مديرية التربية والتعليم",
   [ROLES.STUDENT]: "الطالب المتدرب",
+  [ROLES.HEAD_OF_DEPARTMENT]: "رئيس القسم",
 };
 
 const DASHBOARD_PATHS = {
@@ -45,10 +47,13 @@ const DASHBOARD_PATHS = {
   [ROLES.PSYCHOLOGY_CENTER_MANAGER]: "/psychology-center/dashboard",
   [ROLES.EDUCATION_DIRECTORATE]: "/education/dashboard",
   [ROLES.HEALTH_DIRECTORATE]: "/health/dashboard",
+  [ROLES.HEAD_OF_DEPARTMENT]: "/head-department/dashboard",
 };
 
 export function normalizeRole(role) {
   if (!role) return "";
+  // Handle head_of_department directly since it's not in ROLE_ALIASES
+  if (role === "head_of_department") return "head_of_department";
   return ROLE_ALIASES[role] || role;
 }
 

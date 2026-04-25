@@ -113,6 +113,24 @@ export default function AddAcademicSupervisor() {
           departmentMap[normalized] = dept.id;
           departmentMap[normalized.toLowerCase()] = dept.id;
         });
+        
+        // Add Arabic to English mapping
+        const arabicToEnglish = {
+          "علم النفس": "psychology",
+          "التربية": "usool_tarbiah", 
+          "أصول التربية": "usool_tarbiah",
+          "الإدارة": "administration",
+          "إدارة": "administration"
+        };
+        
+        // Add Arabic mappings to departmentMap
+        Object.keys(arabicToEnglish).forEach(arabicName => {
+          const englishName = arabicToEnglish[arabicName];
+          if (departmentMap[englishName]) {
+            departmentMap[arabicName] = departmentMap[englishName];
+            departmentMap[arabicName.toLowerCase()] = departmentMap[englishName];
+          }
+        });
 
         const supervisors = cleanRows.map(row => {
           let deptName = (row["القسم"] || row["department"] || "").trim();
@@ -165,15 +183,36 @@ export default function AddAcademicSupervisor() {
 
         const successList = [];
         const errorList = [];
+        const BATCH_SIZE = 50; // Process 50 supervisors at a time
 
-        for (const supervisor of validSupervisors) {
-          try {
-            const response = await createUser(supervisor);
-            successList.push({ email: supervisor.email, id: response.data?.id });
-          } catch (err) {
-            const msg = err.response?.data?.message || err.message;
-            errorList.push({ email: supervisor.email, error: msg });
-          }
+        // Process in batches for better performance
+        for (let i = 0; i < validSupervisors.length; i += BATCH_SIZE) {
+          const batch = validSupervisors.slice(i, i + BATCH_SIZE);
+          const batchPromises = batch.map(async (supervisor) => {
+            try {
+              const response = await createUser(supervisor);
+              return { success: true, email: supervisor.email, id: response.data?.id };
+            } catch (err) {
+              const msg = err.response?.data?.message || err.message;
+              return { success: false, email: supervisor.email, error: msg };
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          batchResults.forEach(result => {
+            if (result.success) {
+              successList.push({ email: result.email, id: result.id });
+            } else {
+              errorList.push({ email: result.email, error: result.error });
+            }
+          });
+          
+          // Update progress
+          const processedCount = Math.min(i + BATCH_SIZE, validSupervisors.length);
+          setStatusMessage({ 
+            type: "info", 
+            text: `تم معالجة ${processedCount} من ${validSupervisors.length} مشرف أكاديمي...` 
+          });
         }
 
         setBulkResults({ success: successList, errors: errorList });

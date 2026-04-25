@@ -19,8 +19,15 @@ class CourseController extends Controller
     public function index(Request $request)
     {
         $query = Course::with('sections', 'department');
+        
+        // For head_of_department, only show courses from their department
+        if ($request->user()->role?->name === 'head_of_department' && $request->user()->department_id) {
+            $query->where('department_id', $request->user()->department_id);
+        } elseif ($request->has('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+        
         if ($request->has('type')) $query->where('type', $request->type);
-        if ($request->has('department_id')) $query->where('department_id', $request->department_id);
         if ($request->has('search')) {
             $query->where(function($q) use ($request) {
                 $q->where('code', 'like', '%'.$request->search.'%')
@@ -50,7 +57,19 @@ class CourseController extends Controller
 
     public function destroy(Course $course)
     {
+        $this->authorize('delete', $course);
+        
         $course->delete();
         return response()->json(['message' => 'تم حذف المساق']);
+    }
+    
+    public function archive(Course $course)
+    {
+        $this->authorize('archive', $course);
+        
+        // Soft delete (archive) the course - it has sections
+        $course->delete();
+        
+        return response()->json(['message' => 'تم أرشفة المساق بنجاح']);
     }
 }

@@ -106,6 +106,24 @@ export default function AddPsychologist() {
           departmentMap[normalized] = dept.id;
           departmentMap[normalized.toLowerCase()] = dept.id;
         });
+        
+        // Add Arabic to English mapping
+        const arabicToEnglish = {
+          "علم النفس": "psychology",
+          "التربية": "usool_tarbiah", 
+          "أصول التربية": "usool_tarbiah",
+          "الإدارة": "administration",
+          "إدارة": "administration"
+        };
+        
+        // Add Arabic mappings to departmentMap
+        Object.keys(arabicToEnglish).forEach(arabicName => {
+          const englishName = arabicToEnglish[arabicName];
+          if (departmentMap[englishName]) {
+            departmentMap[arabicName] = departmentMap[englishName];
+            departmentMap[arabicName.toLowerCase()] = departmentMap[englishName];
+          }
+        });
 
         const psychologists = cleanRows.map(row => {
           let deptName = (row["القسم"] || row["department"] || "").trim();

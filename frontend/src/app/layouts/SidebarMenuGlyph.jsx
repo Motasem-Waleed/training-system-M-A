@@ -7,7 +7,6 @@ const ROUTE_ICON = {
   "/dashboard": "home",
   "/admin/users": "users",
   "/admin/roles": "roles",
-  "/admin/permissions": "lock",
   "/admin/departments": "building",
   "/admin/courses": "book",
   "/admin/sections": "layers",

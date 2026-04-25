@@ -25,6 +25,7 @@ class SectionsSeeder extends Seeder
                     'academic_year' => 2025,
                     'semester' => 'first',
                     'academic_supervisor_id' => $supervisor->id,
+                    'created_by' => $supervisor->id,
                 ]
             );
         }

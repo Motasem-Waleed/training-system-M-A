@@ -24,11 +24,17 @@ class UpdateUserRequest extends FormRequest
         $routeUserId = $routeUser instanceof User ? $routeUser->id : (int) $routeUser;
 
         return [
+            'university_id' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('users', 'university_id')->ignore($routeUserId)],
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($routeUserId)],
-            'phone' => 'nullable|string|max:20',
-            'department_id' => 'required_if:role_id,' . $this->getStudentRoleId() . '|exists:departments,id',
-            'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
+            'password' => 'sometimes|nullable|string|min:8',
+            'status' => 'sometimes|in:active,inactive,suspended',
+            'role_id' => 'sometimes|exists:roles,id',
+            'department_id' => 'sometimes|nullable|exists:departments,id',
+            'training_site_id' => 'sometimes|nullable|exists:training_sites,id',
+            'phone' => 'sometimes|nullable|string|max:20',
+            'directorate' => 'sometimes|nullable|in:وسط,شمال,جنوب,يطا',
+            'major' => 'sometimes|nullable|string|max:255',
         ];
     }
 

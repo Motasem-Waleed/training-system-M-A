@@ -10,7 +10,13 @@ class Course extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['code', 'name', 'description', 'credit_hours', 'type', 'department_id'];
+    protected $fillable = ['code', 'name', 'description', 'credit_hours', 'training_hours', 'type', 'department_id', 'semester', 'is_active'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'credit_hours' => 'integer',
+        'training_hours' => 'integer',
+    ];
 
     public function sections()
     {

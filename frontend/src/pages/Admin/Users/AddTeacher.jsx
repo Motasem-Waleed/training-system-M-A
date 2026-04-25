@@ -80,6 +80,24 @@ export default function AddTeacher() {
         if (!rows.length) { alert("الملف فارغ"); setBulkLoading(false); return; }
         const siteMap = {};
         trainingSites.forEach(s => { siteMap[s.name.trim()] = s.id; siteMap[s.name.trim().toLowerCase()] = s.id; });
+        
+        // Add Arabic to English mapping for training sites
+        const arabicToEnglishSites = {
+          "مدرسة": "school",
+          "المدرسة": "school",
+          "مركز صحي": "health_center",
+          "المركز الصحي": "health_center"
+        };
+        
+        // Add Arabic mappings to siteMap
+        Object.keys(arabicToEnglishSites).forEach(arabicName => {
+          const englishName = arabicToEnglishSites[arabicName];
+          const matchingSite = trainingSites.find(s => s.name.toLowerCase().includes(englishName));
+          if (matchingSite) {
+            siteMap[arabicName] = matchingSite.id;
+            siteMap[arabicName.toLowerCase()] = matchingSite.id;
+          }
+        });
         const teachers = rows.map(row => {
           const clean = {}; Object.keys(row).forEach(k => { clean[k.trim()] = row[k]; });
           const siteName = (clean["مكان التدريب"] || clean["المدرسة"] || clean["school"] || "").trim();
@@ -90,7 +108,37 @@ export default function AddTeacher() {
         if (invalid.length) alert("بيانات ناقصة:\n" + invalid.map(s => `الصف ${s.row}: ${s.email} - ناقص: ${s.missing.join(", ")}`).join("\n"));
         if (!valid.length) { setBulkLoading(false); return; }
         const ok = [], fail = [];
-        for (const t of valid) { try { await createUser(t); ok.push({ email: t.email }); } catch (e) { fail.push({ email: t.email, error: e.response?.data?.message || e.message }); } }
+        const BATCH_SIZE = 50; // Process 50 teachers at a time
+        
+        // Process in batches for better performance
+        for (let i = 0; i < valid.length; i += BATCH_SIZE) {
+          const batch = valid.slice(i, i + BATCH_SIZE);
+          const batchPromises = batch.map(async (teacher) => {
+            try {
+              await createUser(teacher);
+              return { success: true, email: teacher.email };
+            } catch (err) {
+              return { success: false, email: teacher.email, error: err.response?.data?.message || err.message };
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          batchResults.forEach(result => {
+            if (result.success) {
+              ok.push({ email: result.email });
+            } else {
+              fail.push({ email: result.email, error: result.error });
+            }
+          });
+          
+          // Update progress
+          const processedCount = Math.min(i + BATCH_SIZE, valid.length);
+          setStatusMessage({ 
+            type: "info", 
+            text: `تم معالجة ${processedCount} من ${valid.length} معلم...` 
+          });
+        }
+        
         setBulkResults({ success: ok, errors: fail }); if (ok.length) setFile(null);
       } catch (err) { alert("خطأ: " + err.message); } finally { setBulkLoading(false); }
     };
