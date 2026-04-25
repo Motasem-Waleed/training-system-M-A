@@ -64,10 +64,10 @@ export default function RequestsTable({
                   <td>
                     {onView && (
                       <button
-                        className="btn-sm btn-secondary"
+                        className="btn-primary-custom"
                         onClick={() => onView(r)}
                         disabled={saving}
-                        style={{ display: "flex", alignItems: "center", gap: 4 }}
+                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 12px", fontSize: "0.82rem", borderRadius: 8 }}
                       >
                         <Eye size={14} />
                         عرض

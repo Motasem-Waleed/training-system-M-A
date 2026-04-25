@@ -1,4 +1,4 @@
-import { FileText, Send } from "lucide-react";
+import { FileText, Send, Layers } from "lucide-react";
 import { getGoverningBodyLabel } from "../../config/coordinator/governingBodies";
 import StatusBadge from "./StatusBadge";
 
@@ -8,20 +8,18 @@ export default function BatchBuilder({
   saving,
 }) {
   if (groups.length === 0) {
-    return (
-      <div className="section-card">
-        <h4>كتب رسمية — تجميع حسب المديرية</h4>
-        <p style={{ color: "var(--text-faint)", margin: 0 }}>
-          لا توجد طلبات معتمدة مبدئيًا لتجميعها في كتب رسمية.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="section-card">
-      <h4 style={{ marginBottom: 16 }}>كتب رسمية — تجميع حسب المديرية</h4>
-      <p style={{ color: "var(--text-faint)", marginBottom: 16, fontSize: "0.9rem" }}>
+    <div className="section-card mb-4">
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        <div className="section-icon" style={{ background: "linear-gradient(135deg, var(--accent) 0%, #c49b66 100%)" }}>
+          <Layers size={20} />
+        </div>
+        <h4 style={{ margin: 0 }}>كتب رسمية — تجميع حسب المديرية</h4>
+      </div>
+      <p style={{ color: "var(--text-faint)", marginBottom: 16, fontSize: "0.88rem", marginTop: 4 }}>
         الطلبات المعتمدة مبدئيًا مُجمّعة تلقائيًا حسب الجهة الرسمية والمديرية.
         أنشئ كتابًا رسميًا لكل مجموعة ثم أرسله للجهة المعنية.
       </p>
@@ -36,11 +34,12 @@ export default function BatchBuilder({
           <div
             key={`${group.governing_body}-${group.directorate}-${idx}`}
             style={{
-              border: "1px solid var(--border-color, #dee2e6)",
-              borderRadius: 8,
+              border: "1px solid var(--border)",
+              borderRadius: 14,
               padding: 16,
-              marginBottom: idx < groups.length - 1 ? 16 : 0,
-              background: "var(--card-bg, #fff)",
+              marginBottom: idx < groups.length - 1 ? 12 : 0,
+              background: "#fbfcfe",
+              transition: "var(--transition)",
             }}
           >
             <div
@@ -52,8 +51,8 @@ export default function BatchBuilder({
               }}
             >
               <div>
-                <h5 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                  <FileText size={18} />
+                <h5 style={{ margin: "0 0 4px", display: "flex", alignItems: "center", gap: 8, fontSize: "0.95rem" }}>
+                  <FileText size={16} style={{ color: "var(--accent)" }} />
                   {groupLabel}
                 </h5>
                 <span style={{ fontSize: "0.82rem", color: "var(--text-faint)" }}>
@@ -61,7 +60,7 @@ export default function BatchBuilder({
                 </span>
               </div>
               <button
-                className="btn-primary"
+                className="btn-primary-custom"
                 disabled={saving}
                 onClick={() =>
                   onCreateBatchForGroup(
@@ -70,10 +69,10 @@ export default function BatchBuilder({
                     group.requests.map((r) => r.id)
                   )
                 }
-                style={{ display: "flex", alignItems: "center", gap: 6 }}
+                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.85rem" }}
               >
                 <Send size={14} />
-                {saving ? "جاري الإنشاء..." : `إنشاء كتاب رسمي (${group.requests.length})`}
+                {saving ? "جاري الإنشاء..." : `إنشاء كتاب (${group.requests.length})`}
               </button>
             </div>
 

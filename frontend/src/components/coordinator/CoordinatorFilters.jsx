@@ -1,3 +1,4 @@
+import { Search, Filter, X } from "lucide-react";
 import { GOVERNING_BODIES, DIRECTORATES } from "../../config/coordinator/governingBodies";
 import { TRACKS, SITE_TYPES } from "../../config/coordinator/trackFilters";
 import { STATUS_LABELS } from "../../config/coordinator/statusLabels";
@@ -24,21 +25,40 @@ export default function CoordinatorFilters({
     statusOptions ||
     Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }));
 
+  const hasActiveFilters = Object.values(filters).some((v) => v && v.trim && v.trim() !== "");
+
   return (
-    <div className="filters-bar" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+    <div className="filters-bar" style={{
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      alignItems: "center",
+      padding: "14px 18px",
+      background: "#fff",
+      border: "1px solid var(--border)",
+      borderRadius: 16,
+      marginBottom: 16,
+      boxShadow: "var(--shadow-sm)",
+    }}>
       {showSearch && (
-        <input
-          placeholder="بحث بالاسم أو الرقم الجامعي..."
-          value={filters.search || ""}
-          onChange={(e) => update("search", e.target.value)}
-          style={{ minWidth: 200, flex: "1 1 200px" }}
-        />
+        <div style={{ position: "relative", flex: "1 1 220px", minWidth: 200 }}>
+          <Search size={16} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
+          <input
+            className="form-control-custom"
+            placeholder="بحث بالاسم أو الرقم الجامعي..."
+            value={filters.search || ""}
+            onChange={(e) => update("search", e.target.value)}
+            style={{ paddingRight: 36, width: "100%" }}
+          />
+        </div>
       )}
 
       {showStatus && (
         <select
+          className="form-control-custom"
           value={filters.status || ""}
           onChange={(e) => update("status", e.target.value)}
+          style={{ flex: "0 1 180px", minWidth: 140 }}
         >
           <option value="">كل الحالات</option>
           {effectiveStatusOptions.map((opt) => (
@@ -51,8 +71,10 @@ export default function CoordinatorFilters({
 
       {showDepartment && departments.length > 0 && (
         <select
+          className="form-control-custom"
           value={filters.department || ""}
           onChange={(e) => update("department", e.target.value)}
+          style={{ flex: "0 1 180px", minWidth: 140 }}
         >
           <option value="">كل الأقسام</option>
           {departments.map((d) => (
@@ -65,8 +87,10 @@ export default function CoordinatorFilters({
 
       {showPeriod && periods.length > 0 && (
         <select
+          className="form-control-custom"
           value={filters.period || ""}
           onChange={(e) => update("period", e.target.value)}
+          style={{ flex: "0 1 180px", minWidth: 140 }}
         >
           <option value="">كل الفترات</option>
           {periods.map((p) => (
@@ -79,8 +103,10 @@ export default function CoordinatorFilters({
 
       {showGoverningBody && (
         <select
+          className="form-control-custom"
           value={filters.governing_body || ""}
           onChange={(e) => update("governing_body", e.target.value)}
+          style={{ flex: "0 1 180px", minWidth: 140 }}
         >
           <option value="">كل الجهات</option>
           {GOVERNING_BODIES.map((b) => (
@@ -93,8 +119,10 @@ export default function CoordinatorFilters({
 
       {showTrack && (
         <select
+          className="form-control-custom"
           value={filters.track || ""}
           onChange={(e) => update("track", e.target.value)}
+          style={{ flex: "0 1 180px", minWidth: 140 }}
         >
           <option value="">كل المسارات</option>
           {TRACKS.map((t) => (
@@ -107,8 +135,10 @@ export default function CoordinatorFilters({
 
       {showSiteType && (
         <select
+          className="form-control-custom"
           value={filters.site_type || ""}
           onChange={(e) => update("site_type", e.target.value)}
+          style={{ flex: "0 1 180px", minWidth: 140 }}
         >
           <option value="">كل الأنواع</option>
           {SITE_TYPES.map((s) => (
@@ -119,22 +149,39 @@ export default function CoordinatorFilters({
         </select>
       )}
 
-      <button
-        className="btn-sm btn-secondary"
-        onClick={() =>
-          setFilters({
-            status: "",
-            department: "",
-            period: "",
-            governing_body: "",
-            track: "",
-            site_type: "",
-            search: "",
-          })
-        }
-      >
-        مسح الفلاتر
-      </button>
+      {hasActiveFilters && (
+        <button
+          className="btn-secondary-custom"
+          onClick={() =>
+            setFilters({
+              status: "",
+              department: "",
+              period: "",
+              governing_body: "",
+              track: "",
+              site_type: "",
+              search: "",
+            })
+          }
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "6px 14px",
+            borderRadius: 10,
+            fontSize: "0.82rem",
+            fontWeight: 700,
+            background: "rgba(176, 58, 72, 0.08)",
+            color: "var(--danger)",
+            border: "1px solid rgba(176, 58, 72, 0.2)",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          <X size={14} />
+          مسح الفلاتر
+        </button>
+      )}
     </div>
   );
 }

@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
+import {
+  RefreshCw,
+  ClipboardList,
+  FileText,
+  Layers,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import useCoordinatorDistribution from "../../hooks/useCoordinatorDistribution";
 import {
   RequestsTable,
@@ -112,19 +119,47 @@ export default function CoordinatorTrainingRequests() {
       })
     : filteredIncoming;
 
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px" }}>
+        <Loader2 size={40} className="spin" style={{ color: "var(--primary)", marginBottom: 12 }} />
+        <p style={{ color: "var(--text-faint)", fontSize: "0.95rem" }}>جاري تحميل الطلبات والدفعات...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="enrollments-list">
-      <div className="page-header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <h1>طلبات التدريب والتوزيع</h1>
-            <p>مراجعة الطلبات، اعتمادها، تجميعها في كتب رسمية حسب المديرية، وإرسالها للجهات الرسمية.</p>
+    <div>
+      {/* Hero Section */}
+      <div className="hero-section mb-4">
+        <div className="hero-content">
+          <div className="hero-icon">
+            <ClipboardList size={44} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h1 className="hero-title">طلبات التدريب والتوزيع</h1>
+            <p className="hero-subtitle">
+              مراجعة الطلبات، اعتمادها، تجميعها في كتب رسمية حسب المديرية، وإرسالها للجهات الرسمية.
+            </p>
           </div>
           <button
-            className="btn-secondary"
             onClick={reload}
             disabled={loading}
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(255,255,255,0.15)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              color: "#fff",
+              borderRadius: 12,
+              padding: "8px 16px",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
           >
             <RefreshCw size={16} className={loading ? "spin" : ""} />
             تحديث
@@ -133,17 +168,18 @@ export default function CoordinatorTrainingRequests() {
       </div>
 
       {error && (
-        <div className="section-card" style={{ marginBottom: 12 }}>
-          <p className="text-danger">{error}</p>
+        <div className="alert-custom alert-danger mb-3">
+          <p style={{ margin: 0 }}>{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="section-card" style={{ marginBottom: 12, background: "#d4edda" }}>
-          <p style={{ color: "#155724", margin: 0 }}>{success}</p>
+        <div className="alert-custom alert-success mb-3">
+          <p style={{ margin: 0 }}>{success}</p>
         </div>
       )}
 
+      {/* Filters */}
       <CoordinatorFilters
         filters={filters}
         setFilters={setFilters}
@@ -152,151 +188,163 @@ export default function CoordinatorTrainingRequests() {
         statusOptions={statusOptions}
       />
 
-      {loading ? (
-        <div className="section-card">جاري التحميل...</div>
-      ) : (
-        <>
-          {/* المرحلة ١: طلبات واردة */}
-          <div className="section-card" style={{ marginTop: 16 }}>
-            <h4>طلبات واردة ({filteredSearch.length})</h4>
-            {filteredSearch.length === 0 ? (
-              <EmptyState title="لا توجد طلبات واردة" description="جميع الطلبات تمت مراجعتها." />
-            ) : (
-              <RequestsTable
-                requests={filteredSearch}
-                onView={handleView}
-                saving={saving}
-              />
-            )}
+      {/* المرحلة ١: طلبات واردة */}
+      <div className="section-card mb-4">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div className="section-icon">
+            <ClipboardList size={20} />
           </div>
+          <h4 style={{ margin: 0 }}>طلبات واردة ({filteredSearch.length})</h4>
+        </div>
+        {filteredSearch.length === 0 ? (
+          <EmptyState title="لا توجد طلبات واردة" description="جميع الطلبات تمت مراجعتها." />
+        ) : (
+          <RequestsTable
+            requests={filteredSearch}
+            onView={handleView}
+            saving={saving}
+          />
+        )}
+      </div>
 
-          {/* المرحلة ٢: معتمد مبدئيًا — تجميع كتب رسمية */}
-          <div style={{ marginTop: 16 }}>
-            <BatchBuilder
-              groups={prelimApprovedByGroup}
-              onCreateBatchForGroup={createBatchForGroup}
-              saving={saving}
-            />
-          </div>
+      {/* المرحلة ٢: معتمد مبدئيًا — تجميع كتب رسمية */}
+      <BatchBuilder
+        groups={prelimApprovedByGroup}
+        onCreateBatchForGroup={createBatchForGroup}
+        saving={saving}
+      />
 
-          {/* المرحلة ٣: مرفوضة */}
-          {coordinatorRejected.length > 0 && (
-            <div className="section-card" style={{ marginTop: 16 }}>
-              <h4>مرفوضة ({coordinatorRejected.length})</h4>
-              <RequestsTable
-                requests={coordinatorRejected}
-                onView={handleView}
-                showActions={false}
-                saving={saving}
-              />
+      {/* المرحلة ٣: مرفوضة */}
+      {coordinatorRejected.length > 0 && (
+        <div className="section-card mb-4">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <div className="section-icon" style={{ background: "linear-gradient(135deg, var(--danger) 0%, #bb2d3b 100%)" }}>
+              <XCircle size={20} />
             </div>
-          )}
-
-          {/* المرحلة ٤: دفعات الإرسال */}
-          <div className="section-card" style={{ marginTop: 16 }}>
-            <h4>دفعات الإرسال</h4>
-            {batches.length === 0 ? (
-              <EmptyState title="لا توجد دفعات" description="لم تُنشأ دفعات بعد." />
-            ) : (
-              <div className="table-wrapper">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>رقم الدفعة</th>
-                      <th>الجهة الرسمية</th>
-                      <th>المديرية/المنطقة</th>
-                      <th>عدد الطلبات</th>
-                      <th>الحالة</th>
-                      <th>إرسال</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {batches.map((b) => {
-                      const statusLabel = BATCH_STATUS_LABELS[b.status] || b.status;
-                      const statusColors = BATCH_STATUS_COLORS[b.status] || { bg: "#e9ecef", text: "#495057" };
-                      const defaultLetterNumber = `كتاب-${b.id}/${new Date().getFullYear()}`;
-                      const batchDraft = batchSendForm[b.id] || {};
-                      const effectiveLetterNumber = batchDraft.letter_number?.trim() || defaultLetterNumber;
-                      const effectiveLetterDate = batchDraft.letter_date || today;
-                      const isBatchFormComplete = Boolean(
-                        effectiveLetterNumber &&
-                        effectiveLetterDate &&
-                        batchDraft.content?.trim()
-                      );
-                      return (
-                        <tr key={b.id}>
-                          <td>#{b.id}</td>
-                          <td>{getGoverningBodyLabel(b.governing_body)}</td>
-                          <td>{b.directorate || "—"}</td>
-                          <td>{b.items_count ?? "—"}</td>
-                          <td>
-                            <span
-                              style={{
-                                background: statusColors.bg,
-                                color: statusColors.text,
-                                padding: "3px 8px",
-                                borderRadius: 6,
-                                fontSize: "0.82rem",
-                                fontWeight: 700,
-                              }}
-                            >
-                              {statusLabel}
-                            </span>
-                          </td>
-                          <td style={{ minWidth: 320 }}>
-                            {b.status === "draft" ? (
-                              <div style={{ display: "grid", gap: 8 }}>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                                  <input
-                                    placeholder="رقم الكتاب (تلقائي)"
-                                    value={effectiveLetterNumber}
-                                    onChange={(e) =>
-                                      setBatchSendField(b.id, "letter_number", e.target.value)
-                                    }
-                                  />
-                                  <input
-                                    type="date"
-                                    value={effectiveLetterDate}
-                                    onChange={(e) =>
-                                      setBatchSendField(b.id, "letter_date", e.target.value)
-                                    }
-                                  />
-                                </div>
-                                <textarea
-                                  placeholder="محتوى الكتاب"
-                                  value={batchSendForm[b.id]?.content || ""}
-                                  onChange={(e) =>
-                                    setBatchSendField(b.id, "content", e.target.value)
-                                  }
-                                  rows={2}
-                                />
-                                <button
-                                  className="btn-sm btn-primary"
-                                  onClick={() => handleSendBatch(b.id)}
-                                  disabled={saving || !isBatchFormComplete}
-                                  title={
-                                    isBatchFormComplete
-                                      ? "إرسال الدفعة"
-                                      : "أدخل محتوى الكتاب قبل الإرسال"
-                                  }
-                                >
-                                  إرسال الدفعة
-                                </button>
-                              </div>
-                            ) : (
-                              <span>—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <h4 style={{ margin: 0 }}>مرفوضة ({coordinatorRejected.length})</h4>
           </div>
-        </>
+          <RequestsTable
+            requests={coordinatorRejected}
+            onView={handleView}
+            showActions={false}
+            saving={saving}
+          />
+        </div>
       )}
+
+      {/* المرحلة ٤: دفعات الإرسال */}
+      <div className="section-card mb-4">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div className="section-icon" style={{ background: "linear-gradient(135deg, var(--info) 0%, #0aa2c0 100%)" }}>
+            <Layers size={20} />
+          </div>
+          <h4 style={{ margin: 0 }}>دفعات الإرسال</h4>
+        </div>
+        {batches.length === 0 ? (
+          <EmptyState title="لا توجد دفعات" description="لم تُنشأ دفعات بعد." />
+        ) : (
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>رقم الدفعة</th>
+                  <th>الجهة الرسمية</th>
+                  <th>المديرية/المنطقة</th>
+                  <th>عدد الطلبات</th>
+                  <th>الحالة</th>
+                  <th>إرسال</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batches.map((b) => {
+                  const statusLabel = BATCH_STATUS_LABELS[b.status] || b.status;
+                  const statusColors = BATCH_STATUS_COLORS[b.status] || { bg: "#e9ecef", text: "#495057" };
+                  const defaultLetterNumber = `كتاب-${b.id}/${new Date().getFullYear()}`;
+                  const batchDraft = batchSendForm[b.id] || {};
+                  const effectiveLetterNumber = batchDraft.letter_number?.trim() || defaultLetterNumber;
+                  const effectiveLetterDate = batchDraft.letter_date || today;
+                  const isBatchFormComplete = Boolean(
+                    effectiveLetterNumber &&
+                    effectiveLetterDate &&
+                    batchDraft.content?.trim()
+                  );
+                  return (
+                    <tr key={b.id}>
+                      <td>#{b.id}</td>
+                      <td>{getGoverningBodyLabel(b.governing_body)}</td>
+                      <td>{b.directorate || "—"}</td>
+                      <td>{b.items_count ?? "—"}</td>
+                      <td>
+                        <span
+                          style={{
+                            background: statusColors.bg,
+                            color: statusColors.text,
+                            padding: "3px 10px",
+                            borderRadius: 99,
+                            fontSize: "0.78rem",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td style={{ minWidth: 320 }}>
+                        {b.status === "draft" ? (
+                          <div style={{ display: "grid", gap: 8 }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              <input
+                                className="form-control-custom"
+                                placeholder="رقم الكتاب (تلقائي)"
+                                value={effectiveLetterNumber}
+                                onChange={(e) =>
+                                  setBatchSendField(b.id, "letter_number", e.target.value)
+                                }
+                              />
+                              <input
+                                className="form-control-custom"
+                                type="date"
+                                value={effectiveLetterDate}
+                                onChange={(e) =>
+                                  setBatchSendField(b.id, "letter_date", e.target.value)
+                                }
+                              />
+                            </div>
+                            <textarea
+                              className="form-control-custom"
+                              placeholder="محتوى الكتاب"
+                              value={batchSendForm[b.id]?.content || ""}
+                              onChange={(e) =>
+                                setBatchSendField(b.id, "content", e.target.value)
+                              }
+                              rows={2}
+                            />
+                            <button
+                              className="btn-primary-custom"
+                              onClick={() => handleSendBatch(b.id)}
+                              disabled={saving || !isBatchFormComplete}
+                              title={
+                                isBatchFormComplete
+                                  ? "إرسال الدفعة"
+                                  : "أدخل محتوى الكتاب قبل الإرسال"
+                              }
+                              style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}
+                            >
+                              <FileText size={14} />
+                              {saving ? "جاري الإرسال..." : "إرسال الدفعة"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--text-faint)" }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <RequestReviewDrawer
         request={selectedRequest}

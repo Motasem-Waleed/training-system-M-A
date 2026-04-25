@@ -59,13 +59,6 @@ export default function CoordinatorStatsCards({
       link: "/coordinator/training-requests",
     },
     {
-      key: "open_batches",
-      label: "دفعات مسودة",
-      value: openBatches,
-      variant: "accent",
-      link: "/coordinator/official-letters",
-    },
-    {
       key: "sent_education",
       label: "مرسل إلى التربية",
       value: sentToEducation,
@@ -94,13 +87,6 @@ export default function CoordinatorStatsCards({
       link: "/coordinator/distribution-status",
     },
     {
-      key: "rejected",
-      label: "مرفوضة",
-      value: rejectedRequests,
-      variant: "danger",
-      link: "/coordinator/training-requests",
-    },
-    {
       key: "sent_batches",
       label: "دفعات مرسلة",
       value: sentBatches,
@@ -116,11 +102,8 @@ export default function CoordinatorStatsCards({
         return (
           <Link key={c.key} to={c.link} className="stat-card-link">
             <div className={`stat-card-modern ${c.variant}`}>
-              <div className="stat-card-header">
-                <div className={`stat-icon-modern ${c.variant}`}>
-                  <Icon size={22} />
-                </div>
-                <span className="stat-arrow">←</span>
+              <div className={`stat-icon-modern ${c.variant}`}>
+                <Icon size={18} />
               </div>
               <div className="stat-card-body">
                 <div className="stat-value-modern">{c.value}</div>

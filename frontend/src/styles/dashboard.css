@@ -12,8 +12,8 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
   margin-bottom: 16px;
 }
 
@@ -472,49 +472,59 @@
 .stat-card-modern {
   position: relative;
   overflow: hidden;
-  min-height: 140px;
-  padding: 20px;
-  border-radius: 20px;
+  min-height: auto;
+  padding: 14px 16px;
+  border-radius: 16px;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
   box-shadow: var(--shadow-sm);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   transition: var(--transition);
 }
 
 .stat-card-modern:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .stat-card-modern.primary {
-  border-top: 4px solid var(--primary);
+  border-right: 3px solid var(--primary);
 }
 
 .stat-card-modern.accent {
-  border-top: 4px solid var(--accent);
+  border-right: 3px solid var(--accent);
 }
 
 .stat-card-modern.success {
-  border-top: 4px solid var(--success);
+  border-right: 3px solid var(--success);
 }
 
 .stat-card-modern.warning {
-  border-top: 4px solid var(--warning);
+  border-right: 3px solid var(--warning);
+}
+
+.stat-card-modern.info {
+  border-right: 3px solid var(--info);
+}
+
+.stat-card-modern.danger {
+  border-right: 3px solid var(--danger);
 }
 
 .stat-card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .stat-icon-modern {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -541,6 +551,16 @@
   color: #b38600;
 }
 
+.stat-icon-modern.info {
+  background: linear-gradient(135deg, rgba(46, 111, 163, 0.1) 0%, rgba(46, 111, 163, 0.05) 100%);
+  color: var(--info);
+}
+
+.stat-icon-modern.danger {
+  background: linear-gradient(135deg, rgba(163, 52, 66, 0.1) 0%, rgba(163, 52, 66, 0.05) 100%);
+  color: var(--danger);
+}
+
 .stat-arrow {
   color: var(--text-faint);
   transition: var(--transition);
@@ -553,20 +573,24 @@
 
 .stat-card-body {
   flex: 1;
+  min-width: 0;
 }
 
 .stat-value-modern {
-  font-size: 1.6rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--secondary);
   line-height: 1.2;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .stat-title-modern {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-meta-modern {
@@ -598,7 +622,10 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-grid,
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .summary-grid,
   .quick-actions-grid,
   .kpi-row,
@@ -648,11 +675,10 @@
   }
 
   .stat-card-modern {
-    padding: 16px;
-    min-height: 120px;
+    padding: 12px 14px;
   }
 
   .stat-value-modern {
-    font-size: 1.4rem;
+    font-size: 1.1rem;
   }
 }
