@@ -324,6 +324,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Training Program - view student program (mentor/supervisor/coordinator)
     Route::get('/students/{studentId}/training-program', [TrainingProgramController::class, 'showForStudent']);
 
+    // Training Program - coordinator management
+    Route::get('/coordinator/training-programs', [TrainingProgramController::class, 'indexForCoordinator']);
+    Route::patch('/coordinator/training-programs/{id}/status', [TrainingProgramController::class, 'updateStatus']);
+
     // ========== ROUTES HEAD OF DEPARTMENT ==========
     Route::prefix('head-department')->group(function () {
         // Test endpoint

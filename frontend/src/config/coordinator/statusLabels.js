@@ -13,9 +13,6 @@ export const STATUS_LABELS = {
   rejected: "مرفوض",
   school_approved: "موافقة المدرسة",
   school_rejected: "مرفوض من المدرسة",
-  sent_to_health_ministry: "مرسل لوزارة الصحة",
-  health_ministry_approved: "موافقة وزارة الصحة",
-  health_ministry_rejected: "مرفوض من وزارة الصحة",
   delivered: "تم التسليم",
   approved: "معتمد",
 };
@@ -35,9 +32,6 @@ export const STATUS_COLORS = {
   rejected: { bg: "#f8d7da", text: "#721c24" },
   school_approved: { bg: "#d4edda", text: "#155724" },
   school_rejected: { bg: "#f8d7da", text: "#721c24" },
-  sent_to_health_ministry: { bg: "#cce5ff", text: "#004085" },
-  health_ministry_approved: { bg: "#d4edda", text: "#155724" },
-  health_ministry_rejected: { bg: "#f8d7da", text: "#721c24" },
   delivered: { bg: "#d4edda", text: "#155724" },
   approved: { bg: "#d4edda", text: "#155724" },
 };

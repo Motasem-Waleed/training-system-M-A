@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Loader2, AlertCircle } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Loader2, AlertCircle, ArrowRight, BookOpen, GraduationCap, CheckCircle2 } from "lucide-react";
 import { getStudentTrainingProgramById } from "../../services/api";
 
 const days = [
@@ -23,6 +23,7 @@ const periods = [
 
 export default function StudentTrainingProgram() {
   const { studentId } = useParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [studentInfo, setStudentInfo] = useState({ name: "—", university_id: "—" });
@@ -55,100 +56,154 @@ export default function StudentTrainingProgram() {
     return schedule?.[dayId]?.[periodId] || "";
   };
 
+  const hasAnyContent = Object.keys(schedule).some(dayId =>
+    periods.some(p => getCellValue(dayId, p.id))
+  );
+
   if (loading) {
     return (
-      <div className="section-card" style={{ textAlign: "center", padding: "2rem" }}>
-        <Loader2 className="spin" size={24} /> جاري التحميل...
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px" }}>
+        <Loader2 size={40} className="spin" style={{ color: "var(--primary)", marginBottom: 12 }} />
+        <p style={{ color: "var(--text-faint)", fontSize: "0.95rem" }}>جاري تحميل برنامج التدريب...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="section-card">
-        <p className="text-danger" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+      <div>
+        <div className="hero-section mb-4">
+          <div className="hero-content">
+            <div className="hero-icon">
+              <BookOpen size={44} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h1 className="hero-title">برنامج التدريب</h1>
+              <p className="hero-subtitle">عرض جدول الحصص الأسبوعي للطالب</p>
+            </div>
+          </div>
+        </div>
+        <div className="alert-custom alert-danger mb-3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <AlertCircle size={18} /> {error}
-        </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="content-header">
-        <h1 className="page-title">برنامج التدريب - {studentInfo.name}</h1>
-        <p className="page-subtitle">
-          الرقم الجامعي: {studentInfo.university_id} — عرض جدول الحصص (للقراءة فقط)
-        </p>
+    <div>
+      {/* Hero Section */}
+      <div className="hero-section mb-4">
+        <div className="hero-content">
+          <div className="hero-icon">
+            <BookOpen size={44} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h1 className="hero-title">برنامج التدريب</h1>
+            <p className="hero-subtitle">
+              عرض جدول الحصص الأسبوعي كما أدخله الطالب
+            </p>
+          </div>
+          <button
+            className="btn-outline-custom"
+            onClick={() => navigate(-1)}
+            style={{ display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
+          >
+            <ArrowRight size={16} />
+            رجوع
+          </button>
+        </div>
       </div>
 
+      {/* Student Info Card */}
+      <div className="section-card mb-4">
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            background: "linear-gradient(135deg, var(--accent) 0%, #c49b66 100%)",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "1.1rem",
+            fontWeight: 800,
+            flexShrink: 0,
+          }}>
+            {studentInfo.name?.charAt(0) || "—"}
+          </div>
+          <div style={{ flex: 1 }}>
+            <h5 style={{ margin: 0, fontSize: "1rem" }}>{studentInfo.name}</h5>
+            <div style={{ display: "flex", gap: 16, fontSize: "0.82rem", color: "var(--text-soft)", marginTop: 2 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <GraduationCap size={13} style={{ color: "var(--info)" }} />
+                {studentInfo.university_id}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <CheckCircle2 size={13} style={{ color: "var(--success)" }} />
+                {hasAnyContent ? "تم إدخال الجدول" : "لم يتم إدخال الجدول بعد"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Schedule Table */}
       <div className="section-card">
-        <div className="panel-header">
-          <h3 className="panel-title">جدول التطبيق</h3>
-          <p className="panel-subtitle">جدول الحصص الأسبوعي كما أدخله الطالب</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div className="section-icon" style={{ background: "linear-gradient(135deg, var(--info) 0%, #0aa2c0 100%)" }}>
+            <BookOpen size={18} />
+          </div>
+          <h5 style={{ margin: 0 }}>جدول التطبيق</h5>
         </div>
 
-        <div className="table-wrapper" style={{ marginTop: "1rem" }}>
-          <table
-            className="table-custom"
-            style={{ width: "100%", borderCollapse: "collapse", textAlign: "center" }}
-          >
-            <thead>
-              <tr style={{ backgroundColor: "#f5f5f5" }}>
-                <th
-                  style={{
-                    padding: "12px",
-                    border: "1px solid #ddd",
-                    fontWeight: "bold",
-                    backgroundColor: "#e8e8e8",
-                  }}
-                >
-                  اليوم / الحصة
-                </th>
-                {periods.map((period) => (
-                  <th
-                    key={period.id}
-                    style={{
-                      padding: "12px",
-                      border: "1px solid #ddd",
-                      fontWeight: "bold",
-                      backgroundColor: "#e8e8e8",
-                    }}
-                  >
-                    {period.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {days.map((day) => (
-                <tr key={day.id}>
-                  <td
-                    style={{
-                      padding: "12px",
-                      border: "1px solid #ddd",
-                      fontWeight: "bold",
-                      backgroundColor: "#f9f9f9",
-                    }}
-                  >
-                    {day.label}
-                  </td>
+        {hasAnyContent ? (
+          <div className="table-wrapper">
+            <table className="data-table" style={{ textAlign: "center" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "center", minWidth: 90 }}>اليوم / الحصة</th>
                   {periods.map((period) => (
-                    <td
-                      key={`${day.id}-${period.id}`}
-                      style={{ padding: "10px", border: "1px solid #ddd" }}
-                    >
-                      <span style={{ fontSize: "0.9rem", color: getCellValue(day.id, period.id) ? "#333" : "#ccc" }}>
-                        {getCellValue(day.id, period.id) || "—"}
-                      </span>
-                    </td>
+                    <th key={period.id} style={{ textAlign: "center", minWidth: 80 }}>
+                      {period.label}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {days.map((day) => (
+                  <tr key={day.id}>
+                    <td style={{ fontWeight: 700, background: "#f8f9fa" }}>
+                      {day.label}
+                    </td>
+                    {periods.map((period) => {
+                      const value = getCellValue(day.id, period.id);
+                      return (
+                        <td key={`${day.id}-${period.id}`} style={{
+                          color: value ? "var(--text-primary)" : "var(--text-faint)",
+                          background: value ? "#fff" : "#fafbfc",
+                        }}>
+                          {value || "—"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{
+            textAlign: "center",
+            padding: "40px 20px",
+            color: "var(--text-faint)",
+          }}>
+            <BookOpen size={40} style={{ marginBottom: 10, opacity: 0.3 }} />
+            <p style={{ margin: 0, fontSize: "0.9rem" }}>لم يقم الطالب بإدخال جدول الحصص بعد.</p>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

@@ -13,13 +13,6 @@ export const TRACKS = [
     governingBody: "directorate_of_education",
     siteType: "school",
   },
-  {
-    value: "psychology_clinic",
-    label: "علم النفس / التدريب العيادي",
-    shortLabel: "علم النفس (عيادي)",
-    governingBody: "ministry_of_health",
-    siteType: "health_center",
-  },
 ];
 
 export const SITE_TYPES = [
