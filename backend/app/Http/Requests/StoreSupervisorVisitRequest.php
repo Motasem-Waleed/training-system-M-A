@@ -14,7 +14,8 @@ class StoreSupervisorVisitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'training_assignment_id' => 'required|exists:training_assignments,id',
+            'training_assignment_id' => 'nullable|required_without:student_id|exists:training_assignments,id',
+            'student_id' => 'nullable|required_without:training_assignment_id|exists:users,id',
             'scheduled_date' => 'required|date|after_or_equal:today',
             'visit_type' => 'required|in:initial,formative,final',
             'location' => 'nullable|string|max:255',

@@ -9,7 +9,7 @@ class EvaluationTemplate extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'form_type', 'target_role'];
+    protected $fillable = ['name', 'description', 'form_type', 'target_role', 'department_key'];
 
     private static array $targetRoleLabels = [
         'teacher' => 'نموذج المعلم المرشد',
@@ -17,10 +17,19 @@ class EvaluationTemplate extends Model
         'psychologist' => 'نموذج الأخصائي النفسي',
         'school_manager' => 'نموذج مدير المدرسة',
     ];
+    private static array $departmentLabels = [
+        'psychology' => 'قسم علم النفس',
+        'usool_tarbiah' => 'قسم أصول التربية',
+    ];
 
     public function getTargetRoleLabelAttribute(): string
     {
         return static::$targetRoleLabels[$this->target_role] ?? 'نموذج عام';
+    }
+
+    public function getDepartmentLabelAttribute(): string
+    {
+        return static::$departmentLabels[$this->department_key] ?? 'عام';
     }
 
     public function items()

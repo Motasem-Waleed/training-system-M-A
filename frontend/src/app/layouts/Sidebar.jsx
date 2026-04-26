@@ -37,6 +37,16 @@ function buildFieldStaffMenu(roleKey) {
 
   // صفحات خاصة بالمشرف الأكاديمي
   if (roleKey === "supervisor") {
+    const dashboardIndex = menu.findIndex((item) => item.path === "/field-staff/dashboard");
+    if (dashboardIndex >= 0) {
+      menu.splice(dashboardIndex, 1);
+    }
+
+    const evaluationsIndex = menu.findIndex((item) => item.path === "/field-staff/evaluations");
+    if (evaluationsIndex >= 0) {
+      menu.splice(evaluationsIndex, 1);
+    }
+
     // إضافة مساحة العمل الموحدة في البداية
     menu.unshift({ name: "🏠 مساحة العمل", path: "/supervisor/workspace" });
     menu.push(

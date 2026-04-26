@@ -25,12 +25,12 @@ export default function SupervisorWorkspace() {
         apiClient.get("/supervisor/sections", { params: { per_page: 100 } }).then((r) => r.data).catch(() => ({})),
       ]);
 
-      setStats(unwrapSupervisorStats(statsRes) || getDefaultStats());
+      setStats(unwrapSupervisorStats(statsRes));
       setStudents(unwrapSupervisorList(studentsRes));
       setSections(unwrapSupervisorList(sectionsRes));
     } catch (e) {
       setError(e?.response?.data?.message || "فشل تحميل البيانات");
-      setStats(getDefaultStats());
+      setStats(null);
     } finally {
       setLoading(false);
     }
@@ -143,17 +143,4 @@ export default function SupervisorWorkspace() {
       </div>
     </div>
   );
-}
-
-function getDefaultStats() {
-  return {
-    sections_count: 0,
-    students_count: 0,
-    visits_this_week: 0,
-    unreviewed_logs: 0,
-    absence_alerts: 0,
-    incomplete_portfolios: 0,
-    pending_task_reviews: 0,
-    unevaluated_students: 0,
-  };
 }

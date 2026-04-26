@@ -17,10 +17,12 @@ export default function EvaluationTemplateForm() {
     name: "",
     form_type: "evaluation",
     description: "",
-    department_id: "",
+    target_role: "",
+    department_key: "",
   });
   const [items, setItems] = useState([]);
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
 
   // تحميل القالب إذا كنا في وضع التعديل
   useEffect(() => {
@@ -33,7 +35,8 @@ export default function EvaluationTemplateForm() {
             name: data.name || "",
             form_type: data.form_type || "evaluation",
             description: data.description || "",
-            department_id: data.department_id || "",
+            target_role: data.target_role || "",
+            department_key: data.department_key || "",
           });
           // التأكد من أن items هي مصفوفة
           setItems(data.items || []);
@@ -95,6 +98,7 @@ export default function EvaluationTemplateForm() {
     e.preventDefault();
     setLoading(true);
     setErrors({});
+    setSubmitError("");
 
     try {
       let templateId = id;
@@ -110,12 +114,13 @@ export default function EvaluationTemplateForm() {
 
       // 2. معالجة البنود: إضافة الجديد وتحديث الموجود
       for (const item of items) {
+        const normalizedOptions = normalizeItemOptions(item);
         if (item._isNew) {
           // إضافة بند جديد
           await addTemplateItem(templateId, {
             title: item.title,
             field_type: item.field_type,
-            options: item.options,
+            options: normalizedOptions,
             is_required: item.is_required ? 1 : 0,
             max_score: item.max_score,
           });
@@ -124,7 +129,7 @@ export default function EvaluationTemplateForm() {
           await updateTemplateItem(item.id, {
             title: item.title,
             field_type: item.field_type,
-            options: item.options,
+            options: normalizedOptions,
             is_required: item.is_required ? 1 : 0,
             max_score: item.max_score,
           });
@@ -135,8 +140,11 @@ export default function EvaluationTemplateForm() {
     } catch (err) {
       if (err.response?.data?.errors) {
         setErrors(err.response.data.errors);
+        const firstError = Object.values(err.response.data.errors)?.[0]?.[0];
+        setSubmitError(firstError || "تحقق من الحقول المطلوبة.");
       } else {
-        alert("حدث خطأ أثناء حفظ القالب: " + err.message);
+        const msg = err.response?.data?.message || err.message || "حدث خطأ أثناء حفظ القالب";
+        setSubmitError(msg);
       }
     } finally {
       setLoading(false);
@@ -153,6 +161,11 @@ export default function EvaluationTemplateForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="form">
+        {submitError && (
+          <div className="error" style={{ marginBottom: "12px", display: "block" }}>
+            {submitError}
+          </div>
+        )}
         <div className="form-group">
           <label>اسم القالب *</label>
           <input
@@ -171,6 +184,7 @@ export default function EvaluationTemplateForm() {
             <option value="evaluation">تقييم (Evaluation)</option>
             <option value="student_form">نموذج طالب (Student Form)</option>
           </select>
+          {errors.form_type && <span className="error">{errors.form_type[0]}</span>}
         </div>
 
         <div className="form-group">
@@ -184,14 +198,25 @@ export default function EvaluationTemplateForm() {
         </div>
 
         <div className="form-group">
-          <label>القسم (اختياري - معرّف القسم)</label>
-          <input
-            type="text"
-            name="department_id"
-            value={form.department_id}
-            onChange={handleFormChange}
-            placeholder="مثال: 1"
-          />
+          <label>الدور المستهدف</label>
+          <select name="target_role" value={form.target_role} onChange={handleFormChange}>
+            <option value="">عام (كل الأدوار)</option>
+            <option value="teacher">المعلم المرشد</option>
+            <option value="academic_supervisor">المشرف الأكاديمي</option>
+            <option value="psychologist">الأخصائي النفسي</option>
+            <option value="school_manager">مدير المدرسة</option>
+          </select>
+          {errors.target_role && <span className="error">{errors.target_role[0]}</span>}
+        </div>
+
+        <div className="form-group">
+          <label>القسم المستهدف</label>
+          <select name="department_key" value={form.department_key} onChange={handleFormChange}>
+            <option value="">عام (كل الأقسام)</option>
+            <option value="psychology">علم النفس</option>
+            <option value="usool_tarbiah">أصول التربية</option>
+          </select>
+          {errors.department_key && <span className="error">{errors.department_key[0]}</span>}
         </div>
 
         <hr />
@@ -289,4 +314,17 @@ export default function EvaluationTemplateForm() {
       </form>
     </div>
   );
+}
+
+function normalizeItemOptions(item) {
+  if (item.field_type !== "radio" && item.field_type !== "checkbox") {
+    return null;
+  }
+  if (Array.isArray(item.options)) {
+    return item.options.filter(Boolean);
+  }
+  return String(item.options || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
 }

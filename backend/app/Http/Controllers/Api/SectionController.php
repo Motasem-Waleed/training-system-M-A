@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSectionRequest;
 use App\Http\Requests\UpdateSectionRequest;
 use App\Http\Resources\SectionResource;
+use App\Models\Course;
 use App\Models\Section;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class SectionController extends Controller
@@ -20,11 +22,13 @@ class SectionController extends Controller
     {
         $query = Section::with(['course', 'academicSupervisor', 'createdBy', 'students'])
             ->withCount('enrollments');
+
         if ($request->has('course_id')) $query->where('course_id', $request->course_id);
         if ($request->has('semester')) $query->where('semester', $request->semester);
         if ($request->has('academic_year')) $query->where('academic_year', $request->academic_year);
         
         $sections = $query->paginate($request->per_page ?? 15);
+
         return SectionResource::collection($sections);
     }
 
@@ -37,8 +41,14 @@ class SectionController extends Controller
         if (empty($data['academic_supervisor_id'])) {
             $data['academic_supervisor_id'] = null;
         }
+
+        $this->ensureAcademicSupervisorMatchesCourse(
+            $data['academic_supervisor_id'] ?? null,
+            (int) $data['course_id']
+        );
         
         $section = Section::create($data);
+
         return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
 
@@ -49,7 +59,21 @@ class SectionController extends Controller
 
     public function update(UpdateSectionRequest $request, Section $section)
     {
-        $section->update($request->validated());
+        $data = $request->validated();
+
+        if (array_key_exists('academic_supervisor_id', $data) && empty($data['academic_supervisor_id'])) {
+            $data['academic_supervisor_id'] = null;
+        }
+
+        if (array_key_exists('academic_supervisor_id', $data) || array_key_exists('course_id', $data)) {
+            $this->ensureAcademicSupervisorMatchesCourse(
+                $data['academic_supervisor_id'] ?? $section->academic_supervisor_id,
+                (int) ($data['course_id'] ?? $section->course_id)
+            );
+        }
+
+        $section->update($data);
+
         return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
 
@@ -61,6 +85,7 @@ class SectionController extends Controller
         }
         
         $section->delete();
+
         return response()->json(['message' => 'تم حذف الشعبة']);
     }
 
@@ -112,6 +137,7 @@ class SectionController extends Controller
         }
 
         $section->students()->detach($studentId);
+
         return response()->json(['message' => 'تم إزالة الطالب من الشعبة بنجاح']);
     }
 
@@ -149,10 +175,12 @@ class SectionController extends Controller
             'supervisor_id' => 'nullable|exists:users,id'
         ]);
 
-        // Check if supervisor is already assigned to another section of the same course
+        $this->ensureAcademicSupervisorMatchesCourse($request->supervisor_id, (int) $section->course_id);
+
+        // Check if academic supervisor is already assigned to another section of the same course
         if ($request->supervisor_id) {
             $existingAssignment = Section::where('course_id', $section->course_id)
-                ->where('supervisor_id', $request->supervisor_id)
+                ->where('academic_supervisor_id', $request->supervisor_id)
                 ->where('id', '!=', $section->id)
                 ->exists();
 
@@ -161,7 +189,8 @@ class SectionController extends Controller
             }
         }
 
-        $section->update(['supervisor_id' => $request->supervisor_id]);
+        $section->update(['academic_supervisor_id' => $request->supervisor_id]);
+
         return response()->json(['message' => 'تم تعيين المشرف بنجاح']);
     }
 
@@ -176,5 +205,30 @@ class SectionController extends Controller
             ->get();
         
         return response()->json(['data' => EnrollmentResource::collection($enrollments)]);
+    }
+
+    private function ensureAcademicSupervisorMatchesCourse(?int $supervisorId, int $courseId): void
+    {
+        if (! $supervisorId) {
+            return;
+        }
+
+        $supervisor = User::with(['role', 'department'])->findOrFail($supervisorId);
+
+        abort_unless(
+            $supervisor->role?->name === 'academic_supervisor',
+            422,
+            'المستخدم المحدد ليس مشرفاً أكاديمياً.'
+        );
+
+        $courseDepartmentId = Course::where('id', $courseId)->value('department_id');
+
+        if ($courseDepartmentId && $supervisor->department_id) {
+            abort_unless(
+                (int) $courseDepartmentId === (int) $supervisor->department_id,
+                422,
+                'قسم المشرف الأكاديمي لا يطابق قسم المساق.'
+            );
+        }
     }
 }

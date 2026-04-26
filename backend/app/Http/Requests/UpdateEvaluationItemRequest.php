@@ -8,7 +8,7 @@ class UpdateEvaluationItemRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()->role?->name, ['admin', 'coordinator']);
+        return in_array($this->user()->role?->name, ['admin', 'coordinator', 'training_coordinator']);
     }
 
     public function rules(): array

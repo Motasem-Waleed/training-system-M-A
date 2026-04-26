@@ -540,7 +540,16 @@ class TrainingRequestService
 
     private function getAcademicSupervisorId(int $courseId): ?int
     {
-        $section = \App\Models\Section::where('course_id', $courseId)->first();
+        $courseDepartmentId = \App\Models\Course::where('id', $courseId)->value('department_id');
+
+        $section = \App\Models\Section::query()
+            ->where('course_id', $courseId)
+            ->whereNotNull('academic_supervisor_id')
+            ->when($courseDepartmentId, function ($query) use ($courseDepartmentId) {
+                $query->whereHas('academicSupervisor', fn ($supervisorQuery) => $supervisorQuery->where('department_id', $courseDepartmentId));
+            })
+            ->orderBy('id')
+            ->first();
 
         return $section?->academic_supervisor_id;
     }

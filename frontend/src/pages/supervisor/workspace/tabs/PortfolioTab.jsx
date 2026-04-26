@@ -13,8 +13,15 @@ export default function PortfolioTab({ studentId }) {
     setError("");
     try {
       const res = await apiClient.get(`/supervisor/students/${studentId}/portfolio`);
-      const data = res.data;
-      setEntries(Array.isArray(data?.entries) ? data.entries : Array.isArray(data) ? data : []);
+      const data = res.data?.data || res.data;
+      const rows = Array.isArray(data?.sections)
+        ? data.sections
+        : Array.isArray(data?.entries)
+          ? data.entries
+          : Array.isArray(data)
+            ? data
+            : [];
+      setEntries(rows.map(normalizePortfolioEntry));
     } catch {
       setError("فشل تحميل ملف الإنجاز");
     } finally {
@@ -27,7 +34,11 @@ export default function PortfolioTab({ studentId }) {
   const handleAddComment = async (entryId) => {
     if (!commentText.trim()) return;
     try {
-      await apiClient.put(`/portfolio-entries/${entryId}`, { supervisor_comment: commentText.trim() });
+      await apiClient.post(`/supervisor/students/${studentId}/portfolio/review-section`, {
+        entry_id: entryId,
+        status: "reviewed",
+        reviewer_note: commentText.trim(),
+      });
       setCommentingId(null);
       setCommentText("");
       loadPortfolio();
@@ -155,4 +166,22 @@ export default function PortfolioTab({ studentId }) {
       )}
     </div>
   );
+}
+
+function normalizePortfolioEntry(entry) {
+  const status = entry.review_status === "reviewed"
+    ? "approved"
+    : entry.review_status === "needs_revision"
+      ? "needs_edit"
+      : entry.file_path
+        ? "uploaded"
+        : "missing";
+
+  return {
+    ...entry,
+    status,
+    supervisor_comment: entry.supervisor_comment || entry.reviewer_note,
+    student_note: entry.student_note || entry.description,
+    uploaded_at: entry.uploaded_at || entry.created_at,
+  };
 }

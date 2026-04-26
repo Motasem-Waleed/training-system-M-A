@@ -41,7 +41,7 @@ const DASHBOARD_PATHS = {
   [ROLES.COORDINATOR]: "/coordinator/dashboard",
   [ROLES.FIELD_SUPERVISOR]: "/field-staff/dashboard",
   [ROLES.MENTOR]: "/field-staff/dashboard",
-  [ROLES.SUPERVISOR]: "/field-staff/dashboard",
+  [ROLES.SUPERVISOR]: "/supervisor/workspace",
   [ROLES.PSYCHOLOGIST]: "/field-staff/dashboard",
   [ROLES.PRINCIPAL]: "/principal/dashboard",
   [ROLES.PSYCHOLOGY_CENTER_MANAGER]: "/psychology-center/dashboard",

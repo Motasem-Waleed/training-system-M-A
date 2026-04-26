@@ -57,6 +57,8 @@ export default function EvaluationTemplatesList() {
             <tr>
               <th>الاسم</th>
               <th>النوع</th>
+              <th>الدور المستهدف</th>
+              <th>القسم</th>
               <th>عدد البنود</th>
               <th>الإجراءات</th>
             </tr>
@@ -66,6 +68,8 @@ export default function EvaluationTemplatesList() {
               <tr key={template.id}>
                 <td>{template.name}</td>
                 <td>{template.form_type === "evaluation" ? "تقييم" : "نموذج طالب"}</td>
+                <td>{template.target_role_label || "عام"}</td>
+                <td>{template.department_label || "عام"}</td>
                 <td>{template.items?.length || 0}</td>
                 <td>
                   <Link

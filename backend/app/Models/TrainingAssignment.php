@@ -13,12 +13,15 @@ class TrainingAssignment extends Model
     protected $fillable = [
         'enrollment_id', 'training_request_id', 'training_request_student_id',
         'training_site_id', 'training_period_id', 'teacher_id',
-        'academic_supervisor_id', 'coordinator_id', 'status', 'start_date', 'end_date'
+        'academic_supervisor_id', 'coordinator_id', 'status', 'academic_status',
+        'academic_status_note', 'academic_status_updated_by',
+        'academic_status_updated_at', 'start_date', 'end_date'
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'academic_status_updated_at' => 'datetime',
     ];
 
     public function enrollment()
@@ -59,6 +62,16 @@ class TrainingAssignment extends Model
     public function coordinator()
     {
         return $this->belongsTo(User::class, 'coordinator_id');
+    }
+
+    public function academicStatusUpdatedBy()
+    {
+        return $this->belongsTo(User::class, 'academic_status_updated_by');
+    }
+
+    public function academicStatusHistories()
+    {
+        return $this->hasMany(AcademicSupervisionStatusHistory::class);
     }
 
     public function attendances()

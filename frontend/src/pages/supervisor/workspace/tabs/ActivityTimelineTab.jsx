@@ -30,7 +30,13 @@ export default function ActivityTimelineTab({ studentId }) {
     setLoading(true);
     try {
       const res = await apiClient.get(`/supervisor/students/${studentId}/timeline`, { params: { per_page: 200 } });
-      setEvents(Array.isArray(res.data) ? res.data : res.data?.data || []);
+      const payload = res.data;
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+      setEvents(rows.map(normalizeTimelineEvent));
     } catch {
       setError("فشل تحميل سجل النشاط");
     } finally {
@@ -102,4 +108,31 @@ export default function ActivityTimelineTab({ studentId }) {
       )}
     </div>
   );
+}
+
+function normalizeTimelineEvent(event) {
+  const typeMap = {
+    attendance: "attendance_recorded",
+    daily_log: "daily_log_submitted",
+    visit: "visit_scheduled",
+    task: "task_created",
+    evaluation: "academic_evaluation",
+  };
+
+  return {
+    ...event,
+    event_type: event.event_type || typeMap[event.type] || event.type || "activity",
+    created_at: event.created_at || event.datetime || event.timestamp,
+    description: event.description || buildDescription(event),
+  };
+}
+
+function buildDescription(event) {
+  const data = event.data || {};
+  if (event.type === "attendance") return `حالة الحضور: ${data.status || "—"}`;
+  if (event.type === "daily_log") return data.title || data.description || "سجل يومي";
+  if (event.type === "visit") return `زيارة ${data.status || ""}`;
+  if (event.type === "task") return data.title || "مهمة";
+  if (event.type === "evaluation") return data.status || "تقييم";
+  return "";
 }

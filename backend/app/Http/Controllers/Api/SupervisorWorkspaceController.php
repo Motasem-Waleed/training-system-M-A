@@ -15,10 +15,13 @@ use App\Http\Requests\StoreAcademicTaskRequest;
 use App\Http\Requests\StoreSupervisorVisitRequest;
 use App\Http\Requests\SubmitAcademicEvaluationRequest;
 use App\Http\Requests\UpdateAcademicTaskRequest;
+use App\Http\Requests\UpdateAcademicSupervisionStatusRequest;
 use App\Http\Requests\UpdateSupervisorVisitRequest;
 use App\Http\Resources\SupervisorSectionResource;
 use App\Http\Resources\SupervisorStudentResource;
+use App\Models\AcademicSupervisionStatusHistory;
 use App\Models\Conversation;
+use App\Models\DailyReport;
 use App\Models\EvaluationTemplate;
 use App\Models\FieldEvaluation;
 use App\Models\Message;
@@ -41,6 +44,8 @@ use App\Models\Note;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class SupervisorWorkspaceController extends Controller
 {
@@ -90,6 +95,14 @@ class SupervisorWorkspaceController extends Controller
             ->where('is_final', true)
             ->distinct()
             ->count('training_assignment_id');
+        $academicStatusDistribution = $assignments
+            ->groupBy(fn ($assignment) => $assignment->academic_status ?? 'not_started')
+            ->map(fn ($group, $status) => [
+                'status' => $status,
+                'label' => $this->academicStatusLabel((string) $status),
+                'count' => $group->count(),
+            ])
+            ->values();
 
         return $this->successResponse([
             'supervisor_profile' => [
@@ -123,6 +136,7 @@ class SupervisorWorkspaceController extends Controller
             'recent_activity' => $recentActivity,
             'upcoming_visits' => $upcomingVisits,
             'track_distribution' => $trackDistribution,
+            'academic_status_distribution' => $academicStatusDistribution,
         ], 'Supervisor stats loaded successfully.');
     }
 
@@ -302,6 +316,12 @@ class SupervisorWorkspaceController extends Controller
                 'risk_level' => $riskLevel,
                 'last_activity_at' => $lastActivityByAssignment[$assignment->id] ?? null,
                 'training_track' => $this->trackResolver->resolveForAssignment($assignment),
+                'training_assignment_id' => $assignment->id,
+                'academic_status' => $assignment->academic_status ?? 'not_started',
+                'academic_status_label' => $this->academicStatusLabel($assignment->academic_status ?? 'not_started'),
+                'academic_status_note' => $assignment->academic_status_note,
+                'academic_status_updated_at' => $assignment->academic_status_updated_at,
+                'academic_status_updated_by' => $assignment->academicStatusUpdatedBy?->name,
             ];
         })->filter()->values();
 
@@ -340,6 +360,12 @@ class SupervisorWorkspaceController extends Controller
 
         $query = Section::query()
             ->where('academic_supervisor_id', $supervisor->id)
+            ->when($supervisor->department_id, function ($sectionQuery) use ($supervisor) {
+                $sectionQuery->where(function ($q) use ($supervisor) {
+                    $q->whereHas('course', fn ($courseQuery) => $courseQuery->where('department_id', $supervisor->department_id))
+                        ->orWhereHas('enrollments.user', fn ($studentQuery) => $studentQuery->where('department_id', $supervisor->department_id));
+                });
+            })
             ->with(['course', 'academicSupervisor', 'enrollments.user.department', 'enrollments.trainingAssignments.trainingSite'])
             ->withCount('enrollments');
 
@@ -492,6 +518,13 @@ class SupervisorWorkspaceController extends Controller
             ],
             'related_data' => [
                 'assignment' => $assignment,
+                'academic_supervision' => [
+                    'status' => $assignment->academic_status ?? 'not_started',
+                    'status_label' => $this->academicStatusLabel($assignment->academic_status ?? 'not_started'),
+                    'note' => $assignment->academic_status_note,
+                    'updated_at' => $assignment->academic_status_updated_at,
+                    'updated_by' => $assignment->academicStatusUpdatedBy?->name,
+                ],
                 'section' => data_get($assignment, 'enrollment.section'),
                 'course' => data_get($assignment, 'enrollment.section.course'),
                 'training_site' => $assignment->trainingSite,
@@ -507,6 +540,40 @@ class SupervisorWorkspaceController extends Controller
                 'training_track' => $this->trackResolver->resolveForAssignment($assignment),
             ],
         ], 'Student overview loaded successfully.');
+    }
+
+    public function updateStudentAcademicStatus(UpdateAcademicSupervisionStatusRequest $request, $studentId)
+    {
+        $assignment = $this->studentService->updateAcademicStatus(
+            $request->user(),
+            (int) $studentId,
+            $request->string('academic_status')->toString(),
+            $request->input('note')
+        );
+
+        $this->createActivity($request->user()->id, 'academic_status_updated', 'Academic supervision status updated.');
+
+        return $this->successResponse([
+            'training_assignment_id' => $assignment->id,
+            'student_id' => data_get($assignment, 'enrollment.user_id'),
+            'academic_status' => $assignment->academic_status,
+            'academic_status_label' => $this->academicStatusLabel($assignment->academic_status),
+            'academic_status_note' => $assignment->academic_status_note,
+            'academic_status_updated_at' => $assignment->academic_status_updated_at,
+            'academic_status_updated_by' => $assignment->academicStatusUpdatedBy?->name,
+        ], 'Academic supervision status updated successfully.');
+    }
+
+    public function studentAcademicStatusHistory(Request $request, $studentId)
+    {
+        $assignment = $this->studentService->mustGetAssignmentForStudent($request->user(), (int) $studentId);
+        $history = AcademicSupervisionStatusHistory::query()
+            ->where('training_assignment_id', $assignment->id)
+            ->with(['changedBy:id,name', 'academicSupervisor:id,name'])
+            ->latest('changed_at')
+            ->paginate($request->per_page ?? 30);
+
+        return $this->successResponse($history, 'Academic supervision status history loaded successfully.');
     }
 
     public function studentAttendance(Request $request, $studentId)
@@ -581,7 +648,7 @@ class SupervisorWorkspaceController extends Controller
             ->where('training_assignment_id', $assignment->id)
             ->firstOrFail();
 
-        $attendance->update([
+            $attendance->update([
             'academic_alert_status' => 'raised',
             'academic_commented_at' => now(),
         ]);
@@ -590,6 +657,8 @@ class SupervisorWorkspaceController extends Controller
             'user_id' => $this->resolveTargetUserId($request->string('target')->toString(), (int) $studentId) ?? $request->user()->id,
             'type' => 'attendance_alert',
             'message' => $request->string('message'),
+            'notifiable_type' => Attendance::class,
+            'notifiable_id' => $attendance->id,
             'data' => [
                 'attendance_id' => $attendance->id,
                 'target' => $request->string('target'),
@@ -608,12 +677,51 @@ class SupervisorWorkspaceController extends Controller
         $logs = TrainingLog::where('training_assignment_id', $assignment->id)
             ->orderBy('log_date', 'desc')
             ->paginate($request->per_page ?? 50);
+        $dailyReports = DailyReport::query()
+            ->where('training_assignment_id', $assignment->id)
+            ->whereIn('status', [DailyReport::STATUS_CONFIRMED, DailyReport::STATUS_UNDER_REVIEW])
+            ->with(['fieldSupervisor:id,name', 'reviewer:id,name'])
+            ->orderBy('report_date', 'desc')
+            ->get()
+            ->map(fn (DailyReport $report) => [
+                'id' => 'daily-report-' . $report->id,
+                'source' => 'daily_report',
+                'source_id' => $report->id,
+                'title' => 'تقرير يومي ميداني',
+                'date' => optional($report->report_date)->toDateString(),
+                'log_date' => optional($report->report_date)->toDateString(),
+                'status' => $report->status === DailyReport::STATUS_CONFIRMED ? 'approved' : 'under_review',
+                'description' => $this->dailyReportDescription($report),
+                'mentor_comment' => $report->supervisor_comment,
+                'supervisor_name' => $report->fieldSupervisor?->name,
+                'reviewed_at' => $report->reviewed_at,
+                'reviewed_by' => $report->reviewer?->name,
+            ]);
+        $trainingLogRows = collect($logs->items())->map(fn (TrainingLog $log) => [
+            'id' => $log->id,
+            'source' => 'training_log',
+            'source_id' => $log->id,
+            'title' => 'سجل يومي',
+            'date' => optional($log->log_date)->toDateString(),
+            'log_date' => optional($log->log_date)->toDateString(),
+            'status' => $log->status,
+            'description' => $log->activities_performed,
+            'mentor_comment' => $log->supervisor_notes,
+            'student_reflection' => $log->student_reflection,
+            'academic_note' => $log->academic_note,
+            'academic_review_status' => $log->academic_review_status,
+        ]);
+        $visibleLogs = $trainingLogRows
+            ->merge($dailyReports)
+            ->sortByDesc(fn ($row) => $row['date'] ?? '')
+            ->values();
 
         return $this->successResponse([
-            'logs' => $logs->items(),
+            'logs' => $visibleLogs,
             'counters' => [
-                'total' => $logs->total(),
-                'approved' => TrainingLog::where('training_assignment_id', $assignment->id)->where('status', 'approved')->count(),
+                'total' => $logs->total() + $dailyReports->count(),
+                'approved' => TrainingLog::where('training_assignment_id', $assignment->id)->where('status', 'approved')->count()
+                    + $dailyReports->where('status', 'approved')->count(),
                 'returned' => TrainingLog::where('training_assignment_id', $assignment->id)->where('status', 'returned')->count(),
             ],
             'status_distribution' => TrainingLog::where('training_assignment_id', $assignment->id)
@@ -633,7 +741,8 @@ class SupervisorWorkspaceController extends Controller
                 'to' => $request->input('to'),
             ],
             'summary' => [
-                'approved_count' => TrainingLog::where('training_assignment_id', $assignment->id)->where('status', 'approved')->count(),
+                'approved_count' => TrainingLog::where('training_assignment_id', $assignment->id)->where('status', 'approved')->count()
+                    + $dailyReports->where('status', 'approved')->count(),
                 'returned_count' => TrainingLog::where('training_assignment_id', $assignment->id)->where('status', 'returned')->count(),
             ],
         ]);
@@ -745,6 +854,89 @@ class SupervisorWorkspaceController extends Controller
         return $this->successResponse(null, 'Portfolio final review saved.');
     }
 
+    public function tasksIndex(Request $request)
+    {
+        $user = $request->user();
+        $tasks = Task::query()
+            ->where('assigned_by', $user->id)
+            ->with(['trainingAssignment.enrollment.user', 'submissions'])
+            ->latest('id')
+            ->get();
+
+        $groups = $tasks->groupBy(fn (Task $task) => $task->distribution_key ?: ('task-' . $task->id));
+        $data = $groups->map(function ($group, $groupId) {
+            $lead = $group->first();
+            $submittedCount = $group->filter(fn ($task) => $task->submissions->isNotEmpty())->count();
+            return [
+                ...$this->taskListRow($lead),
+                'id' => (string) $groupId,
+                'targeted_students_count' => $group->count(),
+                'submitted_students_count' => $submittedCount,
+            ];
+        })->values();
+
+        return $this->successResponse($data, 'Tasks loaded successfully.');
+    }
+
+    public function showTask(Request $request, $taskId)
+    {
+        $tasks = $this->resolveTaskGroup($request->user(), (string) $taskId);
+        abort_if($tasks->isEmpty(), 404);
+        $lead = $tasks->first();
+
+        $students = $tasks->map(fn ($task) => $task->trainingAssignment?->enrollment?->user)
+            ->filter()
+            ->map(fn ($s) => Arr::only($s->toArray(), ['id', 'name', 'university_id']))
+            ->unique('id')
+            ->values();
+
+        return $this->successResponse([
+            'task' => [
+                ...$this->taskListRow($lead),
+                'id' => (string) $taskId,
+                'targeted_students_count' => $students->count(),
+            ],
+            'target_students' => $students,
+            'submissions_count' => $tasks->sum(fn ($t) => $t->submissions->count()),
+        ], 'Task details loaded successfully.');
+    }
+
+    public function taskSubmissionsBoard(Request $request, $taskId)
+    {
+        $tasks = $this->resolveTaskGroup($request->user(), (string) $taskId);
+        abort_if($tasks->isEmpty(), 404);
+        $lead = $tasks->first();
+
+        $rows = $tasks->map(function (Task $task) {
+            $student = $task->trainingAssignment?->enrollment?->user;
+            $submission = $task->submissions
+                ->where('user_id', $student?->id)
+                ->sortByDesc('submitted_at')
+                ->first();
+            return [
+                'task_id' => $task->id,
+                'student_id' => $student?->id,
+                'student_name' => $student?->name,
+                'university_id' => $student?->university_id,
+                'status' => $this->resolveSubmissionStatus($task, $submission),
+                'submitted_at' => $submission?->submitted_at,
+                'attachments' => $submission?->file_path ? [$submission->file_path] : [],
+                'student_note' => $submission?->notes,
+                'supervisor_feedback' => $submission?->feedback,
+                'review_status' => $submission?->review_status,
+                'submission_id' => $submission?->id,
+            ];
+        })->values();
+
+        return $this->successResponse([
+            'task' => [
+                ...$this->taskListRow($lead),
+                'id' => (string) $taskId,
+            ],
+            'submissions' => $rows,
+        ], 'Task submissions loaded successfully.');
+    }
+
     public function studentTasks(Request $request, $studentId)
     {
         $assignment = $this->studentService->mustGetAssignmentForStudent($request->user(), (int) $studentId);
@@ -774,54 +966,58 @@ class SupervisorWorkspaceController extends Controller
     {
         $user = $request->user();
         $created = collect();
+        $distributionKey = (string) Str::uuid();
         $targetType = $request->string('target_type')->toString();
+        $targetIds = collect($request->input('target_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values();
 
-        $base = [
-            'assigned_by' => $user->id,
-            'title' => $request->string('title'),
-            'description' => $request->input('description'),
-            'instructions' => $request->input('instructions'),
-            'due_date' => $request->input('due_date'),
-            'target_type' => $request->input('target_type'),
-            'target_ids' => $request->input('target_ids'),
-            'task_type' => $request->input('task_type'),
-            'attachments' => $request->input('attachments', []),
-            'grading_weight' => $request->input('grading_weight'),
-            'status' => $request->input('status', 'pending'),
-        ];
-
-        foreach ($request->input('target_ids', []) as $targetId) {
-            if (in_array($targetType, ['student', 'group'], true)) {
-                $assignment = $this->studentService->getAssignmentForStudent($user, (int) $targetId);
-                if ($assignment) {
-                    $created->push(Task::create(array_merge($base, [
-                        'training_assignment_id' => $assignment->id,
-                    ])));
-                }
-            } elseif ($targetType === 'section') {
-                $assignments = $this->studentService->supervisedAssignmentsQuery($user)
-                    ->whereHas('enrollment', fn ($q) => $q->where('section_id', (int) $targetId))
-                    ->get();
-                foreach ($assignments as $assignment) {
-                    $created->push(Task::create(array_merge($base, [
-                        'training_assignment_id' => $assignment->id,
-                    ])));
-                }
-            }
+        $assignmentIds = collect();
+        if ($targetType === 'student' || $targetType === 'group') {
+            $assignmentIds = $this->studentService->supervisedAssignmentsQuery($user)
+                ->whereHas('enrollment', fn ($q) => $q->whereIn('user_id', $targetIds->all()))
+                ->pluck('id');
+        } elseif ($targetType === 'section') {
+            $assignmentIds = $this->studentService->supervisedAssignmentsQuery($user)
+                ->whereHas('enrollment', fn ($q) => $q->whereIn('section_id', $targetIds->all()))
+                ->pluck('id');
         }
 
-        abort_if($created->isEmpty(), 422, 'No supervised students match the selected targets.');
+        foreach ($assignmentIds->unique()->values() as $assignmentId) {
+            $created->push(Task::create([
+                'training_assignment_id' => (int) $assignmentId,
+                'assigned_by' => $user->id,
+                'title' => $request->string('title'),
+                'description' => $request->input('description'),
+                'instructions' => $request->input('instructions'),
+                'due_date' => $request->input('due_date'),
+                'target_type' => $request->input('target_type'),
+                'target_ids' => $request->input('target_ids'),
+                'task_type' => $request->input('task_type'),
+                'attachments' => $request->input('attachments', []),
+                'grading_weight' => $request->input('grading_weight'),
+                'allow_resubmission' => (bool) $request->boolean('allow_resubmission', false),
+                'is_required' => (bool) $request->boolean('is_required', true),
+                'distribution_key' => $distributionKey,
+                'status' => $request->input('status', 'pending'),
+            ]));
+        }
+
+        abort_if($created->isEmpty(), 422, 'No valid targets found for task assignment.');
 
         $this->createActivity($user->id, 'task_created', 'Supervisor created new task(s).');
 
-        return $this->successResponse($created->values(), 'Task(s) created successfully.', 201);
+        return $this->successResponse($created, 'Task(s) created successfully.', 201);
     }
 
     public function updateTask(UpdateAcademicTaskRequest $request, $taskId)
     {
         $task = Task::findOrFail($taskId);
         abort_unless((int) $task->assigned_by === (int) $request->user()->id, 403, 'Unauthorized task update.');
-        abort_if(now()->gt($task->due_date) || $task->submissions()->exists(), 422, 'Task can no longer be edited.');
+        if (now()->gt($task->due_date) || $task->submissions()->exists()) {
+            return $this->errorResponse('Task can no longer be edited.');
+        }
 
         $task->update($request->validated());
         return $this->successResponse($task, 'Task updated successfully.');
@@ -903,6 +1099,21 @@ class SupervisorWorkspaceController extends Controller
         return $this->successResponse($submission, 'Resubmission requested successfully.');
     }
 
+    public function acceptSubmission(Request $request, $submissionId)
+    {
+        $request->validate(['feedback' => 'nullable|string|max:2000']);
+        $submission = TaskSubmission::findOrFail($submissionId);
+        $this->studentService->mustGetAssignmentForStudent($request->user(), (int) $submission->user_id);
+        $submission->update([
+            'review_status' => 'accepted',
+            'needs_resubmission' => false,
+            'feedback' => $request->input('feedback'),
+            'reviewed_by' => $request->user()->id,
+            'reviewed_at' => now(),
+        ]);
+        return $this->successResponse($submission, 'Submission accepted successfully.');
+    }
+
     public function gradeSubmission(Request $request, $submissionId)
     {
         $request->validate([
@@ -939,50 +1150,65 @@ class SupervisorWorkspaceController extends Controller
     public function studentAcademicEvaluation(Request $request, $studentId)
     {
         $assignment = $this->studentService->mustGetAssignmentForStudent($request->user(), (int) $studentId);
+        $departmentKey = $this->resolveDepartmentKeyForAssignment($assignment);
         $evaluation = Evaluation::where('training_assignment_id', $assignment->id)
             ->where('evaluator_id', $request->user()->id)
             ->latest()
             ->first();
 
         $template = EvaluationTemplate::query()
-            ->where(function ($q) {
-                $q->whereNull('target_role')->orWhere('target_role', 'academic_supervisor');
+            ->where(function ($q) use ($departmentKey) {
+                $q->where('target_role', 'academic_supervisor');
+                if (Schema::hasColumn('evaluation_templates', 'department_key')) {
+                    $q->where(function ($inner) use ($departmentKey) {
+                        $inner->where('department_key', $departmentKey)->orWhereNull('department_key');
+                    });
+                }
             })
             ->with('items')
+            ->when(
+                Schema::hasColumn('evaluation_templates', 'department_key'),
+                fn ($query) => $query->orderByRaw('CASE WHEN department_key IS NULL THEN 1 ELSE 0 END')
+            )
             ->first();
 
         return $this->successResponse([
             'evaluation' => $evaluation,
             'rubric_template' => $template,
             'status' => $evaluation?->status ?? 'draft',
+            'department_key' => $departmentKey,
         ]);
     }
 
     public function saveAcademicEvaluationDraft(SaveAcademicEvaluationDraftRequest $request, $studentId)
     {
         $assignment = $this->studentService->mustGetAssignmentForStudent($request->user(), (int) $studentId);
+        $departmentKey = $this->resolveDepartmentKeyForAssignment($assignment);
+        $templateId = $this->resolveAcademicTemplateId($departmentKey);
+        $criteriaScores = $this->normalizeCriteriaScores($request->input('criteria_scores', []));
+
         $evaluation = Evaluation::firstOrCreate(
             [
                 'training_assignment_id' => $assignment->id,
                 'evaluator_id' => $request->user()->id,
             ],
             [
-                'template_id' => EvaluationTemplate::query()
-                    ->where(function ($q) {
-                        $q->whereNull('target_role')->orWhere('target_role', 'academic_supervisor');
-                    })->value('id'),
+                'template_id' => $templateId,
             ]
         );
 
-        abort_if($evaluation->is_final, 422, 'Final evaluation is read-only.');
+        if ($evaluation->is_final) {
+            return $this->errorResponse('Final evaluation is read-only.');
+        }
 
         $evaluation->update([
-            'criteria_scores' => $request->input('criteria_scores'),
+            'template_id' => $templateId,
+            'criteria_scores' => $criteriaScores,
             'notes' => $request->input('notes'),
             'strengths' => $request->input('strengths'),
             'areas_for_improvement' => $request->input('areas_for_improvement'),
             'recommendation' => $request->input('recommendation'),
-            'total_score' => $request->input('total_score') ?? collect($request->input('criteria_scores'))->sum('score'),
+            'total_score' => $request->input('total_score') ?? collect($criteriaScores)->avg('score'),
             'status' => 'draft',
             'is_final' => false,
         ]);
@@ -993,6 +1219,9 @@ class SupervisorWorkspaceController extends Controller
     public function submitAcademicEvaluation(SubmitAcademicEvaluationRequest $request, $studentId)
     {
         $assignment = $this->studentService->mustGetAssignmentForStudent($request->user(), (int) $studentId);
+        $departmentKey = $this->resolveDepartmentKeyForAssignment($assignment);
+        $templateId = $this->resolveAcademicTemplateId($departmentKey);
+        $criteriaScores = $this->normalizeCriteriaScores($request->input('criteria_scores', []));
         $evaluation = Evaluation::where('training_assignment_id', $assignment->id)
             ->where('evaluator_id', $request->user()->id)
             ->firstOrFail();
@@ -1000,12 +1229,13 @@ class SupervisorWorkspaceController extends Controller
         abort_if($evaluation->is_final, 422, 'Final evaluation is already submitted.');
 
         $evaluation->update([
-            'criteria_scores' => $request->input('criteria_scores'),
+            'template_id' => $templateId,
+            'criteria_scores' => $criteriaScores,
             'notes' => $request->input('notes'),
             'strengths' => $request->input('strengths'),
             'areas_for_improvement' => $request->input('areas_for_improvement'),
             'recommendation' => $request->input('recommendation'),
-            'total_score' => $request->input('total_score'),
+            'total_score' => $request->input('total_score') ?? collect($criteriaScores)->avg('score'),
             'status' => 'final',
             'is_final' => true,
             'submitted_at' => now(),
@@ -1094,7 +1324,7 @@ class SupervisorWorkspaceController extends Controller
     public function escalate(EscalateStudentIssueRequest $request, $studentId)
     {
         $assignment = $this->studentService->mustGetAssignmentForStudent($request->user(), (int) $studentId);
-        Note::create([
+        $note = Note::create([
             'user_id' => $request->user()->id,
             'training_assignment_id' => $assignment->id,
             'content' => sprintf(
@@ -1109,6 +1339,8 @@ class SupervisorWorkspaceController extends Controller
             'user_id' => $this->resolveTargetUserId($request->string('target')->toString(), (int) $studentId) ?? $request->user()->id,
             'type' => 'student_escalation',
             'message' => 'Student case escalated.',
+            'notifiable_type' => Note::class,
+            'notifiable_id' => $note->id,
             'data' => [
                 'student_id' => (int) $studentId,
                 'reason' => $request->string('reason'),
@@ -1130,9 +1362,15 @@ class SupervisorWorkspaceController extends Controller
 
     public function storeVisit(StoreSupervisorVisitRequest $request)
     {
-        $assignment = $this->studentService->supervisedAssignmentsQuery($request->user())
-            ->where('id', $request->integer('training_assignment_id'))
-            ->firstOrFail();
+        if ($request->filled('training_assignment_id')) {
+            $assignment = $this->studentService->supervisedAssignmentsQuery($request->user())
+                ->where('id', $request->integer('training_assignment_id'))
+                ->firstOrFail();
+        } else {
+            $assignment = $this->studentService->mustGetAssignmentForStudent($request->user(), $request->integer('student_id'));
+        }
+
+        $assignment->loadMissing(['trainingSite', 'enrollment.user']);
 
         $scheduled = $request->input('scheduled_date');
         $visit = SupervisorVisit::create([
@@ -1141,12 +1379,46 @@ class SupervisorWorkspaceController extends Controller
             'visit_date' => $scheduled ?? now()->toDateString(),
             'scheduled_date' => $scheduled,
             'visit_type' => $request->input('visit_type'),
-            'location' => $request->input('location'),
+            'location' => $request->input('location') ?: $this->resolveVisitLocation($assignment),
             'training_track' => $request->input('training_track', $this->trackResolver->resolveForAssignment($assignment)),
             'template_type' => $request->input('template_type'),
             'notes' => $request->input('notes'),
             'status' => 'scheduled',
         ]);
+
+        $studentId = (int) data_get($assignment, 'enrollment.user_id');
+        $notificationData = [
+            'visit_id' => $visit->id,
+            'training_assignment_id' => $assignment->id,
+            'student_id' => $studentId,
+            'scheduled_date' => $visit->scheduled_date,
+            'visit_type' => $visit->visit_type,
+            'location' => $visit->location,
+            'notes' => $visit->notes,
+        ];
+
+        if ($studentId) {
+            Notification::create([
+                'user_id' => $studentId,
+                'type' => 'supervisor_visit_scheduled',
+                'message' => 'تمت جدولة زيارة ميدانية لك من المشرف الأكاديمي بتاريخ ' . $visit->scheduled_date,
+                'notifiable_type' => SupervisorVisit::class,
+                'notifiable_id' => $visit->id,
+                'data' => $notificationData,
+            ]);
+        }
+
+        if ($assignment->teacher_id) {
+            Notification::create([
+                'user_id' => $assignment->teacher_id,
+                'type' => 'supervisor_visit_scheduled',
+                'message' => 'تمت جدولة زيارة ميدانية لطالب مرتبط بك بتاريخ ' . $visit->scheduled_date,
+                'notifiable_type' => SupervisorVisit::class,
+                'notifiable_id' => $visit->id,
+                'data' => $notificationData,
+            ]);
+        }
+
         $this->createActivity($request->user()->id, 'visit_scheduled', 'Supervisor visit scheduled.');
         return $this->successResponse($visit, 'Visit scheduled successfully.', 201);
     }
@@ -1191,6 +1463,71 @@ class SupervisorWorkspaceController extends Controller
         return $this->successResponse($visit);
     }
 
+    private function taskListRow(Task $task): array
+    {
+        $submission = $task->submissions->sortByDesc('submitted_at')->first();
+        $student = $task->trainingAssignment?->enrollment?->user;
+        return [
+            'id' => $task->id,
+            'title' => $task->title,
+            'description' => $task->description,
+            'instructions' => $task->instructions,
+            'task_type' => $task->task_type,
+            'target_type' => $task->target_type,
+            'target_ids' => $task->target_ids ?? [],
+            'due_date' => optional($task->due_date)->toDateString(),
+            'attachments' => $task->attachments ?? [],
+            'allow_resubmission' => (bool) $task->allow_resubmission,
+            'is_required' => (bool) $task->is_required,
+            'status' => $task->status,
+            'student' => $student ? Arr::only($student->toArray(), ['id', 'name', 'university_id']) : null,
+            'submission_status' => $this->resolveSubmissionStatus($task, $submission),
+            'submitted_at' => $submission?->submitted_at,
+        ];
+    }
+
+    private function resolveSubmissionStatus(Task $task, ?TaskSubmission $submission): string
+    {
+        if (! $submission) {
+            return 'not_submitted';
+        }
+        if ((bool) $submission->needs_resubmission || $submission->review_status === 'needs_resubmission') {
+            return 'needs_resubmission';
+        }
+        if (in_array($submission->review_status, ['accepted', 'graded'], true)) {
+            return 'accepted';
+        }
+        if ($submission->review_status === 'under_review') {
+            return 'under_review';
+        }
+        if ($submission->submitted_at && $task->due_date && $submission->submitted_at->gt($task->due_date->endOfDay())) {
+            return 'late';
+        }
+        return 'submitted';
+    }
+
+    private function resolveTaskGroup(User $user, string $taskGroupId): \Illuminate\Support\Collection
+    {
+        $query = Task::query()
+            ->with(['trainingAssignment.enrollment.user', 'submissions.user'])
+            ->where('assigned_by', $user->id);
+
+        if (str_starts_with($taskGroupId, 'task-')) {
+            $id = (int) str_replace('task-', '', $taskGroupId);
+            return $query->where('id', $id)->get();
+        }
+
+        if (is_numeric($taskGroupId)) {
+            $task = (clone $query)->where('id', (int) $taskGroupId)->first();
+            if ($task && $task->distribution_key) {
+                return $query->where('distribution_key', $task->distribution_key)->get();
+            }
+            return $task ? collect([$task]) : collect();
+        }
+
+        return $query->where('distribution_key', $taskGroupId)->get();
+    }
+
     private function attendanceMonthlyAggregation(int $assignmentId): \Illuminate\Support\Collection
     {
         $driver = DB::connection()->getDriverName();
@@ -1207,6 +1544,39 @@ class SupervisorWorkspaceController extends Controller
             ->groupByRaw("DATE_FORMAT(date, '%Y-%m')")
             ->orderByDesc('month')
             ->get();
+    }
+
+    private function dailyReportDescription(DailyReport $report): string
+    {
+        $content = collect((array) $report->content)
+            ->map(function ($value, $key) {
+                if (is_array($value)) {
+                    $value = implode('، ', array_filter($value));
+                }
+
+                return trim((string) $key) !== ''
+                    ? trim((string) $key) . ': ' . trim((string) $value)
+                    : trim((string) $value);
+            })
+            ->filter()
+            ->take(4)
+            ->implode(' | ');
+
+        return $content !== '' ? $content : 'تقرير يومي ميداني معتمد للمراجعة الأكاديمية.';
+    }
+
+    private function resolveVisitLocation($assignment): ?string
+    {
+        $site = $assignment->trainingSite;
+
+        if (! $site) {
+            return null;
+        }
+
+        return collect([$site->name, $site->location])
+            ->filter()
+            ->unique()
+            ->implode(' - ') ?: null;
     }
 
     private function createActivity(int $userId, string $action, string $description): void
@@ -1250,5 +1620,49 @@ class SupervisorWorkspaceController extends Controller
         }
 
         return User::where('role_id', $roleId)->value('id');
+    }
+
+    private function resolveDepartmentKeyForAssignment($assignment): ?string
+    {
+        return data_get($assignment, 'enrollment.user.department.name');
+    }
+
+    private function academicStatusLabel(?string $status): string
+    {
+        return match ($status) {
+            'in_training' => 'قيد التدريب',
+            'needs_follow_up' => 'يحتاج متابعة',
+            'completed' => 'مكتمل',
+            'late' => 'متأخر',
+            'withdrawn' => 'منسحب',
+            default => 'لم يباشر',
+        };
+    }
+
+    private function resolveAcademicTemplateId(?string $departmentKey): ?int
+    {
+        $query = EvaluationTemplate::query()
+            ->where('target_role', 'academic_supervisor');
+
+        if (Schema::hasColumn('evaluation_templates', 'department_key')) {
+            $query->where(function ($q) use ($departmentKey) {
+                $q->where('department_key', $departmentKey)->orWhereNull('department_key');
+            })->orderByRaw('CASE WHEN department_key IS NULL THEN 1 ELSE 0 END');
+        }
+
+        return $query->value('id');
+    }
+
+    private function normalizeCriteriaScores(array $criteriaScores): array
+    {
+        return collect($criteriaScores)->map(function ($row) {
+            return [
+                'criterion' => (string) data_get($row, 'criterion', data_get($row, 'title', '')),
+                'score' => is_numeric(data_get($row, 'score')) ? (float) data_get($row, 'score') : 0,
+                'max_score' => is_numeric(data_get($row, 'max_score')) ? (float) data_get($row, 'max_score') : null,
+                'weight' => is_numeric(data_get($row, 'weight')) ? (float) data_get($row, 'weight') : null,
+                'is_required' => (bool) data_get($row, 'is_required', false),
+            ];
+        })->filter(fn ($row) => $row['criterion'] !== '')->values()->all();
     }
 }

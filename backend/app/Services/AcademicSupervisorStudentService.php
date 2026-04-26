@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\AcademicSupervisionStatusHistory;
 use App\Models\TrainingAssignment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
 class AcademicSupervisorStudentService
@@ -16,15 +18,33 @@ class AcademicSupervisorStudentService
 
     public function supervisedAssignmentsQuery(User $supervisor): Builder
     {
-        return TrainingAssignment::query()
+        $query = TrainingAssignment::query()
             ->where('academic_supervisor_id', $supervisor->id)
+            ->whereHas('enrollment.user', function (Builder $studentQuery) use ($supervisor) {
+                $studentQuery->whereHas('role', fn (Builder $roleQuery) => $roleQuery->where('name', 'student'));
+
+                if ($supervisor->department_id) {
+                    $studentQuery->where('department_id', $supervisor->department_id);
+                }
+            })
             ->with([
                 'trainingSite',
                 'teacher',
                 'trainingPeriod',
                 'enrollment.user.department',
                 'enrollment.section.course',
+                'academicStatusUpdatedBy:id,name',
             ]);
+
+        if ($supervisor->department_id) {
+            $query->where(function (Builder $assignmentQuery) use ($supervisor) {
+                $assignmentQuery
+                    ->whereHas('enrollment.user', fn (Builder $studentQuery) => $studentQuery->where('department_id', $supervisor->department_id))
+                    ->orWhereHas('enrollment.section.course', fn (Builder $courseQuery) => $courseQuery->where('department_id', $supervisor->department_id));
+            });
+        }
+
+        return $query;
     }
 
     public function supervisedStudentIds(User $supervisor): array
@@ -51,6 +71,75 @@ class AcademicSupervisorStudentService
         $assignment = $this->getAssignmentForStudent($supervisor, $studentId);
 
         abort_unless($assignment, 403, 'You are not authorized to access this student.');
+
+        return $assignment;
+    }
+
+    public function updateAcademicStatus(User $actor, int $studentId, string $status, ?string $note = null): TrainingAssignment
+    {
+        return DB::transaction(function () use ($actor, $studentId, $status, $note) {
+            $assignment = $this->assignmentForStatusUpdate($actor, $studentId);
+            $oldStatus = $assignment->academic_status;
+
+            $assignment->update([
+                'academic_status' => $status,
+                'academic_status_note' => $note,
+                'academic_status_updated_by' => $actor->id,
+                'academic_status_updated_at' => now(),
+            ]);
+
+            AcademicSupervisionStatusHistory::create([
+                'training_assignment_id' => $assignment->id,
+                'student_id' => $assignment->enrollment?->user_id ?? $studentId,
+                'academic_supervisor_id' => $assignment->academic_supervisor_id,
+                'old_status' => $oldStatus,
+                'new_status' => $status,
+                'note' => $note,
+                'changed_by' => $actor->id,
+                'changed_at' => now(),
+            ]);
+
+            return $assignment->refresh()->load([
+                'trainingSite',
+                'teacher',
+                'trainingPeriod',
+                'enrollment.user.department',
+                'enrollment.section.course',
+                'academicStatusUpdatedBy:id,name',
+            ]);
+        });
+    }
+
+    private function assignmentForStatusUpdate(User $actor, int $studentId): TrainingAssignment
+    {
+        if ($actor->role?->name === 'academic_supervisor') {
+            return $this->mustGetAssignmentForStudent($actor, $studentId);
+        }
+
+        abort_unless(
+            in_array($actor->role?->name, ['admin', 'training_coordinator', 'head_of_department'], true),
+            403,
+            'You are not authorized to update this student status.'
+        );
+
+        $query = TrainingAssignment::query()
+            ->whereHas('enrollment', fn (Builder $q) => $q->where('user_id', $studentId))
+            ->with([
+                'trainingSite',
+                'teacher',
+                'trainingPeriod',
+                'enrollment.user.department',
+                'enrollment.section.course',
+                'academicStatusUpdatedBy:id,name',
+            ])
+            ->latest('id');
+
+        if ($actor->role?->name === 'head_of_department' && $actor->department_id) {
+            $query->whereHas('enrollment.user', fn (Builder $studentQuery) => $studentQuery->where('department_id', $actor->department_id));
+        }
+
+        $assignment = $query->first();
+        abort_unless($assignment, 403, 'You are not authorized to update this student status.');
 
         return $assignment;
     }

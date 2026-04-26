@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import useFieldStaffRole from "../../hooks/useFieldStaffRole";
@@ -11,7 +12,7 @@ import {
 } from "../../services/api";
 
 export default function FieldStaffEvaluations() {
-  const { targetRole, label, isFieldSupervisor, supervisorSubtype, terms } = useFieldStaffRole();
+  const { targetRole, label, isSupervisor, isFieldSupervisor, supervisorSubtype, terms } = useFieldStaffRole();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [items, setItems] = useState([]);
@@ -44,6 +45,10 @@ export default function FieldStaffEvaluations() {
   }
 
   useEffect(() => { load(); }, []);
+
+  if (isSupervisor) {
+    return <Navigate to="/supervisor/workspace" replace />;
+  }
 
   async function openCreate() {
     setFormError("");

@@ -3,26 +3,22 @@ import { apiClient } from "../../../../services/api";
 
 const initialScheduleForm = {
   scheduled_date: "",
-  visit_type: "monitoring",
-  purpose: "",
+  visit_type: "formative",
   notes: "",
 };
 
 const visitTypes = [
-  { value: "monitoring", label: "متابعة" },
-  { value: "evaluation", label: "تقييم" },
-  { value: "problem_solving", label: "حل مشكلة" },
   { value: "initial", label: "زيارة أولى" },
+  { value: "formative", label: "متابعة / تقويم تكويني" },
   { value: "final", label: "زيارة نهائية" },
 ];
 
 const reportFormInitial = {
   summary: "",
   strengths: "",
-  weaknesses: "",
+  needs_improvement: "",
   recommendations: "",
   rating: "",
-  impact_on_evaluation: "",
 };
 
 export default function FieldVisitsTab({ studentId, student }) {
@@ -38,14 +34,14 @@ export default function FieldVisitsTab({ studentId, student }) {
   const loadVisits = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get(`/supervisor-visits`, { params: { training_assignment_id: student?.assignment_id, per_page: 200 } });
+      const res = await apiClient.get(`/supervisor/students/${studentId}/visits`, { params: { per_page: 200 } });
       setVisits(Array.isArray(res.data) ? res.data : res.data?.data || []);
     } catch {
       setError("فشل تحميل الزيارات");
     } finally {
       setLoading(false);
     }
-  }, [student?.assignment_id]);
+  }, [studentId]);
 
   useEffect(() => { loadVisits(); }, [loadVisits]);
 
@@ -53,18 +49,19 @@ export default function FieldVisitsTab({ studentId, student }) {
     e.preventDefault();
     setSaving(true);
     try {
-      await apiClient.post("/supervisor-visits", {
-        training_assignment_id: student?.assignment_id,
+      await apiClient.post("/supervisor/visits", {
+        training_assignment_id: student?.training_assignment_id || student?.assignment_id,
+        student_id: studentId,
         scheduled_date: scheduleForm.scheduled_date,
         visit_type: scheduleForm.visit_type,
-        purpose: scheduleForm.purpose,
         notes: scheduleForm.notes,
       });
       setShowScheduleForm(false);
       setScheduleForm(initialScheduleForm);
       loadVisits();
-    } catch {
-      alert("فشل جدولة الزيارة");
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.response?.data?.error || "فشل جدولة الزيارة";
+      alert(message);
     } finally {
       setSaving(false);
     }
@@ -73,13 +70,11 @@ export default function FieldVisitsTab({ studentId, student }) {
   const handleComplete = async (visitId) => {
     setSaving(true);
     try {
-      await apiClient.post(`/supervisor-visits/${visitId}/complete`, {
-        notes: reportForm.summary,
+      await apiClient.post(`/supervisor/visits/${visitId}/complete`, {
+        general_notes: [reportForm.summary, reportForm.recommendations].filter(Boolean).join("\n"),
         rating: reportForm.rating ? Number(reportForm.rating) : null,
-        strengths: reportForm.strengths,
-        weaknesses: reportForm.weaknesses,
-        recommendations: reportForm.recommendations,
-        impact_on_evaluation: reportForm.impact_on_evaluation,
+        positive_points: reportForm.strengths,
+        needs_improvement: reportForm.needs_improvement,
       });
       setReportVisitId(null);
       setReportForm(reportFormInitial);
@@ -124,10 +119,6 @@ export default function FieldVisitsTab({ studentId, student }) {
                 </select>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label className="form-label-custom">هدف الزيارة</label>
-                <input id="visit-purpose" name="purpose" className="form-input-custom" value={scheduleForm.purpose} onChange={(e) => setScheduleForm((p) => ({ ...p, purpose: e.target.value }))} placeholder="مثال: متابعة أداء الطالب في الفصل..." />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
                 <label className="form-label-custom">ملاحظات</label>
                 <textarea id="visit-notes" name="notes" className="form-textarea-custom" rows={2} value={scheduleForm.notes} onChange={(e) => setScheduleForm((p) => ({ ...p, notes: e.target.value }))} />
               </div>
@@ -137,7 +128,7 @@ export default function FieldVisitsTab({ studentId, student }) {
               <button type="button" style={{ padding: "8px 16px", borderRadius: "6px", border: "1px solid #999", background: "#fff", cursor: "pointer" }} onClick={() => setShowScheduleForm(false)}>إلغاء</button>
             </div>
             <small style={{ display: "block", marginTop: "8px", color: "#999", fontSize: "0.75rem" }}>
-              * سيتم إرسال إشعار للطالب والمشرف الميداني ومدير الجهة
+              * سيتم استخدام موقع تدريب الطالب تلقائياً وإرسال إشعار للطالب والمشرف الميداني
             </small>
           </form>
         </div>
@@ -163,16 +154,16 @@ export default function FieldVisitsTab({ studentId, student }) {
                   <span style={{ padding: "4px 12px", borderRadius: "16px", fontSize: "0.78rem", fontWeight: "600", color: sc.color, backgroundColor: sc.bg }}>{sc.label}</span>
                 </div>
 
-                {visit.purpose && <p style={{ margin: "0 0 8px", fontSize: "0.85rem", color: "#555" }}>الهدف: {visit.purpose}</p>}
+                {visit.location && <p style={{ margin: "0 0 8px", fontSize: "0.85rem", color: "#555" }}>الموقع: {visit.location}</p>}
                 {visit.notes && <div style={{ background: "#f8f9fa", borderRadius: "6px", padding: "8px", marginBottom: "8px", fontSize: "0.85rem" }}>{visit.notes}</div>}
 
                 {/* Report Form for completed visits */}
                 {visit.status === "completed" && visit.rating && (
                   <div style={{ background: "#e8f5e9", borderRadius: "8px", padding: "12px", marginTop: "8px" }}>
                     <div style={{ fontSize: "0.85rem", fontWeight: "600", color: "#28a745", marginBottom: "6px" }}>📊 تقرير الزيارة</div>
-                    {visit.strengths && <div style={{ fontSize: "0.82rem", color: "#555" }}>💪 نقاط القوة: {visit.strengths}</div>}
-                    {visit.weaknesses && <div style={{ fontSize: "0.82rem", color: "#555" }}>⚠️ نقاط الضعف: {visit.weaknesses}</div>}
-                    {visit.recommendations && <div style={{ fontSize: "0.82rem", color: "#555" }}>📋 التوصيات: {visit.recommendations}</div>}
+                    {visit.positive_points && <div style={{ fontSize: "0.82rem", color: "#555" }}>💪 نقاط القوة: {visit.positive_points}</div>}
+                    {visit.needs_improvement && <div style={{ fontSize: "0.82rem", color: "#555" }}>⚠️ يحتاج تحسين: {visit.needs_improvement}</div>}
+                    {visit.general_notes && <div style={{ fontSize: "0.82rem", color: "#555" }}>📋 ملاحظات: {visit.general_notes}</div>}
                     <div style={{ fontSize: "0.9rem", fontWeight: "600", color: "#28a745", marginTop: "6px" }}>التقييم: {visit.rating}/10</div>
                   </div>
                 )}
@@ -192,7 +183,7 @@ export default function FieldVisitsTab({ studentId, student }) {
                       </div>
                       <div>
                         <label className="form-label-custom">نقاط الضعف</label>
-                        <textarea id="report-weaknesses" name="weaknesses" className="form-textarea-custom" rows={2} value={reportForm.weaknesses} onChange={(e) => setReportForm((p) => ({ ...p, weaknesses: e.target.value }))} />
+                        <textarea id="report-needs-improvement" name="needs_improvement" className="form-textarea-custom" rows={2} value={reportForm.needs_improvement} onChange={(e) => setReportForm((p) => ({ ...p, needs_improvement: e.target.value }))} />
                       </div>
                       <div style={{ gridColumn: "1 / -1" }}>
                         <label className="form-label-custom">التوصيات</label>
@@ -201,10 +192,6 @@ export default function FieldVisitsTab({ studentId, student }) {
                       <div>
                         <label className="form-label-custom">التقييم (1-10)</label>
                         <input id="report-rating" name="rating" type="number" min="1" max="10" className="form-input-custom" value={reportForm.rating} onChange={(e) => setReportForm((p) => ({ ...p, rating: e.target.value }))} />
-                      </div>
-                      <div>
-                        <label className="form-label-custom">أثر الزيارة على التقييم</label>
-                        <input id="report-impact" name="impact_on_evaluation" className="form-input-custom" value={reportForm.impact_on_evaluation} onChange={(e) => setReportForm((p) => ({ ...p, impact_on_evaluation: e.target.value }))} />
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>

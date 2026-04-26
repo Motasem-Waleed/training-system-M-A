@@ -1,80 +1,127 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import { apiClient, unwrapSupervisorList } from "../../services/api";
 
 const initialForm = {
-  studentName: "",
-  place: "",
-  date: "",
-  status: "مجدولة",
-  report: "",
+  scheduled_date: "",
+  visit_type: "formative",
+  notes: "",
+};
+
+const initialReportForm = {
+  summary: "",
+  positive_points: "",
+  needs_improvement: "",
+  rating: "",
 };
 
 export default function FieldVisits() {
-  const [visits, setVisits] = useState([
-    {
-      id: 1,
-      studentName: "أحمد محمد",
-      place: "مدرسة الحسين الثانوية",
-      date: "2026-04-12",
-      status: "مجدولة",
-      report: "",
-    },
-    {
-      id: 2,
-      studentName: "سارة خالد",
-      place: "مدرسة بنات الخليل",
-      date: "2026-04-15",
-      status: "تمت",
-      report: "تمت الزيارة ومراجعة أداء الطالبة داخل الصف.",
-    },
-    {
-      id: 3,
-      studentName: "محمد يوسف",
-      place: "مركز الإرشاد النفسي",
-      date: "2026-04-18",
-      status: "قيد المتابعة",
-      report: "",
-    },
-  ]);
-
+  const [sections, setSections] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [visits, setVisits] = useState([]);
+  const [selectedSectionId, setSelectedSectionId] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
   const [form, setForm] = useState(initialForm);
+  const [reportForm, setReportForm] = useState(initialReportForm);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingVisitId, setEditingVisitId] = useState(null);
+  const [reportVisitId, setReportVisitId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [visitsLoading, setVisitsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const studentsInSection = useMemo(
+    () => students.filter((student) => String(student.section_id || "") === String(selectedSectionId || "")),
+    [students, selectedSectionId]
+  );
+
+  const selectedStudent = useMemo(
+    () => students.find((student) => String(student.student_id) === String(selectedStudentId)),
+    [students, selectedStudentId]
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadBaseData() {
+      setLoading(true);
+      setError("");
+      try {
+        const [sectionsRes, studentsRes] = await Promise.all([
+          apiClient.get("/supervisor/sections", { params: { per_page: 100 } }).then((res) => res.data),
+          apiClient.get("/supervisor/students", { params: { per_page: 300 } }).then((res) => res.data),
+        ]);
+
+        if (!isMounted) return;
+        setSections(unwrapSupervisorList(sectionsRes));
+        setStudents(unwrapSupervisorList(studentsRes));
+      } catch (err) {
+        if (!isMounted) return;
+        setError(err?.response?.data?.message || "فشل تحميل الشعب والطلبة");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    loadBaseData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setSelectedStudentId("");
+    setVisits([]);
+    setIsFormOpen(false);
+    setReportVisitId(null);
+  }, [selectedSectionId]);
+
+  useEffect(() => {
+    if (!selectedStudentId) {
+      setVisits([]);
+      return;
+    }
+
+    loadVisits(selectedStudentId);
+  }, [selectedStudentId]);
+
+  async function loadVisits(studentId) {
+    setVisitsLoading(true);
+    try {
+      const res = await apiClient.get(`/supervisor/students/${studentId}/visits`, { params: { per_page: 200 } });
+      setVisits(unwrapSupervisorList(res.data));
+    } catch (err) {
+      setError(err?.response?.data?.message || "فشل تحميل زيارات الطالب");
+      setVisits([]);
+    } finally {
+      setVisitsLoading(false);
+    }
+  }
 
   const openAddForm = () => {
-    setForm(initialForm);
-    setEditingVisitId(null);
-    setIsFormOpen(true);
-  };
+    if (!selectedSectionId || !selectedStudentId) {
+      alert("اختر الشعبة ثم الطالب أولاً");
+      return;
+    }
 
-  const openEditForm = (visit) => {
-    setForm({
-      studentName: visit.studentName,
-      place: visit.place,
-      date: visit.date,
-      status: visit.status,
-      report: visit.report || "",
-    });
-    setEditingVisitId(visit.id);
+    setForm(initialForm);
     setIsFormOpen(true);
   };
 
   const openReportForm = (visit) => {
-    setForm({
-      studentName: visit.studentName,
-      place: visit.place,
-      date: visit.date,
-      status: visit.status,
-      report: visit.report || "",
+    setReportVisitId(visit.id);
+    setReportForm({
+      summary: visit.general_notes || "",
+      positive_points: visit.positive_points || "",
+      needs_improvement: visit.needs_improvement || "",
+      rating: visit.rating || "",
     });
-    setEditingVisitId(visit.id);
-    setIsFormOpen(true);
   };
 
   const closeForm = () => {
     setForm(initialForm);
-    setEditingVisitId(null);
     setIsFormOpen(false);
   };
 
@@ -87,46 +134,89 @@ export default function FieldVisits() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleReportChange = (e) => {
+    const { name, value } = e.target;
+
+    setReportForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.studentName.trim() || !form.place.trim() || !form.date) {
-      alert("يرجى تعبئة اسم الطالب ومكان التدريب وتاريخ الزيارة");
+    if (!selectedStudent) {
+      alert("اختر الطالب أولاً");
       return;
     }
 
-    if (editingVisitId) {
-      setVisits((prev) =>
-        prev.map((visit) =>
-          visit.id === editingVisitId ? { ...visit, ...form } : visit
-        )
-      );
-      alert("تم تحديث بيانات الزيارة بنجاح");
-    } else {
-      const newVisit = {
-        id: Date.now(),
-        ...form,
-      };
-
-      setVisits((prev) => [newVisit, ...prev]);
-      alert("تمت جدولة الزيارة بنجاح");
+    if (!form.scheduled_date) {
+      alert("يرجى اختيار تاريخ الزيارة");
+      return;
     }
 
-    closeForm();
+    setSaving(true);
+    try {
+      await apiClient.post("/supervisor/visits", {
+        training_assignment_id: selectedStudent.training_assignment_id,
+        student_id: selectedStudent.student_id,
+        scheduled_date: form.scheduled_date,
+        visit_type: form.visit_type,
+        notes: form.notes || null,
+      });
+
+      await loadVisits(selectedStudent.student_id);
+      alert("تمت جدولة الزيارة بنجاح");
+      closeForm();
+    } catch (err) {
+      alert(err?.response?.data?.message || "فشل جدولة الزيارة");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (visitId) => {
-    const confirmed = window.confirm("هل تريد حذف هذه الزيارة؟");
-    if (!confirmed) return;
+  const handleComplete = async (visitId) => {
+    setSaving(true);
+    try {
+      await apiClient.post(`/supervisor/visits/${visitId}/complete`, {
+        general_notes: reportForm.summary || null,
+        positive_points: reportForm.positive_points || null,
+        needs_improvement: reportForm.needs_improvement || null,
+        rating: reportForm.rating ? Number(reportForm.rating) : null,
+      });
 
-    setVisits((prev) => prev.filter((visit) => visit.id !== visitId));
+      setReportVisitId(null);
+      setReportForm(initialReportForm);
+      await loadVisits(selectedStudentId);
+      alert("تم حفظ تقرير الزيارة");
+    } catch (err) {
+      alert(err?.response?.data?.message || "فشل حفظ تقرير الزيارة");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getBadgeClass = (status) => {
-    if (status === "تمت") return "badge-success";
-    if (status === "قيد المتابعة") return "badge-warning";
+    if (status === "completed") return "badge-success";
+    if (status === "cancelled") return "badge-danger";
     return "badge-primary";
   };
+
+  const getStatusLabel = (status) => {
+    if (status === "completed") return "تمت";
+    if (status === "cancelled") return "ملغاة";
+    return "مجدولة";
+  };
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader title="الزيارات الميدانية" subtitle="تحميل الشعب والطلبة المرتبطين بك..." />
+        <div className="section-card">جاري التحميل...</div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -135,8 +225,73 @@ export default function FieldVisits() {
         subtitle="جدولة الزيارات الميدانية ومتابعة حالتها وتقاريرها"
       />
 
+      {error && (
+        <div className="alert-custom alert-danger" style={{ marginBottom: "16px" }}>
+          {error}
+        </div>
+      )}
+
+      <div className="section-card mb-3">
+        <div className="page-grid two-cols">
+          <div className="form-group-custom">
+            <label className="form-label-custom">اختر الشعبة أولاً</label>
+            <select
+              id="visit-section"
+              name="section_id"
+              className="form-select-custom"
+              value={selectedSectionId}
+              onChange={(e) => setSelectedSectionId(e.target.value)}
+            >
+              <option value="">— اختر الشعبة —</option>
+              {sections.map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.section_name || section.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group-custom">
+            <label className="form-label-custom">الطلبة داخل الشعبة</label>
+            <select
+              id="visit-student"
+              name="student_id"
+              className="form-select-custom"
+              value={selectedStudentId}
+              onChange={(e) => setSelectedStudentId(e.target.value)}
+              disabled={!selectedSectionId}
+            >
+              <option value="">
+                {selectedSectionId ? "— اختر الطالب —" : "اختر الشعبة أولاً"}
+              </option>
+              {studentsInSection.map((student) => (
+                <option key={student.student_id} value={student.student_id}>
+                  {student.name} {student.university_id ? `— ${student.university_id}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {selectedSectionId && !studentsInSection.length && (
+          <p className="text-soft" style={{ margin: 0 }}>
+            لا يوجد طلبة مرتبطون بهذه الشعبة ضمن إشرافك الحالي.
+          </p>
+        )}
+
+        {selectedStudent && (
+          <div className="alert-custom alert-info" style={{ marginTop: "12px" }}>
+            <strong>{selectedStudent.name}</strong>
+            <div>
+              جهة التدريب: {selectedStudent.training_site?.name || selectedStudent.training_site || "غير محددة"}
+              {selectedStudent.field_supervisor_name ? ` — المشرف الميداني: ${selectedStudent.field_supervisor_name}` : ""}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="page-actions">
-        <button className="btn-primary-custom" onClick={openAddForm}>
+        <button className="btn-primary-custom" onClick={openAddForm} disabled={!selectedStudentId}>
           جدولة زيارة جديدة
         </button>
       </div>
@@ -146,24 +301,24 @@ export default function FieldVisits() {
           <form onSubmit={handleSubmit}>
             <div className="page-grid two-cols">
               <div className="form-group-custom">
-                <label className="form-label-custom">اسم الطالب</label>
+                <label className="form-label-custom">الطالب</label>
                 <input
                   type="text"
-                  name="studentName"
+                  name="student_name"
                   className="form-control-custom"
-                  value={form.studentName}
-                  onChange={handleChange}
+                  value={selectedStudent?.name || ""}
+                  disabled
                 />
               </div>
 
               <div className="form-group-custom">
-                <label className="form-label-custom">مكان التدريب</label>
+                <label className="form-label-custom">مكان الزيارة</label>
                 <input
                   type="text"
-                  name="place"
+                  name="training_site"
                   className="form-control-custom"
-                  value={form.place}
-                  onChange={handleChange}
+                  value={selectedStudent?.training_site?.name || selectedStudent?.training_site || "يؤخذ تلقائياً من موقع التدريب"}
+                  disabled
                 />
               </div>
             </div>
@@ -173,42 +328,43 @@ export default function FieldVisits() {
                 <label className="form-label-custom">تاريخ الزيارة</label>
                 <input
                   type="date"
-                  name="date"
+                  name="scheduled_date"
                   className="form-control-custom"
-                  value={form.date}
+                  value={form.scheduled_date}
                   onChange={handleChange}
+                  required
                 />
               </div>
 
               <div className="form-group-custom">
-                <label className="form-label-custom">الحالة</label>
+                <label className="form-label-custom">نوع الزيارة</label>
                 <select
-                  name="status"
+                  name="visit_type"
                   className="form-select-custom"
-                  value={form.status}
+                  value={form.visit_type}
                   onChange={handleChange}
                 >
-                  <option value="مجدولة">مجدولة</option>
-                  <option value="قيد المتابعة">قيد المتابعة</option>
-                  <option value="تمت">تمت</option>
+                  <option value="initial">زيارة أولى</option>
+                  <option value="formative">متابعة / تقويم تكويني</option>
+                  <option value="final">زيارة نهائية</option>
                 </select>
               </div>
             </div>
 
             <div className="form-group-custom">
-              <label className="form-label-custom">تقرير الزيارة</label>
+              <label className="form-label-custom">ملاحظات الجدولة</label>
               <textarea
-                name="report"
+                name="notes"
                 className="form-textarea-custom"
-                value={form.report}
+                value={form.notes}
                 onChange={handleChange}
-                placeholder="اكتب تقريرًا موجزًا عن الزيارة الميدانية..."
+                placeholder="ملاحظات اختيارية تصل ضمن تفاصيل الزيارة..."
               />
             </div>
 
             <div className="table-actions">
-              <button type="submit" className="btn-primary-custom">
-                {editingVisitId ? "حفظ التعديلات" : "حفظ الزيارة"}
+              <button type="submit" className="btn-primary-custom" disabled={saving}>
+                {saving ? "جاري الحفظ..." : "حفظ الزيارة"}
               </button>
 
               <button
@@ -223,10 +379,17 @@ export default function FieldVisits() {
         </div>
       )}
 
-      {!visits.length ? (
+      {!selectedStudentId ? (
+        <EmptyState
+          title="اختر شعبة وطالباً"
+          description="ستظهر الزيارات الحقيقية بعد اختيار الشعبة ثم الطالب من القوائم أعلاه."
+        />
+      ) : visitsLoading ? (
+        <div className="section-card">جاري تحميل الزيارات...</div>
+      ) : !visits.length ? (
         <EmptyState
           title="لا توجد زيارات ميدانية"
-          description="لم يتم جدولة أي زيارة حتى الآن."
+          description="لا توجد زيارات مجدولة لهذا الطالب بعد."
         />
       ) : (
         <div className="list-clean">
@@ -234,46 +397,67 @@ export default function FieldVisits() {
             <div key={visit.id} className="list-item-card">
               <div className="panel-header">
                 <div>
-                  <h4 className="panel-title">{visit.studentName}</h4>
-                  <p className="panel-subtitle">{visit.place}</p>
+                  <h4 className="panel-title">{selectedStudent?.name || "طالب"}</h4>
+                  <p className="panel-subtitle">{visit.location || selectedStudent?.training_site?.name || selectedStudent?.training_site || "موقع التدريب"}</p>
                 </div>
 
                 <span className={`badge-custom ${getBadgeClass(visit.status)}`}>
-                  {visit.status}
+                  {getStatusLabel(visit.status)}
                 </span>
               </div>
 
               <div className="page-actions" style={{ marginTop: "12px" }}>
-                <span className="text-soft">تاريخ الزيارة: {visit.date}</span>
+                <span className="text-soft">تاريخ الزيارة: {visit.scheduled_date || visit.visit_date || "—"}</span>
 
                 <div className="table-actions">
-                  <button
-                    className="btn-light-custom btn-sm-custom"
-                    onClick={() => openEditForm(visit)}
-                  >
-                    تعديل
-                  </button>
-
-                  <button
-                    className="btn-light-custom btn-sm-custom"
-                    onClick={() => openReportForm(visit)}
-                  >
-                    رفع تقرير
-                  </button>
-
-                  <button
-                    className="btn-danger-custom btn-sm-custom"
-                    onClick={() => handleDelete(visit.id)}
-                  >
-                    حذف
-                  </button>
+                  {visit.status !== "completed" && (
+                    <button
+                      className="btn-light-custom btn-sm-custom"
+                      onClick={() => openReportForm(visit)}
+                    >
+                      رفع تقرير
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {visit.report ? (
+              {reportVisitId === visit.id && (
+                <div className="form-card" style={{ marginTop: "12px" }}>
+                  <div className="form-group-custom">
+                    <label className="form-label-custom">ملخص الزيارة</label>
+                    <textarea name="summary" className="form-textarea-custom" value={reportForm.summary} onChange={handleReportChange} />
+                  </div>
+                  <div className="page-grid two-cols">
+                    <div className="form-group-custom">
+                      <label className="form-label-custom">نقاط القوة</label>
+                      <textarea name="positive_points" className="form-textarea-custom" value={reportForm.positive_points} onChange={handleReportChange} />
+                    </div>
+                    <div className="form-group-custom">
+                      <label className="form-label-custom">يحتاج تحسين</label>
+                      <textarea name="needs_improvement" className="form-textarea-custom" value={reportForm.needs_improvement} onChange={handleReportChange} />
+                    </div>
+                  </div>
+                  <div className="form-group-custom">
+                    <label className="form-label-custom">التقييم من 1 إلى 10</label>
+                    <input type="number" min="1" max="10" name="rating" className="form-control-custom" value={reportForm.rating} onChange={handleReportChange} />
+                  </div>
+                  <div className="table-actions">
+                    <button className="btn-primary-custom" type="button" onClick={() => handleComplete(visit.id)} disabled={saving}>
+                      {saving ? "جاري الحفظ..." : "حفظ التقرير"}
+                    </button>
+                    <button className="btn-light-custom" type="button" onClick={() => setReportVisitId(null)}>
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {visit.general_notes || visit.positive_points || visit.needs_improvement ? (
                 <div className="alert-custom alert-info" style={{ marginTop: "12px" }}>
                   <strong>تقرير الزيارة:</strong>
-                  <div>{visit.report}</div>
+                  {visit.general_notes && <div>{visit.general_notes}</div>}
+                  {visit.positive_points && <div>نقاط القوة: {visit.positive_points}</div>}
+                  {visit.needs_improvement && <div>يحتاج تحسين: {visit.needs_improvement}</div>}
                 </div>
               ) : null}
             </div>
