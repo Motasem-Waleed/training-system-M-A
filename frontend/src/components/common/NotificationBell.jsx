@@ -16,7 +16,9 @@ const notificationIcons = {
   training_request_received_from_coordinator: "📨",
   training_request_directorate_approved: "✅",
   training_request_received_from_directorate: "📬",
+  training_request_school_approved: "🏫",
   training_request_school_approved_student: "🎓",
+  training_request_school_rejected: "🚫",
   training_request_directorate_rejected: "❌",
   training_request_rejected_student: "❌",
   default: "🔔",
@@ -29,7 +31,9 @@ const notificationTitles = {
   training_request_received_from_coordinator: "طلب من المنسق",
   training_request_directorate_approved: "موافقة الجهة الرسمية",
   training_request_received_from_directorate: "طلب من الجهة الرسمية",
+  training_request_school_approved: "موافقة جهة التدريب",
   training_request_school_approved_student: "موافقة جهة التدريب",
+  training_request_school_rejected: "رفض جهة التدريب",
   training_request_directorate_rejected: "رفض الجهة الرسمية",
   training_request_rejected_student: "رفض طلب",
   default: "إشعار جديد",
@@ -167,6 +171,17 @@ export default function NotificationBell() {
     const type = String(notification.type || "");
     const user = readStoredUser();
     const role = normalizeRole(user?.role?.name || user?.role);
+
+    // For head_of_department / admin: route to their reports/dashboard
+    if (role === ROLES.HEAD_OF_DEPARTMENT && type.startsWith("training_request_")) {
+      navigate("/head-department/reports");
+      return;
+    }
+
+    if (role === ROLES.ADMIN && type.startsWith("training_request_")) {
+      navigate("/notifications");
+      return;
+    }
 
     if (type.includes("coordinator") && !type.includes("student")) {
       navigate("/coordinator/training-requests");

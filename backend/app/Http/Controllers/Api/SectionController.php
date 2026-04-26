@@ -32,12 +32,17 @@ class SectionController extends Controller
             $query->whereIn('course_id', $courseIds);
         }
 
-        // By default, exclude archived sections unless explicitly requested
-        if (!$request->boolean('include_archived')) {
-            $query->whereNull('archived_at');
+        // The NotArchivedScope automatically excludes archived sections.
+        // Use ?include_archived=1 to include them, or ?only_archived=1 for archived only.
+        if ($request->boolean('include_archived')) {
+            $query->withoutGlobalScope(\App\Models\Scopes\NotArchivedScope::class);
         }
         if ($request->boolean('only_archived')) {
-            $query->whereNotNull('archived_at');
+            $query = Section::onlyArchived()->with(['course', 'academicSupervisor', 'createdBy'])->withCount('enrollments');
+            if ($role === 'head_of_department' && $user->department_id) {
+                $courseIds = Course::where('department_id', $user->department_id)->pluck('id');
+                $query->whereIn('course_id', $courseIds);
+            }
         }
 
         if ($request->has('course_id')) $query->where('course_id', $request->course_id);

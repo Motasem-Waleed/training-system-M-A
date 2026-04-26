@@ -6,11 +6,13 @@ use App\Enums\BookStatus;
 use App\Enums\OfficialLetterStatus;
 use App\Enums\OfficialLetterType;
 use App\Enums\TrainingRequestStudentStatus;
+use App\Models\Course;
 use App\Models\Notification as AppNotification;
 use App\Models\OfficialLetter;
 use App\Models\TrainingAssignment;
 use App\Models\TrainingRequest;
 use App\Models\TrainingRequestStudent;
+use App\Models\User;
 use App\Models\WorkflowTemplate;
 use App\Models\WorkflowApproval;
 use App\Models\WorkflowInstance;
@@ -133,6 +135,13 @@ class TrainingRequestService
                 }
             }
 
+            $this->notifyHeadsAndAdmins(
+                $trainingRequest,
+                'training_request_directorate_approved',
+                'تمت موافقة الجهة الرسمية على طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . '.',
+                ['training_request_id' => $trainingRequest->id]
+            );
+
             $this->notifyCoordinator(
                 $trainingRequest,
                 'training_request_directorate_approved',
@@ -229,6 +238,13 @@ class TrainingRequestService
                 'status' => 'approved',
             ]);
 
+            $this->notifyHeadsAndAdmins(
+                $trainingRequest,
+                'training_request_school_approved',
+                'تمت موافقة جهة التدريب على طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . '.',
+                ['training_request_id' => $trainingRequest->id]
+            );
+
             $trainingRequest->load('trainingRequestStudents');
             TrainingRequestNotifications::forStudents(
                 $trainingRequest,
@@ -274,6 +290,13 @@ class TrainingRequestService
             if ($workflowInstance) {
                 $workflowInstance->update(['status' => 'rejected']);
             }
+
+            $this->notifyHeadsAndAdmins(
+                $trainingRequest,
+                'training_request_directorate_rejected',
+                'تم رفض طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . ' من المديرية. السبب: ' . $reason,
+                ['training_request_id' => $trainingRequest->id, 'rejection_reason' => $reason]
+            );
 
             $this->notifyCoordinator(
                 $trainingRequest,
@@ -375,6 +398,13 @@ class TrainingRequestService
                 $workflowInstance->update(['status' => 'rejected']);
             }
 
+            $this->notifyHeadsAndAdmins(
+                $trainingRequest,
+                'training_request_school_rejected',
+                'تم رفض طلب التدريب رقم ' . ($trainingRequest->letter_number ?? "#{$trainingRequest->id}") . ' من جهة التدريب. السبب: ' . $reason,
+                ['training_request_id' => $trainingRequest->id, 'rejection_reason' => $reason]
+            );
+
             $this->notifyCoordinator(
                 $trainingRequest,
                 'training_request_school_rejected',
@@ -448,6 +478,51 @@ class TrainingRequestService
                 ]
             );
         });
+    }
+
+    /**
+     * إرسال إشعار لرؤساء الأقسام المعنيين والأدمن.
+     * يحدد القسم(الأقسام) من خلال مساقات الطلاب في طلب التدريب.
+     */
+    private function notifyHeadsAndAdmins(
+        TrainingRequest $trainingRequest,
+        string $type,
+        string $message,
+        array $data = []
+    ): void {
+        $courseIds = TrainingRequestStudent::where('training_request_id', $trainingRequest->id)
+            ->pluck('course_id')
+            ->unique()
+            ->filter()
+            ->values();
+
+        $departmentIds = Course::whereIn('id', $courseIds)
+            ->pluck('department_id')
+            ->unique()
+            ->filter()
+            ->values();
+
+        // رؤساء الأقسام المعنيون
+        $hodIds = User::whereHas('role', fn ($q) => $q->where('name', 'head_of_department'))
+            ->whereIn('department_id', $departmentIds)
+            ->pluck('id');
+
+        // كل الأدمن
+        $adminIds = User::whereHas('role', fn ($q) => $q->where('name', 'admin'))
+            ->pluck('id');
+
+        $recipientIds = $hodIds->merge($adminIds)->unique();
+
+        foreach ($recipientIds as $userId) {
+            AppNotification::create([
+                'user_id' => $userId,
+                'type' => $type,
+                'message' => $message,
+                'notifiable_type' => TrainingRequest::class,
+                'notifiable_id' => $trainingRequest->id,
+                'data' => $data,
+            ]);
+        }
     }
 
     private function notifyCoordinator(

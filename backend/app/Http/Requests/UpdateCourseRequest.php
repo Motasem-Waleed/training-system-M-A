@@ -13,8 +13,10 @@ class UpdateCourseRequest extends FormRequest
 
     public function rules(): array
     {
+        $course = $this->route('course');
+        $courseId = is_object($course) ? $course->id : $course;
         return [
-            'code' => 'sometimes|string|max:255|unique:courses,code,' . $this->route('course'),
+            'code' => 'sometimes|string|max:255|unique:courses,code,' . $courseId,
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'credit_hours' => 'sometimes|integer|min:1|max:6',

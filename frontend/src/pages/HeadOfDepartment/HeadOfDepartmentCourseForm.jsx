@@ -13,7 +13,14 @@ export default function HeadOfDepartmentCourseForm() {
     if (id) {
       setLoading(true);
       getCourse(id)
-        .then(data => setForm(data))
+        .then(data => setForm({
+          code: data?.code ?? "",
+          name: data?.name ?? "",
+          description: data?.description ?? "",
+          credit_hours: data?.credit_hours ?? 3,
+          training_hours: data?.training_hours ?? 0,
+          type: data?.type ?? "practical",
+        }))
         .catch(err => console.error(err))
         .finally(() => setLoading(false));
     }
@@ -34,10 +41,16 @@ export default function HeadOfDepartmentCourseForm() {
       } else {
         await createCourse(form);
       }
-      navigate("/head-department/reports");
+      alert(id ? "تم تحديث المساق بنجاح" : "تم إضافة المساق بنجاح");
+      navigate("/head-department/courses");
     } catch (err) {
+      console.error("Course save error:", err);
       if (err.response?.data?.errors) {
         setErrors(err.response.data.errors);
+        const firstError = Object.values(err.response.data.errors)[0]?.[0];
+        if (firstError) alert(firstError);
+      } else if (err.response?.data?.message) {
+        alert(err.response.data.message);
       } else {
         alert("حدث خطأ أثناء حفظ المساق");
       }
@@ -50,7 +63,7 @@ export default function HeadOfDepartmentCourseForm() {
     <div className="section-form">
       <div className="page-header">
         <h1>{id ? "تعديل مساق" : "إضافة مساق جديد"}</h1>
-        <button onClick={() => navigate("/head-department/reports")} className="btn-secondary">رجوع</button>
+        <button onClick={() => navigate("/head-department/courses")} className="btn-secondary">رجوع</button>
       </div>
 
       <form onSubmit={handleSubmit} className="form">
@@ -99,7 +112,7 @@ export default function HeadOfDepartmentCourseForm() {
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? "جاري الحفظ..." : (id ? "تحديث" : "إضافة")}
           </button>
-          <button type="button" onClick={() => navigate("/head-department/reports")} className="btn-secondary">إلغاء</button>
+          <button type="button" onClick={() => navigate("/head-department/courses")} className="btn-secondary">إلغاء</button>
         </div>
       </form>
     </div>

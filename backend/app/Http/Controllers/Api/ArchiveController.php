@@ -32,7 +32,8 @@ class ArchiveController extends Controller
     private function departmentSectionsQuery()
     {
         $departmentId = $this->userDepartmentId();
-        $query = Section::query();
+        // withArchived() bypasses the NotArchivedScope so we can see archived sections too
+        $query = Section::withArchived();
 
         if ($departmentId) {
             $courseIds = Course::where('department_id', $departmentId)->pluck('id');
@@ -91,7 +92,7 @@ class ArchiveController extends Controller
             ->whereIn('section_id', $sectionIds)
             ->pluck('id');
 
-        $userIds = Enrollment::whereIn('id', $enrollmentIds)->pluck('user_id')->unique()->values();
+        $userIds = Enrollment::withArchived()->whereIn('id', $enrollmentIds)->pluck('user_id')->unique()->values();
 
         $counts = [
             'sections' => $sectionIds->count(),
@@ -151,14 +152,14 @@ class ArchiveController extends Controller
                 ->whereIn('section_id', $sectionIds)
                 ->pluck('id');
 
-            $userIds = Enrollment::whereIn('id', $enrollmentIds)->pluck('user_id')->unique()->values();
+            $userIds = Enrollment::withArchived()->whereIn('id', $enrollmentIds)->pluck('user_id')->unique()->values();
 
             $archived = [];
 
-            $archived['sections'] = Section::whereIn('id', $sectionIds)
+            $archived['sections'] = Section::withArchived()->whereIn('id', $sectionIds)
                 ->update(['archived_at' => $now, 'archived_period' => $label]);
 
-            $archived['enrollments'] = Enrollment::whereIn('id', $enrollmentIds)
+            $archived['enrollments'] = Enrollment::withArchived()->whereIn('id', $enrollmentIds)
                 ->update(['archived_at' => $now, 'archived_period' => $label]);
 
             $byEnrollment = [
@@ -309,7 +310,10 @@ class ArchiveController extends Controller
                         'id' => $s->academicSupervisor->id,
                         'name' => $s->academicSupervisor->name,
                     ] : null,
-                    'enrollments_count' => DB::table('enrollments')->where('section_id', $s->id)->count(),
+                    'enrollments_count' => DB::table('enrollments')
+                        ->where('section_id', $s->id)
+                        ->whereNotNull('archived_at')
+                        ->count(),
                     'archived_at' => $s->archived_at,
                 ];
             });
