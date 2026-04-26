@@ -153,22 +153,12 @@ export default function AddStudent() {
           }
         });
         
-        // Debug: Log available departments
-        console.log("Available departments:", departments.map(d => d.name));
-        console.log("Department map:", departmentMap);
-
-        const students = rows.map((row, index) => {
+        const students = rows.map((row) => {
           const clean = {};
           Object.keys(row).forEach(key => { clean[key.trim()] = row[key]; });
           const deptName = String(clean["القسم"] || clean["قسم"] || clean["department"] || "").trim();
           const deptId = departmentMap[deptName] || departmentMap[deptName.toLowerCase()] || "";
-          
-          // Debug: Log department mapping for first few rows
-          if (index < 3) {
-            console.log(`Row ${index + 2}: deptName="${deptName}" -> deptId=${deptId}`);
-            console.log("Available keys:", Object.keys(clean));
-          }
-          
+
           return {
             name: clean["الاسم الكامل"] || clean["الاسم"] || clean["name"] || "",
             email: clean["البريد الإلكتروني"] || clean["البريد"] || clean["email"] || "",

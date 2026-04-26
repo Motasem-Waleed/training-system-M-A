@@ -61,13 +61,10 @@ export default function HeadOfDepartmentSectionForm() {
       if (supervisorSearch === selectedSupervisorDisplay) {
         return;
       }
-      
-      console.log("Searching for:", supervisorSearch);
-      
+
       try {
         setSupervisorLoading(true);
         const response = await searchSupervisors(supervisorSearch);
-        console.log("Search response:", response);
         setSupervisors(response.data || []);
         setShowSupervisorDropdown(true);
       } catch (error) {

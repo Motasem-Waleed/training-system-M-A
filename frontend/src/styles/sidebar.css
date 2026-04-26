@@ -16,6 +16,8 @@
   top: 0;
   overflow: hidden;
   z-index: 20;
+  direction: rtl;
+  text-align: right;
 }
 
 .sidebar-mobile-header {
@@ -68,6 +70,12 @@
   min-height: 0;
   overflow-y: auto;
   flex: 1;
+  direction: ltr;
+  scrollbar-gutter: stable;
+}
+
+.sidebar-menu > * {
+  direction: rtl;
 }
 
 .sidebar-section-title {
@@ -81,7 +89,7 @@
 .sidebar-link {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   min-height: 44px;
   padding: 9px 13px;
@@ -91,6 +99,7 @@
   font-size: 0.95rem;
   transition: var(--transition);
   position: relative;
+  text-align: right;
 }
 
 .sidebar-link::before {
@@ -108,7 +117,7 @@
 .sidebar-link:hover {
   background: rgba(255, 255, 255, 0.07);
   color: #fff;
-  transform: translateX(-1px);
+  transform: translateX(1px);
 }
 
 .sidebar-link.active,
@@ -141,6 +150,11 @@
   width: 22px;
   height: 22px;
   color: rgba(255, 255, 255, 0.88);
+}
+
+.sidebar-link span {
+  flex: 1;
+  min-width: 0;
 }
 
 .sidebar-link .menu-icon svg {

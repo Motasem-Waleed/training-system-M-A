@@ -210,7 +210,6 @@ export default function StudentDashboard({ forcedTrack = null }) {
       setLatestTasks(tasks.slice(0, 4));
     } catch (error) {
       if (error.name === "CanceledError" || error.code === "ERR_CANCELED") {
-        console.log("تم إلغاء الطلب السابق");
         return;
       }
       console.error("خطأ في جلب بيانات لوحة التحكم:", error);

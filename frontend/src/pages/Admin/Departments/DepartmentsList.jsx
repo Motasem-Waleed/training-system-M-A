@@ -20,7 +20,6 @@ const fetchDepartments = async () => {
       departmentsArray = [];
     }
     
-    console.log("✅ Extracted departments:", departmentsArray);
     setItems(departmentsArray);
   } catch (err) {
     console.error(err);
@@ -37,7 +36,7 @@ const fetchDepartments = async () => {
       try {
         await deleteDepartment(id);
         fetchDepartments();
-      } catch (err) {
+      } catch {
         alert("حدث خطأ أثناء الحذف");
       }
     }

@@ -38,9 +38,8 @@ export default function HeadOfDepartmentRejectedCases() {
     fetchRejectedCases();
   }, []);
 
-  const handleReassign = (studentId, sectionId) => {
+  const handleReassign = () => {
     // TODO: Implement reassign functionality
-    console.log('Reassign student', studentId, 'to section', sectionId);
   };
 
   return (

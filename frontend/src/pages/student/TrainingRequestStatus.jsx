@@ -69,6 +69,9 @@ export default function TrainingRequestStatus() {
     load();
 
     const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
       loadData();
     }, 30000);
 
