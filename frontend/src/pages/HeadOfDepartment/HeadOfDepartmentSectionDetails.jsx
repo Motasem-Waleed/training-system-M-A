@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getSection, getSectionEnrollments } from "../../services/api";
-import { ArrowLeft, Users, User, BookOpen, Calendar, GraduationCap, Mail, Phone } from "lucide-react";
+import { getSection, getSectionEnrollments, deleteEnrollment } from "../../services/api";
+import { ArrowLeft, Users, User, BookOpen, Calendar, GraduationCap, Mail, Phone, Trash2 } from "lucide-react";
 
 export default function HeadOfDepartmentSectionDetails() {
   const { id } = useParams();
@@ -10,6 +10,26 @@ export default function HeadOfDepartmentSectionDetails() {
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+
+  const handleRemoveStudent = async (enrollment) => {
+    const studentName = enrollment.user?.name || "الطالب";
+    const confirmed = window.confirm(
+      `هل أنت متأكد من حذف ${studentName} من هذه الشعبة؟\nسيتم إرسال إشعار للطالب.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setRemovingId(enrollment.id);
+      await deleteEnrollment(enrollment.id);
+      setEnrollments((prev) => prev.filter((e) => e.id !== enrollment.id));
+    } catch (err) {
+      console.error("Error removing student:", err);
+      alert(err?.response?.data?.message || "تعذر حذف الطالب من الشعبة");
+    } finally {
+      setRemovingId(null);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -215,6 +235,38 @@ export default function HeadOfDepartmentSectionDetails() {
                   }}>
                     {getStatusLabel(enrollment.status)}
                   </span>
+                  <button
+                    onClick={() => handleRemoveStudent(enrollment)}
+                    disabled={removingId === enrollment.id}
+                    title="حذف الطالب من الشعبة"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #fecaca",
+                      backgroundColor: removingId === enrollment.id ? "#fee2e2" : "#fff",
+                      color: "#dc2626",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: removingId === enrollment.id ? "not-allowed" : "pointer",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (removingId !== enrollment.id) {
+                        e.currentTarget.style.backgroundColor = "#fee2e2";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (removingId !== enrollment.id) {
+                        e.currentTarget.style.backgroundColor = "#fff";
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} />
+                    {removingId === enrollment.id ? "جارٍ..." : "حذف"}
+                  </button>
                 </div>
               </div>
             ))}

@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateSectionRequest;
 use App\Http\Resources\SectionResource;
 use App\Http\Resources\EnrollmentResource;
 use App\Models\Course;
+use App\Models\Notification as AppNotification;
 use App\Models\Section;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -71,6 +72,11 @@ class SectionController extends Controller
         
         $section = Section::create($data);
 
+        // إشعار المشرف الأكاديمي إن عُيّن
+        if (! empty($data['academic_supervisor_id'])) {
+            $this->notifySupervisorAssigned($section, $data['academic_supervisor_id']);
+        }
+
         return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
 
@@ -95,7 +101,15 @@ class SectionController extends Controller
             );
         }
 
+        $previousSupervisorId = $section->academic_supervisor_id;
         $section->update($data);
+
+        // إشعار المشرف الجديد إذا تغيّر
+        if (array_key_exists('academic_supervisor_id', $data)
+            && $section->academic_supervisor_id
+            && $section->academic_supervisor_id !== $previousSupervisorId) {
+            $this->notifySupervisorAssigned($section, $section->academic_supervisor_id);
+        }
 
         return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
@@ -212,7 +226,12 @@ class SectionController extends Controller
             }
         }
 
+        $previousSupervisorId = $section->academic_supervisor_id;
         $section->update(['academic_supervisor_id' => $request->supervisor_id]);
+
+        if ($request->supervisor_id && $request->supervisor_id !== $previousSupervisorId) {
+            $this->notifySupervisorAssigned($section, $request->supervisor_id);
+        }
 
         return response()->json(['message' => 'تم تعيين المشرف بنجاح']);
     }
@@ -228,6 +247,24 @@ class SectionController extends Controller
             ->get();
         
         return response()->json(['data' => EnrollmentResource::collection($enrollments)]);
+    }
+
+    private function notifySupervisorAssigned(Section $section, int $supervisorId): void
+    {
+        $section->loadMissing('course');
+        $courseName = $section->course?->name ?? '';
+        AppNotification::create([
+            'user_id' => $supervisorId,
+            'type' => 'section_supervisor_assigned',
+            'message' => "تم تعيينك مشرفاً أكاديمياً على شعبة \"{$section->name}\" في مساق \"{$courseName}\".",
+            'notifiable_type' => Section::class,
+            'notifiable_id' => $section->id,
+            'data' => [
+                'section_id' => $section->id,
+                'course_name' => $courseName,
+                'section_name' => $section->name,
+            ],
+        ]);
     }
 
     private function ensureAcademicSupervisorMatchesCourse(?int $supervisorId, int $courseId): void

@@ -21,6 +21,13 @@ const notificationIcons = {
   training_request_school_rejected: "🚫",
   training_request_directorate_rejected: "❌",
   training_request_rejected_student: "❌",
+  enrollment_added: "🎓",
+  enrollment_removed: "➖",
+  enrollment_status_changed: "🔄",
+  section_supervisor_assigned: "👨‍🏫",
+  task_assigned: "📌",
+  task_submitted: "📤",
+  task_graded: "💯",
   default: "🔔",
 };
 
@@ -36,6 +43,13 @@ const notificationTitles = {
   training_request_school_rejected: "رفض جهة التدريب",
   training_request_directorate_rejected: "رفض الجهة الرسمية",
   training_request_rejected_student: "رفض طلب",
+  enrollment_added: "تم تسجيلك في شعبة",
+  enrollment_removed: "تمت إزالتك من شعبة",
+  enrollment_status_changed: "تغيّرت حالة تسجيلك",
+  section_supervisor_assigned: "تعيين مشرف أكاديمي",
+  task_assigned: "مهمة جديدة",
+  task_submitted: "تسليم مهمة",
+  task_graded: "تقييم مهمة",
   default: "إشعار جديد",
 };
 
@@ -207,6 +221,27 @@ export default function NotificationBell() {
         default:
           return "/notifications";
       }
+    }
+
+    // ----- Enrollment notifications (student) -----
+    if (type.startsWith("enrollment_")) {
+      if (role === ROLES.STUDENT) return "/student/dashboard";
+      return "/notifications";
+    }
+
+    // ----- Section supervisor assigned (academic supervisor) -----
+    if (type === "section_supervisor_assigned") {
+      if (role === ROLES.SUPERVISOR) return "/supervisor/workspace";
+      return "/notifications";
+    }
+
+    // ----- Task notifications -----
+    if (type.startsWith("task_")) {
+      if (role === ROLES.STUDENT) return "/student/assignments";
+      if (role === ROLES.SUPERVISOR || role === ROLES.MENTOR || role === ROLES.FIELD_SUPERVISOR) {
+        return "/supervisor/workspace";
+      }
+      return "/notifications";
     }
 
     // ----- Daily reports / attendance / evaluations: supervisor or student -----

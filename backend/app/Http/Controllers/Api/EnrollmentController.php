@@ -7,6 +7,7 @@ use App\Http\Requests\StoreEnrollmentRequest;
 use App\Http\Requests\UpdateEnrollmentRequest;
 use App\Http\Resources\EnrollmentResource;
 use App\Models\Enrollment;
+use App\Models\Notification as AppNotification;
 use Illuminate\Http\Request;
 
 class EnrollmentController extends Controller
@@ -48,6 +49,25 @@ class EnrollmentController extends Controller
         }
         
         $enrollment = Enrollment::create($data);
+
+        // إشعار الطالب بإضافته إلى الشعبة
+        $enrollment->load('section.course');
+        $courseName = $enrollment->section?->course?->name ?? '';
+        $sectionName = $enrollment->section?->name ?? '';
+        AppNotification::create([
+            'user_id' => $enrollment->user_id,
+            'type' => 'enrollment_added',
+            'message' => "تمت إضافتك إلى شعبة \"{$sectionName}\" في مساق \"{$courseName}\".",
+            'notifiable_type' => Enrollment::class,
+            'notifiable_id' => $enrollment->id,
+            'data' => [
+                'enrollment_id' => $enrollment->id,
+                'section_id' => $enrollment->section_id,
+                'course_name' => $courseName,
+                'section_name' => $sectionName,
+            ],
+        ]);
+
         return new EnrollmentResource($enrollment);
     }
 
@@ -58,13 +78,46 @@ class EnrollmentController extends Controller
 
     public function update(UpdateEnrollmentRequest $request, Enrollment $enrollment)
     {
+        $previousStatus = $enrollment->status;
         $enrollment->update($request->validated());
+
+        // إشعار الطالب عند تغيير الحالة
+        if ($enrollment->wasChanged('status') && $previousStatus !== $enrollment->status) {
+            $statusLabels = [
+                'active' => 'نشط',
+                'completed' => 'مكتمل',
+                'dropped' => 'منسحب',
+                'failed' => 'راسب',
+            ];
+            $label = $statusLabels[$enrollment->status] ?? $enrollment->status;
+            AppNotification::create([
+                'user_id' => $enrollment->user_id,
+                'type' => 'enrollment_status_changed',
+                'message' => "تم تغيير حالة تسجيلك إلى \"{$label}\".",
+                'notifiable_type' => Enrollment::class,
+                'notifiable_id' => $enrollment->id,
+                'data' => ['enrollment_id' => $enrollment->id, 'status' => $enrollment->status],
+            ]);
+        }
+
         return new EnrollmentResource($enrollment);
     }
 
     public function destroy(Enrollment $enrollment)
     {
+        $userId = $enrollment->user_id;
+        $enrollment->load('section.course');
+        $sectionName = $enrollment->section?->name ?? '';
+
         $enrollment->delete();
+
+        AppNotification::create([
+            'user_id' => $userId,
+            'type' => 'enrollment_removed',
+            'message' => "تمت إزالتك من شعبة \"{$sectionName}\".",
+            'data' => ['section_name' => $sectionName],
+        ]);
+
         return response()->json(['message' => 'تم حذف التسجيل']);
     }
 }
