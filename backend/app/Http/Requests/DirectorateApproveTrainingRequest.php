@@ -20,6 +20,9 @@ class DirectorateApproveTrainingRequest extends FormRequest
         return [
             'status' => 'required|in:approved,rejected',
             'rejection_reason' => 'required_if:status,rejected|nullable|string',
+            'letter_number' => 'required_if:status,approved|nullable|string|max:255',
+            'letter_date' => 'required_if:status,approved|nullable|date',
+            'content' => 'required_if:status,approved|nullable|string',
         ];
     }
 }
