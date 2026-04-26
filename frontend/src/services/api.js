@@ -104,9 +104,11 @@ export const unwrapSupervisorStats = (body) => {
     unevaluated_students: raw.pending_academic_evaluations_count ?? 0,
     open_tasks_count: raw.open_tasks_count ?? 0,
     supervisor_profile: raw.supervisor_profile,
+    department_summary: raw.department_summary,
     recent_activity: raw.recent_activity,
     upcoming_visits: raw.upcoming_visits,
     track_distribution: raw.track_distribution,
+    academic_status_distribution: raw.academic_status_distribution,
   };
 };
 

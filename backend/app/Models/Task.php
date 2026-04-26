@@ -13,13 +13,15 @@ class Task extends Model
     protected $fillable = [
         'title', 'description', 'training_assignment_id', 'assigned_by',
         'due_date', 'status', 'instructions', 'target_type', 'target_ids',
-        'task_type', 'attachments', 'grading_weight'
+        'task_type', 'attachments', 'grading_weight', 'allow_resubmission', 'is_required', 'distribution_key'
     ];
 
     protected $casts = [
         'due_date' => 'date',
         'target_ids' => 'array',
         'attachments' => 'array',
+        'allow_resubmission' => 'boolean',
+        'is_required' => 'boolean',
     ];
 
     public function trainingAssignment()

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateTrainingAssignmentRequest;
 use App\Http\Resources\TrainingAssignmentResource;
 use App\Models\TrainingAssignment;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class TrainingAssignmentController extends Controller
@@ -40,7 +41,34 @@ class TrainingAssignmentController extends Controller
 
     public function update(UpdateTrainingAssignmentRequest $request, TrainingAssignment $trainingAssignment)
     {
-        $trainingAssignment->update($request->validated());
+        $data = $request->validated();
+        if (array_key_exists('academic_supervisor_id', $data)) {
+            $this->ensureSupervisorMatchesAssignmentDepartment($data['academic_supervisor_id'], $trainingAssignment);
+        }
+
+        $trainingAssignment->update($data);
         return new TrainingAssignmentResource($trainingAssignment);
+    }
+
+    private function ensureSupervisorMatchesAssignmentDepartment(?int $supervisorId, TrainingAssignment $assignment): void
+    {
+        if (! $supervisorId) {
+            return;
+        }
+
+        $supervisor = User::with('role')->findOrFail($supervisorId);
+        abort_unless($supervisor->role?->name === 'academic_supervisor', 422, 'المستخدم المحدد ليس مشرفاً أكاديمياً.');
+
+        $assignment->loadMissing(['enrollment.user', 'enrollment.section.course']);
+        $studentDepartmentId = $assignment->enrollment?->user?->department_id;
+        $courseDepartmentId = $assignment->enrollment?->section?->course?->department_id;
+
+        if ($supervisor->department_id && ($studentDepartmentId || $courseDepartmentId)) {
+            abort_unless(
+                (int) $supervisor->department_id === (int) ($studentDepartmentId ?: $courseDepartmentId),
+                422,
+                'قسم المشرف الأكاديمي لا يطابق قسم الطالب أو المساق.'
+            );
+        }
     }
 }

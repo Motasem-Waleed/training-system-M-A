@@ -191,6 +191,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/students', [SupervisorWorkspaceController::class, 'students']);
         Route::get('/sections', [SupervisorWorkspaceController::class, 'sections']);
         Route::get('/students/{studentId}/overview', [SupervisorWorkspaceController::class, 'studentOverview']);
+        Route::patch('/students/{studentId}/academic-status', [SupervisorWorkspaceController::class, 'updateStudentAcademicStatus']);
+        Route::get('/students/{studentId}/academic-status-history', [SupervisorWorkspaceController::class, 'studentAcademicStatusHistory']);
         Route::get('/students/{studentId}/attendance', [SupervisorWorkspaceController::class, 'studentAttendance']);
         Route::post('/students/{studentId}/attendance-comment', [SupervisorWorkspaceController::class, 'attendanceComment']);
         Route::post('/students/{studentId}/attendance-alert', [SupervisorWorkspaceController::class, 'attendanceAlert']);

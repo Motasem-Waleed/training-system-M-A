@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('users', 'directorate')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->enum('directorate', ['وسط', 'شمال', 'جنوب', 'يطا'])
                 ->nullable()
@@ -23,6 +27,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (! Schema::hasColumn('users', 'directorate')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn('directorate');
         });

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../../../../services/api";
 
-export default function OverviewTab({ studentId, student, onRefresh }) {
+export default function OverviewTab({ studentId, student, onOpenTab }) {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -9,7 +9,7 @@ export default function OverviewTab({ studentId, student, onRefresh }) {
     setLoading(true);
     try {
       const res = await apiClient.get(`/supervisor/students/${studentId}/overview`);
-      setOverview(res.data);
+      setOverview(res.data?.data || res.data);
     } catch {
       setOverview(getDefaultOverview());
     } finally {
@@ -31,24 +31,28 @@ export default function OverviewTab({ studentId, student, onRefresh }) {
   const handleQuickAction = async (action) => {
     switch (action) {
       case "message_student":
-        alert("سيتم فتح نافذة الرسائل للطالب");
+        onOpenTab?.("communication");
         break;
       case "message_mentor":
-        alert("سيتم فتح نافذة الرسائل للمشرف الميداني");
+        onOpenTab?.("communication");
         break;
       case "schedule_visit":
-        alert("سيتم فتح نموذج جدولة زيارة");
+        onOpenTab?.("field-visits");
         break;
       case "add_task":
-        alert("سيتم فتح نموذج إضافة مهمة");
+        onOpenTab?.("tasks");
         break;
       case "open_evaluation":
-        alert("سيتم فتح نموذج التقييم الأكاديمي");
+        onOpenTab?.("evaluations");
         break;
       case "escalate":
         if (window.confirm("هل تريد تصعيد حالة الطالب للمنسق الأكاديمي؟")) {
           try {
-            await apiClient.post(`/supervisor/students/${studentId}/escalate`);
+            await apiClient.post(`/supervisor/students/${studentId}/escalate`, {
+              target: "coordinator",
+              reason: "general",
+              details: "تصعيد عام لحالة الطالب من لوحة المشرف الأكاديمي.",
+            });
             alert("تم تصعيد الحالة بنجاح");
           } catch {
             alert("فشل تصعيد الحالة");

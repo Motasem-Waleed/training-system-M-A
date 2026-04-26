@@ -14,7 +14,15 @@ export default function TaskSubmissionsTab({ studentId }) {
     setLoading(true);
     try {
       const res = await apiClient.get(`/supervisor/students/${studentId}/task-submissions`, { params: { per_page: 200 } });
-      setSubmissions(Array.isArray(res.data) ? res.data : res.data?.data || []);
+      const payload = res.data;
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.data)
+            ? payload.data.data
+            : [];
+      setSubmissions(rows.map(normalizeSubmission));
     } catch {
       setError("فشل تحميل الحلول");
     } finally {
@@ -29,7 +37,7 @@ export default function TaskSubmissionsTab({ studentId }) {
     try {
       await apiClient.post(`/task-submissions/${submissionId}/grade`, {
         score: Number(gradeValue),
-        notes: gradeNote || null,
+        feedback: gradeNote || null,
       });
       setGradingId(null);
       setGradeValue("");
@@ -58,9 +66,10 @@ export default function TaskSubmissionsTab({ studentId }) {
     resubmit: { label: "إعادة تسليم", color: "#fd7e14", bg: "#fff3e0" },
   };
 
-  const filtered = filterStatus ? submissions.filter((s) => s.status === filterStatus) : submissions;
-  const notSubmitted = submissions.filter((s) => s.status === "not_submitted").length;
-  const lateSubmissions = submissions.filter((s) => s.is_late).length;
+  const rows = Array.isArray(submissions) ? submissions : [];
+  const filtered = filterStatus ? rows.filter((s) => s.status === filterStatus) : rows;
+  const notSubmitted = rows.filter((s) => s.status === "not_submitted").length;
+  const lateSubmissions = rows.filter((s) => s.is_late).length;
 
   if (loading) return <div style={{ textAlign: "center", padding: "40px" }}>⏳ جاري التحميل...</div>;
   if (error) return <div style={{ color: "#dc3545", padding: "20px" }}>⚠️ {error}</div>;
@@ -70,7 +79,7 @@ export default function TaskSubmissionsTab({ studentId }) {
       {/* Summary */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginBottom: "16px" }}>
         <div style={{ padding: "12px", background: "#e3f2fd", borderRadius: "8px", textAlign: "center" }}>
-          <div style={{ fontSize: "1.2rem", fontWeight: "700", color: "#0d6efd" }}>{submissions.length}</div>
+          <div style={{ fontSize: "1.2rem", fontWeight: "700", color: "#0d6efd" }}>{rows.length}</div>
           <div style={{ fontSize: "0.75rem", color: "#666" }}>إجمالي</div>
         </div>
         <div style={{ padding: "12px", background: "#ffebee", borderRadius: "8px", textAlign: "center" }}>
@@ -148,4 +157,30 @@ export default function TaskSubmissionsTab({ studentId }) {
       )}
     </div>
   );
+}
+
+function normalizeSubmission(submission) {
+  const task = submission.task || {};
+  const submittedAt = submission.submitted_at || null;
+  const dueDate = task.due_date || null;
+  const reviewStatus = submission.review_status || (submission.score != null ? "graded" : "submitted");
+  const status = submission.needs_resubmission
+    ? "resubmit"
+    : reviewStatus === "graded"
+      ? "graded"
+      : reviewStatus === "under_review"
+        ? "under_review"
+        : submittedAt
+          ? "submitted"
+          : "not_submitted";
+
+  return {
+    ...submission,
+    status,
+    task_title: submission.task_title || task.title,
+    task_id: submission.task_id || task.id,
+    student_notes: submission.student_notes || submission.notes,
+    attachment_path: submission.attachment_path || submission.file_path,
+    is_late: Boolean(submittedAt && dueDate && new Date(submittedAt) > new Date(dueDate)),
+  };
 }

@@ -12,9 +12,6 @@ const REASONS = [
 
 const TARGETS = [
   { value: "student", label: "الطالب", icon: "🎓" },
-  { value: "mentor", label: "المشرف الميداني", icon: "👨‍🏫" },
-  { value: "site_manager", label: "مدير الجهة", icon: "🏢" },
-  { value: "coordinator", label: "المنسق", icon: "📋" },
 ];
 
 export default function CommunicationTab({ studentId }) {
@@ -30,7 +27,15 @@ export default function CommunicationTab({ studentId }) {
     setLoading(true);
     try {
       const res = await apiClient.get(`/supervisor/students/${studentId}/messages`, { params: { per_page: 200 } });
-      setMessages(Array.isArray(res.data) ? res.data : res.data?.data || []);
+      const payload = res.data;
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.data)
+            ? payload.data.data
+            : [];
+      setMessages(rows.map(normalizeMessage));
     } catch {
       setError("فشل تحميل الرسائل");
     } finally {
@@ -45,7 +50,11 @@ export default function CommunicationTab({ studentId }) {
     if (!form.content.trim()) return;
     setSending(true);
     try {
-      await apiClient.post(`/supervisor/students/${studentId}/messages`, form);
+      await apiClient.post(`/supervisor/students/${studentId}/messages`, {
+        target_user_id: Number(studentId),
+        content: form.content,
+        related_to: form.reason,
+      });
       setForm({ target: "student", reason: "general", content: "" });
       setShowForm(false);
       loadMessages();
@@ -56,7 +65,8 @@ export default function CommunicationTab({ studentId }) {
     }
   };
 
-  const filtered = filterTarget ? messages.filter((m) => m.target === filterTarget || m.direction === filterTarget) : messages;
+  const rows = Array.isArray(messages) ? messages : [];
+  const filtered = filterTarget ? rows.filter((m) => m.target === filterTarget || m.direction === filterTarget) : rows;
 
   const getReasonLabel = (reason) => REASONS.find((r) => r.value === reason)?.label || reason;
   const getReasonIcon = (reason) => REASONS.find((r) => r.value === reason)?.icon || "💬";
@@ -146,4 +156,14 @@ export default function CommunicationTab({ studentId }) {
       )}
     </div>
   );
+}
+
+function normalizeMessage(message) {
+  return {
+    ...message,
+    content: message.content || message.message,
+    sender_role: message.sender_role || message.sender?.role?.name,
+    target: message.target || "student",
+    reason: message.reason || "general",
+  };
 }

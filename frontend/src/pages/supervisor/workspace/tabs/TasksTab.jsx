@@ -3,14 +3,24 @@ import { apiClient, itemsFromPagedResponse, unwrapSupervisorList } from "../../.
 
 const TASK_TYPES_API = [
   { value: "general", label: "عام / واجب" },
-  { value: "teaching", label: "تدريس / خطة درس" },
-  { value: "portfolio", label: "ملف إنجاز" },
-  { value: "reflection", label: "تأمل مهني" },
-  { value: "report", label: "تقرير" },
-  { value: "case_study", label: "دراسة حالة / بحث" },
+  { value: "weekly_report", label: "تقرير أسبوعي" },
+  { value: "daily_log", label: "سجل يومي" },
+  { value: "portfolio_item", label: "عنصر ملف الإنجاز" },
+  { value: "lesson_critique", label: "نقد درس" },
+  { value: "teaching_artifact", label: "نتاج/أثر تدريسي" },
   { value: "visit_preparation", label: "تحضير زيارة" },
-  { value: "counseling", label: "إرشاد" },
+  { value: "reflection", label: "تأمل مهني" },
+  { value: "counseling_plan", label: "خطة إرشادية" },
+  { value: "individual_session", label: "جلسة فردية" },
+  { value: "group_guidance", label: "إرشاد جمعي" },
+  { value: "case_study", label: "دراسة حالة" },
+  { value: "behavior_plan", label: "خطة سلوكية" },
+  { value: "form_submission", label: "تسليم نموذج" },
 ];
+const TASK_TYPE_LABELS = TASK_TYPES_API.reduce((acc, item) => {
+  acc[item.value] = item.label;
+  return acc;
+}, {});
 
 const initialForm = {
   title: "",
@@ -85,6 +95,24 @@ export default function TasksTab({ studentId }) {
     });
   };
 
+  const getAudienceLabel = (task) => {
+    const ids = Array.isArray(task.target_ids) ? task.target_ids.map(Number) : [];
+    if (task.target_type === "section") {
+      const section = sections.find((s) => Number(s.id) === Number(ids[0]));
+      return section ? `الشعبة: ${section.section_name || section.name}` : "الشعبة كاملة";
+    }
+    if (task.target_type === "group") {
+      if (ids.length === 0) return "مجموعة طلاب";
+      const names = supervisedStudents
+        .filter((s) => ids.includes(Number(s.student_id ?? s.id)))
+        .map((s) => s.name)
+        .slice(0, 2);
+      const rest = ids.length - names.length;
+      return rest > 0 ? `طلاب محددين: ${names.join("، ")} +${rest}` : `طلاب محددين: ${names.join("، ")}`;
+    }
+    return "طالب واحد";
+  };
+
   const buildCreatePayload = () => {
     const due = form.due_date;
     const scope = form.assignment_scope;
@@ -113,6 +141,21 @@ export default function TasksTab({ studentId }) {
         due_date: due,
         target_type: "group",
         target_ids: ids,
+        task_type: form.task_type,
+        grading_weight: form.grading_weight === "" ? null : Number(form.grading_weight),
+        status: "pending",
+      };
+    }
+    if (scope === "student") {
+      const onlyId = [...selectedStudentIds][0];
+      if (!onlyId) throw new Error("اختر طالباً");
+      return {
+        title: form.title.trim(),
+        description: form.description || null,
+        instructions: form.instructions || null,
+        due_date: due,
+        target_type: "student",
+        target_ids: [Number(onlyId)],
         task_type: form.task_type,
         grading_weight: form.grading_weight === "" ? null : Number(form.grading_weight),
         status: "pending",
@@ -232,9 +275,33 @@ export default function TasksTab({ studentId }) {
                   onChange={(e) => setForm((p) => ({ ...p, assignment_scope: e.target.value }))}
                 >
                   <option value="current_student">الطالب الحالي فقط</option>
+                  <option value="student">طالب واحد (من القائمة)</option>
                   <option value="multiple_students">عدة طلاب (اختيار من القائمة)</option>
                   <option value="section">شعبة كاملة</option>
                 </select>
+
+                {form.assignment_scope === "student" && (
+                  <div style={{ marginTop: "12px" }}>
+                    <label className="form-label-custom">الطالب</label>
+                    <select
+                      className="form-select-custom"
+                      style={{ width: "100%", marginTop: "6px" }}
+                      value={[...selectedStudentIds][0] || ""}
+                      onChange={(e) => setSelectedStudentIds(new Set([Number(e.target.value)]))}
+                      required
+                    >
+                      <option value="">— اختر —</option>
+                      {supervisedStudents.map((row) => {
+                        const id = Number(row.student_id ?? row.id);
+                        return (
+                          <option key={id} value={id}>
+                            {row.name} — {row.university_id}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
 
                 {form.assignment_scope === "section" && (
                   <div style={{ marginTop: "12px" }}>
@@ -409,7 +476,7 @@ export default function TasksTab({ studentId }) {
                   <div>
                     <h5 style={{ margin: "0 0 4px" }}>{task.title}</h5>
                     <span style={{ fontSize: "0.78rem", color: "#666" }}>
-                      {task.task_type} | التسليم: {task.due_date || "—"}
+                      {TASK_TYPE_LABELS[task.task_type] || task.task_type} | التسليم: {task.due_date || "—"}
                       {isOverdue && (
                         <span style={{ color: "#dc3545", fontWeight: "600", marginRight: "8px" }}> (متأخرة!)</span>
                       )}
@@ -431,6 +498,9 @@ export default function TasksTab({ studentId }) {
                 {task.description && (
                   <p style={{ margin: "0 0 8px", fontSize: "0.85rem", color: "#555" }}>{task.description}</p>
                 )}
+                <div style={{ fontSize: "0.8rem", color: "#495057", marginBottom: "8px" }}>
+                  👥 <strong>المستلم:</strong> {getAudienceLabel(task)}
+                </div>
                 {task.grading_weight != null && (
                   <span
                     style={{

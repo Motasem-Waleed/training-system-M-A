@@ -63,10 +63,45 @@ const MiniBadge = ({ status, label }) => {
   );
 };
 
+const ACADEMIC_STATUS_COLORS = {
+  not_started: "#6c757d",
+  in_training: "#0d6efd",
+  needs_follow_up: "#fd7e14",
+  completed: "#28a745",
+  late: "#dc3545",
+  withdrawn: "#6f42c1",
+};
+
+const AcademicStatusBadge = ({ status, label }) => {
+  const color = ACADEMIC_STATUS_COLORS[status] || "#6c757d";
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "4px 10px",
+        borderRadius: "16px",
+        fontSize: "0.74rem",
+        fontWeight: "700",
+        color,
+        backgroundColor: color + "15",
+        border: `1px solid ${color}30`,
+      }}
+    >
+      {label || "لم يباشر"}
+    </span>
+  );
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("ar", { dateStyle: "short", timeStyle: "short" });
+};
+
 export default function StudentsTable({ students, searchTerm, filterSection, filterStatus, onSelectStudent }) {
-  const normalized = useMemo(
-    () =>
-      students.map((s) => {
+  const normalized = useMemo(() => {
+    const rows = students.map((s) => {
         const id = s.student_id ?? s.id;
         const rateRaw = s.attendance_status_summary;
         const attendance_rate =
@@ -92,9 +127,28 @@ export default function StudentsTable({ students, searchTerm, filterSection, fil
           evaluation_status:
             s.evaluation_status ?? (s.academic_evaluation_status === "final" ? "graded" : "pending"),
         };
-      }),
-    [students]
-  );
+      });
+
+    // API may return repeated rows for the same student (multiple assignments);
+    // keep one row per student to avoid duplicate table keys/rendering noise.
+    const byStudentId = new Map();
+    const severity = { healthy: 0, warning: 1, critical: 2 };
+    for (const row of rows) {
+      const key = String(row.id);
+      const current = byStudentId.get(key);
+      if (!current) {
+        byStudentId.set(key, row);
+        continue;
+      }
+      const currentLevel = severity[current.health_status] ?? 0;
+      const nextLevel = severity[row.health_status] ?? 0;
+      if (nextLevel > currentLevel) {
+        byStudentId.set(key, row);
+      }
+    }
+
+    return Array.from(byStudentId.values());
+  }, [students]);
 
   const filtered = useMemo(() => {
     let list = [...normalized];
@@ -143,18 +197,18 @@ export default function StudentsTable({ students, searchTerm, filterSection, fil
 
   return (
     <div style={{ overflowX: "auto" }}>
-      <table className="data-table" style={{ minWidth: "1100px" }}>
+      <table className="data-table" style={{ minWidth: "1050px" }}>
         <thead>
           <tr>
             <th>الطالب</th>
             <th>الرقم الجامعي</th>
+            <th>حالة الإشراف</th>
+            <th>آخر تحديث</th>
+            <th>ملاحظات</th>
             <th>الشعبة</th>
             <th>جهة التدريب</th>
             <th>المشرف الميداني</th>
-            <th>الحضور</th>
-            <th>السجلات</th>
             <th>الإنجاز</th>
-            <th>المهام</th>
             <th>التقييم</th>
             <th>الحالة</th>
             <th></th>
@@ -168,32 +222,23 @@ export default function StudentsTable({ students, searchTerm, filterSection, fil
                 <div style={{ fontSize: "0.75rem", color: "#999" }}>{s.specialization || ""}</div>
               </td>
               <td>{s.university_id || "—"}</td>
+              <td><AcademicStatusBadge status={s.academic_status} label={s.academic_status_label} /></td>
+              <td>
+                <div style={{ fontSize: "0.78rem" }}>{formatDateTime(s.academic_status_updated_at)}</div>
+                {s.academic_status_updated_by && (
+                  <div style={{ fontSize: "0.72rem", color: "#888" }}>{s.academic_status_updated_by}</div>
+                )}
+              </td>
+              <td style={{ maxWidth: "180px", color: "#666", fontSize: "0.78rem" }}>
+                {s.academic_status_note || "—"}
+              </td>
               <td>{s.section_name || "—"}</td>
               <td>{s.site_name || "—"}</td>
               <td>{s.mentor_name || "—"}</td>
               <td>
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                  <span style={{ fontSize: "0.85rem", fontWeight: "600", color: s.attendance_rate >= 80 ? "#28a745" : s.attendance_rate >= 60 ? "#ffc107" : "#dc3545" }}>
-                    {s.attendance_rate != null ? `${s.attendance_rate}%` : "—"}
-                  </span>
-                </div>
-              </td>
-              <td>
-                <MiniBadge
-                  status={s.logs_status || "none"}
-                  label={s.logs_status === "good" ? "مكتمل" : s.logs_status === "needs_review" ? "بانتظار" : s.logs_status === "missing" ? "ناقص" : "—"}
-                />
-              </td>
-              <td>
                 <MiniBadge
                   status={s.portfolio_status || "none"}
                   label={s.portfolio_status === "complete" ? "مكتمل" : s.portfolio_status === "incomplete" ? "ناقص" : "—"}
-                />
-              </td>
-              <td>
-                <MiniBadge
-                  status={s.tasks_status || "none"}
-                  label={s.tasks_status === "complete" ? "مكتمل" : s.tasks_status === "pending" ? "بانتظار" : "—"}
                 />
               </td>
               <td>

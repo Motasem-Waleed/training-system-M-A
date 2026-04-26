@@ -11,10 +11,12 @@ class SupervisorStudentResource extends JsonResource
     {
         return [
             'student_id' => $this['student_id'] ?? null,
+            'training_assignment_id' => $this['training_assignment_id'] ?? null,
             'name' => $this['name'] ?? null,
             'university_id' => $this['university_id'] ?? null,
             'department' => $this['department'] ?? null,
             'specialization' => $this['specialization'] ?? null,
+            'section_id' => $this['section_id'] ?? null,
             'section' => $this['section'] ?? null,
             'course' => $this['course'] ?? null,
             'training_site' => $this['training_site'] ?? null,
@@ -27,6 +29,11 @@ class SupervisorStudentResource extends JsonResource
             'risk_level' => $this['risk_level'] ?? 'low',
             'last_activity_at' => $this['last_activity_at'] ?? null,
             'training_track' => $this['training_track'] ?? null,
+            'academic_status' => $this['academic_status'] ?? 'not_started',
+            'academic_status_label' => $this['academic_status_label'] ?? null,
+            'academic_status_note' => $this['academic_status_note'] ?? null,
+            'academic_status_updated_at' => $this['academic_status_updated_at'] ?? null,
+            'academic_status_updated_by' => $this['academic_status_updated_by'] ?? null,
         ];
     }
 }

@@ -15,6 +15,8 @@ const academicEvalInitial = {
 export default function EvaluationsTab({ studentId }) {
   const [fieldEvals, setFieldEvals] = useState([]);
   const [academicEval, setAcademicEval] = useState(null);
+  const [rubricTemplate, setRubricTemplate] = useState(null);
+  const [criteriaValues, setCriteriaValues] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeSection, setActiveSection] = useState("field");
@@ -29,19 +31,39 @@ export default function EvaluationsTab({ studentId }) {
         apiClient.get(`/supervisor/students/${studentId}/field-evaluations`).then((r) => r.data).catch(() => []),
         apiClient.get(`/supervisor/students/${studentId}/academic-evaluation`).then((r) => r.data).catch(() => null),
       ]);
-      setFieldEvals(Array.isArray(fieldRes) ? fieldRes : fieldRes?.data || []);
-      setAcademicEval(acadRes);
-      if (acadRes) {
+      const fieldPayload = Array.isArray(fieldRes)
+        ? fieldRes
+        : Array.isArray(fieldRes?.data?.evaluations)
+          ? fieldRes.data.evaluations
+          : [];
+      const acadPayload = acadRes?.data || {};
+      const evaluation = acadPayload?.evaluation || null;
+      const template = acadPayload?.rubric_template || null;
+
+      setFieldEvals(fieldPayload);
+      setAcademicEval(evaluation);
+      setRubricTemplate(template);
+      if (evaluation) {
         setForm({
-          field_performance: acadRes.field_performance || "",
-          portfolio_score: acadRes.portfolio_score || "",
-          attendance_score: acadRes.attendance_score || "",
-          daily_log_score: acadRes.daily_log_score || "",
-          theory_score: acadRes.theory_score || "",
-          tasks_score: acadRes.tasks_score || "",
-          general_notes: acadRes.general_notes || "",
-          is_final: acadRes.is_final || false,
+          field_performance: scoreFromCriterion(evaluation.criteria_scores, "field_performance"),
+          portfolio_score: scoreFromCriterion(evaluation.criteria_scores, "portfolio_score"),
+          attendance_score: scoreFromCriterion(evaluation.criteria_scores, "attendance_score"),
+          daily_log_score: scoreFromCriterion(evaluation.criteria_scores, "daily_log_score"),
+          theory_score: scoreFromCriterion(evaluation.criteria_scores, "theory_score"),
+          tasks_score: scoreFromCriterion(evaluation.criteria_scores, "tasks_score"),
+          general_notes: evaluation.notes || "",
+          is_final: Boolean(evaluation.is_final),
         });
+        const dynamicScores = {};
+        (evaluation.criteria_scores || []).forEach((row) => {
+          if (row?.criterion && row?.criterion.startsWith("template:")) {
+            dynamicScores[row.criterion] = row.score ?? "";
+          }
+        });
+        setCriteriaValues(dynamicScores);
+      } else {
+        setForm(academicEvalInitial);
+        setCriteriaValues({});
       }
     } catch {
       setError("فشل تحميل التقييمات");
@@ -56,16 +78,35 @@ export default function EvaluationsTab({ studentId }) {
     e.preventDefault();
     const requiredFields = ["field_performance", "portfolio_score", "attendance_score", "daily_log_score"];
     const missing = requiredFields.filter((f) => !form[f]);
+    const requiredDynamicMissing = (rubricTemplate?.items || [])
+      .filter((item) => item.field_type === "score" && item.is_required)
+      .filter((item) => !criteriaValues[`template:${item.id}`]);
     if (missing.length > 0) {
       alert(`يرجى تعبئة الحقول الأساسية: ${missing.join("، ")}`);
       return;
     }
+    if (requiredDynamicMissing.length > 0) {
+      alert("يرجى تعبئة جميع بنود التقييم الإلزامية الخاصة بالقسم.");
+      return;
+    }
+    if (form.is_final && !String(form.general_notes || "").trim()) {
+      alert("يرجى إدخال الملاحظات العامة قبل اعتماد التقييم النهائي.");
+      return;
+    }
     setSaving(true);
     try {
-      if (academicEval?.id) {
-        await apiClient.put(`/evaluations/${academicEval.id}`, { ...form, student_id: studentId, type: "academic" });
+      const payload = {
+        criteria_scores: buildCriteriaScores(form, rubricTemplate, criteriaValues),
+        notes: form.general_notes || null,
+        strengths: form.general_notes || null,
+        areas_for_improvement: form.general_notes || null,
+        recommendation: form.is_final ? "final" : "draft",
+        total_score: calculateTotalScore(form, rubricTemplate, criteriaValues),
+      };
+      if (form.is_final) {
+        await apiClient.post(`/supervisor/students/${studentId}/academic-evaluation-submit`, payload);
       } else {
-        await apiClient.post("/evaluations", { ...form, student_id: studentId, type: "academic" });
+        await apiClient.post(`/supervisor/students/${studentId}/academic-evaluation-draft`, payload);
       }
       setShowAcademicForm(false);
       loadEvals();
@@ -79,7 +120,11 @@ export default function EvaluationsTab({ studentId }) {
   const completeness = () => {
     const fields = ["field_performance", "portfolio_score", "attendance_score", "daily_log_score", "theory_score", "tasks_score"];
     const filled = fields.filter((f) => form[f]).length;
-    return Math.round((filled / fields.length) * 100);
+    const dynamicScoreItems = (rubricTemplate?.items || []).filter((item) => item.field_type === "score");
+    const dynamicFilled = dynamicScoreItems.filter((item) => criteriaValues[`template:${item.id}`]).length;
+    const total = fields.length + dynamicScoreItems.length;
+    if (!total) return 0;
+    return Math.round(((filled + dynamicFilled) / total) * 100);
   };
 
   if (loading) return <div style={{ textAlign: "center", padding: "40px" }}>⏳ جاري التحميل...</div>;
@@ -166,14 +211,24 @@ export default function EvaluationsTab({ studentId }) {
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
-                  <EvalItem label="الأداء الميداني" value={academicEval.field_performance} />
-                  <EvalItem label="ملف الإنجاز" value={academicEval.portfolio_score} />
-                  <EvalItem label="الحضور" value={academicEval.attendance_score} />
-                  <EvalItem label="السجل اليومي" value={academicEval.daily_log_score} />
-                  <EvalItem label="المتطلبات النظرية" value={academicEval.theory_score} />
-                  <EvalItem label="المهام" value={academicEval.tasks_score} />
+                  <EvalItem label="الأداء الميداني" value={scoreFromCriterion(academicEval.criteria_scores, "field_performance")} />
+                  <EvalItem label="ملف الإنجاز" value={scoreFromCriterion(academicEval.criteria_scores, "portfolio_score")} />
+                  <EvalItem label="الحضور" value={scoreFromCriterion(academicEval.criteria_scores, "attendance_score")} />
+                  <EvalItem label="السجل اليومي" value={scoreFromCriterion(academicEval.criteria_scores, "daily_log_score")} />
+                  <EvalItem label="المتطلبات النظرية" value={scoreFromCriterion(academicEval.criteria_scores, "theory_score")} />
+                  <EvalItem label="المهام" value={scoreFromCriterion(academicEval.criteria_scores, "tasks_score")} />
                 </div>
-                {academicEval.general_notes && <p style={{ margin: "12px 0 0", fontSize: "0.85rem", color: "#555" }}>ملاحظات: {academicEval.general_notes}</p>}
+                {!!rubricTemplate?.items?.length && (
+                  <div style={{ marginTop: "14px", paddingTop: "10px", borderTop: "1px solid #e9ecef" }}>
+                    <h6 style={{ margin: "0 0 8px" }}>بنود القسم</h6>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "8px" }}>
+                      {rubricTemplate.items.filter((item) => item.field_type === "score").map((item) => (
+                        <EvalItem key={item.id} label={item.title} value={scoreFromCriterion(academicEval.criteria_scores, `template:${item.id}`)} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {academicEval.notes && <p style={{ margin: "12px 0 0", fontSize: "0.85rem", color: "#555" }}>ملاحظات: {academicEval.notes}</p>}
               </div>
             </div>
           ) : (
@@ -221,6 +276,30 @@ export default function EvaluationsTab({ studentId }) {
                     <label className="form-label-custom">ملاحظات عامة</label>
                     <textarea id="eval-general-notes" name="general_notes" className="form-textarea-custom" rows={3} value={form.general_notes} onChange={(e) => setForm((p) => ({ ...p, general_notes: e.target.value }))} />
                   </div>
+                  {!!rubricTemplate?.items?.length && (
+                    <div style={{ gridColumn: "1 / -1", marginTop: "4px", borderTop: "1px solid #e9ecef", paddingTop: "12px" }}>
+                      <h5 style={{ margin: "0 0 10px" }}>بنود التقييم الخاصة بالقسم</h5>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                        {rubricTemplate.items.filter((item) => item.field_type === "score").map((item) => (
+                          <div key={item.id}>
+                            <label className="form-label-custom">
+                              {item.title}{item.is_required ? " *" : ""}
+                              <small> (من {item.max_score || 100})</small>
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max={item.max_score || 100}
+                              className="form-input-custom"
+                              value={criteriaValues[`template:${item.id}`] ?? ""}
+                              onChange={(e) => setCriteriaValues((prev) => ({ ...prev, [`template:${item.id}`]: e.target.value }))}
+                              required={Boolean(item.is_required)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                       <input id="eval-is-final" name="is_final" type="checkbox" checked={form.is_final} onChange={(e) => setForm((p) => ({ ...p, is_final: e.target.checked }))} />
@@ -244,6 +323,40 @@ export default function EvaluationsTab({ studentId }) {
       )}
     </div>
   );
+}
+
+function scoreFromCriterion(criteriaScores, criterion) {
+  const row = (criteriaScores || []).find((item) => item?.criterion === criterion);
+  return row?.score ?? "";
+}
+
+function buildCriteriaScores(coreForm, rubricTemplate, criteriaValues) {
+  const coreRows = [
+    { criterion: "field_performance", score: Number(coreForm.field_performance || 0), max_score: 100, is_required: true },
+    { criterion: "portfolio_score", score: Number(coreForm.portfolio_score || 0), max_score: 100, is_required: true },
+    { criterion: "attendance_score", score: Number(coreForm.attendance_score || 0), max_score: 100, is_required: true },
+    { criterion: "daily_log_score", score: Number(coreForm.daily_log_score || 0), max_score: 100, is_required: true },
+    { criterion: "theory_score", score: Number(coreForm.theory_score || 0), max_score: 100, is_required: false },
+    { criterion: "tasks_score", score: Number(coreForm.tasks_score || 0), max_score: 100, is_required: false },
+  ];
+
+  const dynamicRows = (rubricTemplate?.items || [])
+    .filter((item) => item.field_type === "score")
+    .map((item) => ({
+      criterion: `template:${item.id}`,
+      score: Number(criteriaValues[`template:${item.id}`] || 0),
+      max_score: Number(item.max_score || 100),
+      is_required: Boolean(item.is_required),
+    }));
+
+  return [...coreRows, ...dynamicRows];
+}
+
+function calculateTotalScore(coreForm, rubricTemplate, criteriaValues) {
+  const rows = buildCriteriaScores(coreForm, rubricTemplate, criteriaValues);
+  if (!rows.length) return 0;
+  const total = rows.reduce((sum, row) => sum + Number(row.score || 0), 0);
+  return Math.round((total / rows.length) * 100) / 100;
 }
 
 function EvalItem({ label, value }) {

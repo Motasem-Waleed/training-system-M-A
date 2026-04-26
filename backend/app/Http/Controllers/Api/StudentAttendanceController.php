@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\PortfolioEntry;
 use App\Models\StudentAttendance;
 use App\Models\StudentPortfolio;
+use App\Models\TrainingAssignment;
 use App\Models\TrainingRequestStudent;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -360,10 +362,55 @@ class StudentAttendanceController extends Controller
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
+
+        $syncedAttendance = $this->syncApprovedAttendanceToAcademicAttendance($attendance->fresh(), $user->id);
         
         return response()->json([
             'message' => 'تم اعتماد سجل الحضور بنجاح.',
-            'data' => $attendance->fresh()
+            'data' => $attendance->fresh(),
+            'academic_attendance_id' => $syncedAttendance?->id,
         ]);
+    }
+
+    private function syncApprovedAttendanceToAcademicAttendance(StudentAttendance $studentAttendance, int $approvedBy): ?Attendance
+    {
+        $assignment = null;
+
+        if ($studentAttendance->training_request_student_id) {
+            $assignment = TrainingAssignment::query()
+                ->where('training_request_student_id', $studentAttendance->training_request_student_id)
+                ->latest('id')
+                ->first();
+        }
+
+        if (! $assignment) {
+            $assignment = TrainingAssignment::query()
+                ->whereHas('enrollment', fn ($query) => $query->where('user_id', $studentAttendance->user_id))
+                ->latest('id')
+                ->first();
+        }
+
+        if (! $assignment) {
+            return null;
+        }
+
+        return Attendance::updateOrCreate(
+            [
+                'training_assignment_id' => $assignment->id,
+                'user_id' => $studentAttendance->user_id,
+                'date' => $studentAttendance->date,
+            ],
+            [
+                'check_in' => $studentAttendance->check_in,
+                'check_out' => $studentAttendance->check_out,
+                'notes' => $studentAttendance->notes,
+                'status' => in_array($studentAttendance->status, ['present', 'absent', 'late'], true)
+                    ? $studentAttendance->status
+                    : 'present',
+                'approved_by' => $approvedBy,
+                'approved_at' => $studentAttendance->approved_at ?? now(),
+                'visible_to_academic' => true,
+            ]
+        );
     }
 }

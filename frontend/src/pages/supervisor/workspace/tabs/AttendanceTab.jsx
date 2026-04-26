@@ -14,8 +14,16 @@ export default function AttendanceTab({ studentId }) {
     setError("");
     try {
       const res = await apiClient.get(`/supervisor/students/${studentId}/attendance`, { params: { per_page: 200 } });
-      const data = res.data;
-      setAttendance(Array.isArray(data) ? data : data?.data || []);
+      const payload = res.data;
+      const data = payload?.data ?? payload;
+      const rows = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.records)
+          ? data.records
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
+      setAttendance(rows);
       setSummary(data?.summary || null);
     } catch {
       setError("فشل تحميل سجل الحضور");
@@ -31,9 +39,14 @@ export default function AttendanceTab({ studentId }) {
 
   const handleAddComment = async () => {
     if (!comment.trim() || !commentDate) return;
+    const record = attendance.find((row) => String(row.date || "").slice(0, 10) === commentDate);
+    if (!record?.id) {
+      alert("لا يوجد سجل حضور محفوظ لهذا التاريخ");
+      return;
+    }
     try {
       await apiClient.post(`/supervisor/students/${studentId}/attendance-comment`, {
-        date: commentDate,
+        attendance_id: record.id,
         comment: comment.trim(),
       });
       setComment("");
@@ -46,8 +59,17 @@ export default function AttendanceTab({ studentId }) {
 
   const handleAlertStudent = async () => {
     if (!window.confirm("هل تريد إرسال تنبيه للطالب بخصوص الحضور؟")) return;
+    const record = getAlertAttendanceRecord(attendance);
+    if (!record?.id) {
+      alert("لا يوجد سجل غياب أو تأخر يمكن إرسال تنبيه عليه");
+      return;
+    }
     try {
-      await apiClient.post(`/supervisor/students/${studentId}/attendance-alert`, { target: "student" });
+      await apiClient.post(`/supervisor/students/${studentId}/attendance-alert`, {
+        attendance_id: record.id,
+        target: "student",
+        message: "تنبيه بخصوص سجل الحضور، يرجى المتابعة مع المشرف الأكاديمي.",
+      });
       alert("تم إرسال التنبيه للطالب");
     } catch {
       alert("فشل إرسال التنبيه");
@@ -56,8 +78,17 @@ export default function AttendanceTab({ studentId }) {
 
   const handleAlertMentor = async () => {
     if (!window.confirm("هل تريد إرسال تنبيه للمشرف الميداني؟")) return;
+    const record = getAlertAttendanceRecord(attendance);
+    if (!record?.id) {
+      alert("لا يوجد سجل غياب أو تأخر يمكن إرسال تنبيه عليه");
+      return;
+    }
     try {
-      await apiClient.post(`/supervisor/students/${studentId}/attendance-alert`, { target: "mentor" });
+      await apiClient.post(`/supervisor/students/${studentId}/attendance-alert`, {
+        attendance_id: record.id,
+        target: "field_supervisor",
+        message: "تنبيه بخصوص حضور الطالب، يرجى متابعة الحالة ميدانياً.",
+      });
       alert("تم إرسال التنبيه للمشرف الميداني");
     } catch {
       alert("فشل إرسال التنبيه");
@@ -67,7 +98,11 @@ export default function AttendanceTab({ studentId }) {
   const handleEscalate = async () => {
     if (!window.confirm("هل تريد تصعيد حالة الحضور للمنسق الأكاديمي؟")) return;
     try {
-      await apiClient.post(`/supervisor/students/${studentId}/escalate`, { reason: "attendance" });
+      await apiClient.post(`/supervisor/students/${studentId}/escalate`, {
+        target: "coordinator",
+        reason: "attendance",
+        details: "تصعيد حالة الحضور للمتابعة من المنسق الأكاديمي.",
+      });
       alert("تم التصعيد بنجاح");
     } catch {
       alert("فشل التصعيد");
@@ -171,9 +206,9 @@ export default function AttendanceTab({ studentId }) {
                   <tr key={a.id || i}>
                     <td>{a.date || "—"}</td>
                     <td>{getStatusBadge(a.status)}</td>
-                    <td>{a.check_in_time || "—"}</td>
-                    <td style={{ fontSize: "0.85rem", color: "#666" }}>{a.mentor_note || "—"}</td>
-                    <td style={{ fontSize: "0.85rem", color: "#4361ee" }}>{a.supervisor_comment || "—"}</td>
+                    <td>{a.check_in_time || a.check_in || "—"}</td>
+                    <td style={{ fontSize: "0.85rem", color: "#666" }}>{a.mentor_note || a.notes || "—"}</td>
+                    <td style={{ fontSize: "0.85rem", color: "#4361ee" }}>{a.supervisor_comment || a.academic_note || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -183,6 +218,12 @@ export default function AttendanceTab({ studentId }) {
       )}
     </div>
   );
+}
+
+function getAlertAttendanceRecord(attendance) {
+  return [...attendance]
+    .filter((row) => ["absent", "late"].includes(row.status))
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))[0];
 }
 
 function SummaryCard({ label, value, color }) {

@@ -14,7 +14,15 @@ export default function DailyLogsTab({ studentId }) {
     setError("");
     try {
       const res = await apiClient.get(`/supervisor/students/${studentId}/daily-logs`, { params: { per_page: 200 } });
-      setLogs(Array.isArray(res.data) ? res.data : res.data?.data || []);
+      const payload = res.data;
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.logs)
+            ? payload.data.logs
+            : [];
+      setLogs(rows);
     } catch {
       setError("فشل تحميل السجلات اليومية");
     } finally {
@@ -27,9 +35,9 @@ export default function DailyLogsTab({ studentId }) {
   const handleAddComment = async (logId) => {
     if (!commentText.trim()) return;
     try {
-      await apiClient.post(`/supervisor/daily-logs/${logId}/review`, {
-        supervisor_comment: commentText.trim(),
-        status: "reviewed",
+      await apiClient.post(`/supervisor/students/${studentId}/daily-logs/${logId}/academic-review`, {
+        academic_note: commentText.trim(),
+        needs_discussion: false,
       });
       setCommentingLogId(null);
       setCommentText("");
@@ -42,9 +50,9 @@ export default function DailyLogsTab({ studentId }) {
   const handleSendNote = async (logId) => {
     if (!commentText.trim()) return;
     try {
-      await apiClient.post(`/supervisor/daily-logs/${logId}/review`, {
-        supervisor_comment: commentText.trim(),
-        status: "needs_edit",
+      await apiClient.post(`/supervisor/students/${studentId}/daily-logs/${logId}/academic-review`, {
+        academic_note: commentText.trim(),
+        needs_discussion: true,
       });
       setCommentingLogId(null);
       setCommentText("");
@@ -58,6 +66,8 @@ export default function DailyLogsTab({ studentId }) {
     new: { label: "جديد", color: "#17a2b8", bg: "#e3f2fd" },
     pending_review: { label: "قيد المراجعة", color: "#ffc107", bg: "#fff8e1" },
     reviewed: { label: "معتمد", color: "#28a745", bg: "#e8f5e9" },
+    approved: { label: "معتمد", color: "#28a745", bg: "#e8f5e9" },
+    under_review: { label: "قيد المراجعة", color: "#ffc107", bg: "#fff8e1" },
     needs_edit: { label: "يحتاج تعديل", color: "#dc3545", bg: "#ffebee" },
     draft: { label: "مسودة", color: "#6c757d", bg: "#f8f9fa" },
   };
@@ -154,7 +164,11 @@ export default function DailyLogsTab({ studentId }) {
                 )}
 
                 {/* Supervisor Comment Area */}
-                {commentingLogId === log.id ? (
+                {log.source === "daily_report" ? (
+                  <div style={{ background: "#e8f5e9", borderRadius: "6px", padding: "8px 12px", fontSize: "0.82rem", color: "#2e7d32" }}>
+                    هذا تقرير يومي راجعه المشرف الميداني ويظهر هنا للاطلاع الأكاديمي.
+                  </div>
+                ) : commentingLogId === log.id ? (
                   <div style={{ background: "#f8f9fa", borderRadius: "8px", padding: "12px" }}>
                     <textarea
                       id="daily-log-comment"

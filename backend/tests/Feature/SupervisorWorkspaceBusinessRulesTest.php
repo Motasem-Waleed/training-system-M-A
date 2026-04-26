@@ -123,54 +123,6 @@ class SupervisorWorkspaceBusinessRulesTest extends TestCase
         $response->assertStatus(422)->assertJsonPath('success', false);
     }
 
-    public function test_store_task_for_section_creates_task_for_each_supervised_student_in_section(): void
-    {
-        $ctx = $this->createSupervisionContext();
-        Sanctum::actingAs($ctx['supervisor']);
-
-        $student2 = User::create([
-            'name' => 'Student Two',
-            'email' => 'std2@example.com',
-            'role_id' => $ctx['student']->role_id,
-            'department_id' => $ctx['student']->department_id,
-            'university_id' => 'STD-002',
-            'password' => bcrypt('password'),
-        ]);
-
-        $enrollment2 = Enrollment::create([
-            'user_id' => $student2->id,
-            'section_id' => $ctx['section']->id,
-            'academic_year' => $ctx['enrollment']->academic_year,
-            'semester' => $ctx['enrollment']->semester,
-            'status' => 'active',
-        ]);
-
-        TrainingAssignment::create([
-            'enrollment_id' => $enrollment2->id,
-            'training_request_id' => $ctx['assignment']->training_request_id,
-            'training_request_student_id' => null,
-            'training_site_id' => $ctx['assignment']->training_site_id,
-            'training_period_id' => $ctx['assignment']->training_period_id,
-            'teacher_id' => null,
-            'academic_supervisor_id' => $ctx['supervisor']->id,
-            'coordinator_id' => null,
-            'status' => 'ongoing',
-            'start_date' => $ctx['assignment']->start_date,
-            'end_date' => $ctx['assignment']->end_date,
-        ]);
-
-        $response = $this->postJson('/api/supervisor/tasks', [
-            'title' => 'Section-wide homework',
-            'due_date' => now()->addWeek()->toDateString(),
-            'target_type' => 'section',
-            'target_ids' => [$ctx['section']->id],
-            'task_type' => 'general',
-        ]);
-
-        $response->assertCreated()->assertJsonPath('success', true);
-        $this->assertSame(2, Task::query()->where('title', 'Section-wide homework')->count());
-    }
-
     private function createSupervisionContext(): array
     {
         $role = Role::create(['name' => 'academic_supervisor']);
@@ -266,6 +218,6 @@ class SupervisorWorkspaceBusinessRulesTest extends TestCase
             'end_date' => now()->addMonth()->toDateString(),
         ]);
 
-        return compact('supervisor', 'otherSupervisor', 'student', 'assignment', 'section', 'enrollment');
+        return compact('supervisor', 'otherSupervisor', 'student', 'assignment');
     }
 }

@@ -11,6 +11,7 @@ use App\Http\Resources\EvaluationTemplateResource;
 use App\Models\EvaluationTemplate;
 use App\Models\EvaluationItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class EvaluationTemplateController extends Controller
 {
@@ -23,6 +24,9 @@ class EvaluationTemplateController extends Controller
     {
         $query = EvaluationTemplate::with('items');
         if ($request->has('form_type')) $query->where('form_type', $request->form_type);
+        if (Schema::hasColumn('evaluation_templates', 'department_key') && $request->has('department_key')) {
+            $query->where('department_key', $request->department_key);
+        }
 
         // فلترة حسب الدور المستهدف
         if ($request->has('target_role')) {
@@ -44,7 +48,11 @@ class EvaluationTemplateController extends Controller
 
     public function store(StoreEvaluationTemplateRequest $request)
     {
-        $template = EvaluationTemplate::create($request->validated());
+        $payload = $request->validated();
+        if (! Schema::hasColumn('evaluation_templates', 'department_key')) {
+            unset($payload['department_key']);
+        }
+        $template = EvaluationTemplate::create($payload);
         return new EvaluationTemplateResource($template);
     }
 
@@ -55,7 +63,11 @@ class EvaluationTemplateController extends Controller
 
     public function update(UpdateEvaluationTemplateRequest $request, EvaluationTemplate $evaluationTemplate)
     {
-        $evaluationTemplate->update($request->validated());
+        $payload = $request->validated();
+        if (! Schema::hasColumn('evaluation_templates', 'department_key')) {
+            unset($payload['department_key']);
+        }
+        $evaluationTemplate->update($payload);
         return new EvaluationTemplateResource($evaluationTemplate);
     }
 

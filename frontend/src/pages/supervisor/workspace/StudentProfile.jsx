@@ -24,9 +24,21 @@ const TABS = [
   { key: "timeline", label: "سجل النشاط", icon: "🕐" },
 ];
 
+const ACADEMIC_STATUS_OPTIONS = [
+  { value: "not_started", label: "لم يباشر" },
+  { value: "in_training", label: "قيد التدريب" },
+  { value: "needs_follow_up", label: "يحتاج متابعة" },
+  { value: "completed", label: "مكتمل" },
+  { value: "late", label: "متأخر" },
+  { value: "withdrawn", label: "منسحب" },
+];
+
 export default function StudentProfile({ studentId, onBack, onRefresh }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [student, setStudent] = useState(null);
+  const [academicSupervision, setAcademicSupervision] = useState(null);
+  const [statusForm, setStatusForm] = useState({ academic_status: "not_started", note: "" });
+  const [statusSaving, setStatusSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -46,6 +58,15 @@ export default function StudentProfile({ studentId, onBack, onRefresh }) {
         specialization: payload.student?.department?.name || payload.student?.specialization,
         section_name: payload.related_data?.section?.name,
         site_name: payload.related_data?.training_site?.name,
+        assignment_id: payload.related_data?.assignment?.id,
+        training_assignment_id: payload.related_data?.assignment?.id,
+        mentor_name: payload.related_data?.field_supervisor?.name,
+      });
+      const supervision = payload.related_data?.academic_supervision || {};
+      setAcademicSupervision(supervision);
+      setStatusForm({
+        academic_status: supervision.status || "not_started",
+        note: supervision.note || "",
       });
     } catch (e) {
       setError(e?.response?.data?.message || "فشل تحميل بيانات الطالب");
@@ -59,7 +80,7 @@ export default function StudentProfile({ studentId, onBack, onRefresh }) {
   }, [loadStudent]);
 
   const renderTab = () => {
-    const props = { studentId, student, onRefresh: loadStudent };
+    const props = { studentId, student, onRefresh: loadStudent, onOpenTab: setActiveTab };
     switch (activeTab) {
       case "overview": return <OverviewTab {...props} />;
       case "attendance": return <AttendanceTab {...props} />;
@@ -72,6 +93,33 @@ export default function StudentProfile({ studentId, onBack, onRefresh }) {
       case "communication": return <CommunicationTab {...props} />;
       case "timeline": return <ActivityTimelineTab {...props} />;
       default: return <OverviewTab {...props} />;
+    }
+  };
+
+  const handleStatusSubmit = async (e) => {
+    e.preventDefault();
+    setStatusSaving(true);
+    try {
+      const res = await apiClient.patch(`/supervisor/students/${studentId}/academic-status`, statusForm);
+      const updated = res.data?.data;
+      if (updated) {
+        setAcademicSupervision({
+          status: updated.academic_status,
+          status_label: updated.academic_status_label,
+          note: updated.academic_status_note,
+          updated_at: updated.academic_status_updated_at,
+          updated_by: updated.academic_status_updated_by,
+        });
+        setStatusForm({
+          academic_status: updated.academic_status || "not_started",
+          note: updated.academic_status_note || "",
+        });
+      }
+      onRefresh?.();
+    } catch (e) {
+      alert(e?.response?.data?.message || "فشل تحديث حالة الطالب");
+    } finally {
+      setStatusSaving(false);
     }
   };
 
@@ -117,9 +165,53 @@ export default function StudentProfile({ studentId, onBack, onRefresh }) {
             <p style={{ margin: "4px 0 0", color: "#888", fontSize: "0.85rem" }}>
               {student.specialization || ""} — {student.section_name || ""} — {student.site_name || ""}
             </p>
+            <div style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ padding: "4px 10px", borderRadius: "16px", background: "#f8f9fa", border: "1px solid #e9ecef", fontSize: "0.78rem", fontWeight: "700" }}>
+                الحالة: {academicSupervision?.status_label || "لم يباشر"}
+              </span>
+              <span style={{ color: "#777", fontSize: "0.78rem" }}>
+                آخر تحديث: {formatDateTime(academicSupervision?.updated_at)}
+                {academicSupervision?.updated_by ? ` بواسطة ${academicSupervision.updated_by}` : ""}
+              </span>
+            </div>
           </div>
         ) : null}
       </div>
+
+      {student && (
+        <form className="section-card" onSubmit={handleStatusSubmit} style={{ marginBottom: "16px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 240px) 1fr auto", gap: "12px", alignItems: "end" }}>
+            <label>
+              <span style={{ display: "block", marginBottom: "6px", color: "#555", fontSize: "0.82rem" }}>حالة الإشراف الأكاديمي</span>
+              <select
+                id="academic-status"
+                name="academic_status"
+                className="form-select-custom"
+                value={statusForm.academic_status}
+                onChange={(e) => setStatusForm((prev) => ({ ...prev, academic_status: e.target.value }))}
+              >
+                {ACADEMIC_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span style={{ display: "block", marginBottom: "6px", color: "#555", fontSize: "0.82rem" }}>ملاحظات الحالة</span>
+              <input
+                id="academic-status-note"
+                name="academic_status_note"
+                className="form-input-custom"
+                value={statusForm.note}
+                onChange={(e) => setStatusForm((prev) => ({ ...prev, note: e.target.value }))}
+                placeholder="أضف ملاحظة اختيارية عن حالة الطالب"
+              />
+            </label>
+            <button className="btn-primary-custom" type="submit" disabled={statusSaving}>
+              {statusSaving ? "جاري الحفظ..." : "تحديث الحالة"}
+            </button>
+          </div>
+        </form>
+      )}
 
       {error && (
         <div className="section-card" style={{ borderRight: "4px solid #dc3545", marginBottom: "16px" }}>
@@ -168,4 +260,11 @@ export default function StudentProfile({ studentId, onBack, onRefresh }) {
       <div>{renderTab()}</div>
     </div>
   );
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("ar", { dateStyle: "short", timeStyle: "short" });
 }
