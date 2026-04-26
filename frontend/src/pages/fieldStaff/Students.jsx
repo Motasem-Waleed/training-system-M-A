@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import useFieldStaffRole from "../../hooks/useFieldStaffRole";
@@ -12,7 +13,8 @@ import {
 } from "../../services/api";
 
 export default function FieldStaffStudents() {
-  const { isPsychologist, label } = useFieldStaffRole();
+  const navigate = useNavigate();
+  const { isPsychologist, isFieldSupervisor, label } = useFieldStaffRole();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [assignments, setAssignments] = useState([]);
@@ -87,6 +89,17 @@ export default function FieldStaffStudents() {
     setQuickNote("");
   }
 
+  function handleViewProfile(assignment) {
+    const studentId = assignment.enrollment?.user?.id;
+
+    if (isFieldSupervisor && studentId) {
+      navigate(`/field-supervisor/students/${studentId}`);
+      return;
+    }
+
+    setSelected(assignment);
+  }
+
   const notePlaceholder = isPsychologist ? "أضف ملاحظة إرشادية..." : "أضف ملاحظة سريعة...";
 
   return (
@@ -137,7 +150,7 @@ export default function FieldStaffStudents() {
                     <td>{evals.length}</td>
                     <td>{stuNotes.length}</td>
                     <td>
-                      <button className="btn-outline-custom btn-sm-custom" onClick={() => setSelected(a)}>
+                      <button className="btn-outline-custom btn-sm-custom" onClick={() => handleViewProfile(a)}>
                         عرض الملف
                       </button>
                     </td>
