@@ -38,8 +38,8 @@ use App\Http\Controllers\Api\{
     TaskSubmissionController,
     StudentAttendanceController,
     StudentEFormController,
-    HeadOfDepartmentController,
-    StudentEvaluationController
+    StudentEvaluationController,
+    HeadOfDepartmentController
 };
 
 // Routes publiques
@@ -127,6 +127,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ->only(['store']);
     Route::apiResource('evaluations', EvaluationController::class)
         ->only(['index', 'show', 'update', 'destroy']);
+    Route::get('student-evaluations/my-site-students', [StudentEvaluationController::class, 'getMySiteStudents']);
+    Route::get('student-evaluations/student/{studentId}', [StudentEvaluationController::class, 'byStudent']);
+    Route::get('student-evaluations/statistics/summary', [StudentEvaluationController::class, 'statistics']);
+    Route::apiResource('student-evaluations', StudentEvaluationController::class);
     Route::apiResource('evaluation-templates', EvaluationTemplateController::class);
     Route::post('evaluation-templates/{evaluation_template}/items', [EvaluationTemplateController::class, 'addItem']);
     Route::put('evaluation-items/{item}', [EvaluationTemplateController::class, 'updateItem']);
@@ -349,17 +353,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
         
         // Search students
         Route::get('/search-students', [HeadOfDepartmentController::class, 'searchStudents']);
-    });
-
-    // ========== ROUTES STUDENT EVALUATIONS ==========
-    Route::prefix('student-evaluations')->group(function () {
-        Route::get('/', [StudentEvaluationController::class, 'index']);
-        Route::post('/', [StudentEvaluationController::class, 'store']);
-        Route::get('/my-site-students', [StudentEvaluationController::class, 'getMySiteStudents']);
-        Route::get('/statistics', [StudentEvaluationController::class, 'statistics']);
-        Route::get('/student/{studentId}', [StudentEvaluationController::class, 'byStudent']);
-        Route::get('/{id}', [StudentEvaluationController::class, 'show']);
-        Route::put('/{id}', [StudentEvaluationController::class, 'update']);
-        Route::delete('/{id}', [StudentEvaluationController::class, 'destroy']);
     });
 });

@@ -153,7 +153,6 @@ const menus = {
     { name: "الرئيسية", path: "/principal/dashboard" },
     { name: "الملف الشخصي", path: "/principal/profile" },
     { name: "طلبات التدريب", path: "/principal/training-requests" },
-    { name: "تقييم الطلبة", path: "/principal/student-evaluation" },
   ],
 
   psychology_center_manager: [

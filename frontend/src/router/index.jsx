@@ -98,6 +98,8 @@ import FieldStaffGuidance from "../pages/fieldStaff/Guidance";
 import FieldStaffTasks from "../pages/fieldStaff/Tasks";
 import FieldStaffFinalEvaluation from "../pages/fieldStaff/FinalEvaluation";
 import StudentTrainingProgram from "../pages/fieldStaff/StudentTrainingProgram";
+import FieldSupervisorWorkspace from "../pages/field-supervisor/FieldSupervisorWorkspace";
+import FieldSupervisorStudentDetail from "../pages/field-supervisor/StudentDetail";
 
 // Coordinator
 import CoordinatorDashboard from "../pages/dashboard/CoordinatorDashboard";
@@ -262,6 +264,10 @@ export default function AppRouter() {
           <Route path="/field-staff/tasks" element={<FieldStaffTasks />} />
           <Route path="/field-staff/final-evaluation" element={<FieldStaffFinalEvaluation />} />
           <Route path="/field-staff/students/:studentId/training-program" element={<StudentTrainingProgram />} />
+
+          {/* Dedicated Field Supervisor workspace */}
+          <Route path="/field-supervisor" element={<FieldSupervisorWorkspace />} />
+          <Route path="/field-supervisor/students/:studentId" element={<FieldSupervisorStudentDetail />} />
 
           {/* Legacy Mentor routes - redirect to unified field-staff */}
           <Route path="/mentor/dashboard" element={<FieldStaffDashboard />} />

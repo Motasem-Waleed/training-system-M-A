@@ -277,6 +277,19 @@ export const updateEvaluation = (id, data) =>
 export const deleteEvaluation = (id) =>
   apiClient.delete(`/evaluations/${id}`).then((res) => res.data);
 
+// ==================== Student Evaluations (site managers) ====================
+export const getStudentEvaluations = (params = {}) =>
+  apiClient.get("/student-evaluations", { params }).then((res) => res.data);
+
+export const createStudentEvaluation = (data) =>
+  apiClient.post("/student-evaluations", data).then((res) => res.data);
+
+export const getStudentEvaluationsByStudent = (studentId) =>
+  apiClient.get(`/student-evaluations/student/${studentId}`).then((res) => res.data);
+
+export const getMySiteStudents = () =>
+  apiClient.get("/student-evaluations/my-site-students").then((res) => res.data);
+
 // ==================== Training Assignments ====================
 export const getTrainingAssignments = (params = {}) =>
   apiClient.get("/training-assignments", { params }).then((res) => res.data);
@@ -567,47 +580,6 @@ export const getSchoolManagerTeachers = async (params = {}) => {
 
 export const schoolManagerApproveRequest = async (id, data) => {
   const response = await apiClient.post(`/school-manager/mentor-requests/${id}/approve`, data);
-  return response.data;
-};
-
-// ==================== Student Evaluations ====================
-export const getStudentEvaluations = async (params = {}) => {
-  const response = await apiClient.get('/student-evaluations', { params });
-  return response.data;
-};
-
-export const getMySiteStudents = async () => {
-  const response = await apiClient.get('/student-evaluations/my-site-students');
-  return response.data;
-};
-
-export const createStudentEvaluation = async (data) => {
-  const response = await apiClient.post('/student-evaluations', data);
-  return response.data;
-};
-
-export const getStudentEvaluation = async (id) => {
-  const response = await apiClient.get(`/student-evaluations/${id}`);
-  return response.data;
-};
-
-export const updateStudentEvaluation = async (id, data) => {
-  const response = await apiClient.put(`/student-evaluations/${id}`, data);
-  return response.data;
-};
-
-export const deleteStudentEvaluation = async (id) => {
-  const response = await apiClient.delete(`/student-evaluations/${id}`);
-  return response.data;
-};
-
-export const getStudentEvaluationStatistics = async () => {
-  const response = await apiClient.get('/student-evaluations/statistics');
-  return response.data;
-};
-
-export const getStudentEvaluationsByStudent = async (studentId) => {
-  const response = await apiClient.get(`/student-evaluations/student/${studentId}`);
   return response.data;
 };
 

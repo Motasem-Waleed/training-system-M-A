@@ -70,6 +70,7 @@ export default function StudentEvaluation() {
       // Transform the new API response to match the expected format
       const allStudents = (response.students || []).map((student) => ({
         studentRowId: student.id,
+        userId: student.student_id,
         studentName: student.student_name || "طالب غير معروف",
         universityId: student.university_id || "—",
         specialization: student.specialization || "—",
@@ -114,7 +115,7 @@ export default function StudentEvaluation() {
     try {
       // Prepare evaluation data - matching image fields
       const evaluationData = {
-        student_id: selectedStudent.studentRowId,
+        student_id: selectedStudent.userId,
         training_request_student_id: selectedStudent.studentRowId,
         supervisor: evaluation.supervisor || null,
         attendance: evaluation.attendance || null,
