@@ -29,6 +29,8 @@ class TrainingProgramController extends Controller
             'data' => $program ? [
                 'id' => $program->id,
                 'schedule' => $program->schedule,
+                'status' => $program->status,
+                'coordinator_note' => $program->coordinator_note,
                 'created_at' => $program->created_at,
                 'updated_at' => $program->updated_at,
             ] : null,
