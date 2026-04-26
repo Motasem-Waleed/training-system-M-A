@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   getSchoolManagerMentorRequests,
   getSchoolManagerTeachers,
@@ -68,6 +69,27 @@ export default function MentorAssignment({ siteType = "school" }) {
   const [savedMessage, setSavedMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [savingRequestId, setSavingRequestId] = useState(null);
+
+  // Highlight + scroll to a specific request when navigated from a notification
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlight");
+  const cardRefs = useRef({});
+  const [highlightedId, setHighlightedId] = useState(null);
+
+  useEffect(() => {
+    if (!highlightId || loading || requests.length === 0) return;
+    const idNum = Number(highlightId);
+    const card = cardRefs.current[idNum];
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedId(idNum);
+      const timer = setTimeout(() => setHighlightedId(null), 3000);
+      const next = new URLSearchParams(searchParams);
+      next.delete("highlight");
+      setSearchParams(next, { replace: true });
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId, loading, requests, searchParams, setSearchParams]);
 
   const rowsByRequest = useMemo(() => {
     const map = {};
@@ -261,8 +283,20 @@ export default function MentorAssignment({ siteType = "school" }) {
           const reqRows = rowsByRequest[req.id] || [];
           const isSaving = savingRequestId === req.id;
 
+          const isHighlighted = highlightedId === req.id;
           return (
-            <div key={req.id} className="section-card mb-4" style={{ padding: "1.5rem", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
+            <div
+              key={req.id}
+              ref={(el) => { if (el) cardRefs.current[req.id] = el; }}
+              className="section-card mb-4"
+              style={{
+                padding: "1.5rem",
+                borderRadius: "16px",
+                border: isHighlighted ? "2px solid #f59e0b" : "1px solid #e2e8f0",
+                boxShadow: isHighlighted ? "0 0 0 4px rgba(245, 158, 11, 0.2)" : undefined,
+                transition: "all 0.4s ease",
+              }}
+            >
               {/* Request Header */}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "1.25rem", paddingBottom: "1rem", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>

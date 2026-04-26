@@ -165,55 +165,111 @@ export default function NotificationBell() {
     }
   };
 
+  // Mark notification as read silently (no UI updates needed since we're navigating away)
+  const markReadSilently = async (notification) => {
+    if (notification?.id && !notification?.read_at) {
+      try {
+        await markSystemNotificationAsRead(notification.id);
+      } catch (e) {
+        // ignore
+      }
+    }
+  };
+
+  const resolveRoute = (notification, role) => {
+    const type = String(notification.type || "");
+    const data = notification.data || {};
+    const trainingRequestId =
+      data.training_request_id || (notification.notifiable_type?.includes("TrainingRequest") ? notification.notifiable_id : null);
+
+    // ----- Training request notifications: route by role to the relevant page -----
+    if (type.startsWith("training_request_")) {
+      switch (role) {
+        case ROLES.STUDENT:
+          return "/student/training-request-status";
+        case ROLES.COORDINATOR:
+          return trainingRequestId
+            ? `/coordinator/training-requests?highlight=${trainingRequestId}`
+            : "/coordinator/training-requests";
+        case ROLES.HEAD_OF_DEPARTMENT:
+          return "/head-department/reports";
+        case ROLES.ADMIN:
+          return "/notifications";
+        case ROLES.HEALTH_DIRECTORATE:
+          return "/health/official-letters";
+        case ROLES.EDUCATION_DIRECTORATE:
+          return "/education/official-letters";
+        case ROLES.PRINCIPAL:
+        case ROLES.PSYCHOLOGY_CENTER_MANAGER:
+          return trainingRequestId
+            ? `/principal/training-requests?highlight=${trainingRequestId}`
+            : "/principal/training-requests";
+        default:
+          return "/notifications";
+      }
+    }
+
+    // ----- Daily reports / attendance / evaluations: supervisor or student -----
+    if (type.includes("daily_report") || type.includes("attendance") || type.includes("evaluation")) {
+      if (role === ROLES.STUDENT) return "/student/notifications-updates";
+      if (role === ROLES.SUPERVISOR || role === ROLES.MENTOR || role === ROLES.FIELD_SUPERVISOR) {
+        return "/supervisor/workspace";
+      }
+      return "/notifications";
+    }
+
+    // ----- Supervisor visits -----
+    if (type.includes("supervisor_visit")) {
+      if (role === ROLES.STUDENT) return "/student/notifications-updates";
+      return "/supervisor/workspace";
+    }
+
+    // ----- Student escalation: supervisor/admin -----
+    if (type.includes("student_escalation")) {
+      if (role === ROLES.ADMIN) return "/notifications";
+      return "/supervisor/workspace";
+    }
+
+    // ----- Generic role-based fallback -----
+    switch (role) {
+      case ROLES.STUDENT:
+        return "/student/notifications-updates";
+      case ROLES.COORDINATOR:
+        return "/coordinator/training-requests";
+      case ROLES.HEAD_OF_DEPARTMENT:
+        return "/head-department/dashboard";
+      case ROLES.ADMIN:
+        return "/notifications";
+      case ROLES.HEALTH_DIRECTORATE:
+        return "/health/dashboard";
+      case ROLES.EDUCATION_DIRECTORATE:
+        return "/education/dashboard";
+      case ROLES.PRINCIPAL:
+      case ROLES.PSYCHOLOGY_CENTER_MANAGER:
+        return "/principal/dashboard";
+      case ROLES.SUPERVISOR:
+      case ROLES.MENTOR:
+      case ROLES.FIELD_SUPERVISOR:
+        return "/supervisor/workspace";
+      default:
+        return "/notifications";
+    }
+  };
+
   const handleNotificationClick = (notification) => {
     setIsOpen(false);
 
-    const type = String(notification.type || "");
     const user = readStoredUser();
     const role = normalizeRole(user?.role?.name || user?.role);
 
-    // For head_of_department / admin: route to their reports/dashboard
-    if (role === ROLES.HEAD_OF_DEPARTMENT && type.startsWith("training_request_")) {
-      navigate("/head-department/reports");
-      return;
+    // Mark as read in background; update local state optimistically
+    markReadSilently(notification);
+    if (!notification.read_at) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    if (role === ROLES.ADMIN && type.startsWith("training_request_")) {
-      navigate("/notifications");
-      return;
-    }
-
-    if (type.includes("coordinator") && !type.includes("student")) {
-      navigate("/coordinator/training-requests");
-      return;
-    }
-
-    if (type.includes("directorate")) {
-      if (role === ROLES.HEALTH_DIRECTORATE) {
-        navigate("/health/official-letters");
-        return;
-      }
-
-      if (role === ROLES.EDUCATION_DIRECTORATE) {
-        navigate("/education/official-letters");
-        return;
-      }
-
-      navigate("/notifications");
-      return;
-    }
-
-    if (type.includes("school") || type.includes("principal")) {
-      navigate("/principal/training-requests");
-      return;
-    }
-
-    if (type.includes("student")) {
-      navigate("/student/notifications-updates");
-      return;
-    }
-
-    navigate("/notifications");
+    const route = resolveRoute(notification, role);
+    navigate(route);
   };
 
   const formatTime = (dateString) => {

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ClipboardList,
   FileText,
@@ -53,6 +53,28 @@ export default function CoordinatorTrainingRequests() {
     setPresetDecision("");
     setDrawerOpen(true);
   };
+
+  // Auto-open request when navigated from a notification via ?highlight=ID
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight");
+    if (!highlightId || loading) return;
+
+    const idNum = Number(highlightId);
+    const allRequests = [
+      ...(incomingRequests || []),
+      ...(coordinatorRejected || []),
+      ...Object.values(prelimApprovedByGroup || {}).flat(),
+    ];
+    const found = allRequests.find((r) => Number(r.id) === idNum);
+    if (found) {
+      handleView(found);
+      // Remove the param so it doesn't re-open after closing
+      const next = new URLSearchParams(searchParams);
+      next.delete("highlight");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, loading, incomingRequests, coordinatorRejected, prelimApprovedByGroup, setSearchParams]);
 
   const handleReview = async (id, decision, reason) => {
     try {
