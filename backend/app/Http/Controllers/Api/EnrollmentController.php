@@ -29,7 +29,25 @@ class EnrollmentController extends Controller
 
     public function store(StoreEnrollmentRequest $request)
     {
-        $enrollment = Enrollment::create($request->validated());
+        $data = $request->validated();
+        
+        // Check if student is already enrolled in any section during this period
+        $existingEnrollment = Enrollment::where('user_id', $data['user_id'])
+            ->where('academic_year', $data['academic_year'])
+            ->where('semester', $data['semester'])
+            ->where('status', '!=', 'dropped')
+            ->with('section.course')
+            ->first();
+        
+        if ($existingEnrollment) {
+            $courseName = $existingEnrollment->section?->course?->name ?? 'غير معروف';
+            $sectionName = $existingEnrollment->section?->name ?? 'غير معروف';
+            return response()->json([
+                'message' => "الطالب مسجل بالفعل في مساق ({$courseName}) شعبة ({$sectionName}) لنفس الفترة التدريبية. لا يمكن تسجيله في أكثر من شعبة أو مساق في نفس الفترة."
+            ], 422);
+        }
+        
+        $enrollment = Enrollment::create($data);
         return new EnrollmentResource($enrollment);
     }
 

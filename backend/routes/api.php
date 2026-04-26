@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\{
     CourseController,
     SectionController,
     EnrollmentController,
+    ArchiveController,
     DepartmentController,
     RoleController,
     PermissionController,
@@ -74,6 +75,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('sections/{section}/move-student', [SectionController::class, 'moveStudent']);
     Route::post('sections/{section}/assign-supervisor', [SectionController::class, 'assignSupervisor']);
     Route::apiResource('enrollments', EnrollmentController::class);
+
+    // Archive current training period
+    Route::get('archive/preview', [ArchiveController::class, 'preview']);
+    Route::post('archive/current-period', [ArchiveController::class, 'archiveCurrentPeriod']);
+    Route::get('archive/periods', [ArchiveController::class, 'listArchivedPeriods']);
+    Route::get('archive/period-details', [ArchiveController::class, 'periodDetails']);
 
     // Sites et périodes de stage
     Route::apiResource('training-sites', TrainingSiteController::class);

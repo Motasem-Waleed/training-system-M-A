@@ -403,6 +403,28 @@ export const getSectionEnrollments = async (sectionId) => {
     return response.data;
 };
 
+export const getArchivePreview = async () => {
+    const response = await apiClient.get('/archive/preview');
+    return response.data;
+};
+
+export const archiveCurrentPeriod = async () => {
+    const response = await apiClient.post('/archive/current-period');
+    return response.data;
+};
+
+export const getArchivedPeriods = async () => {
+    const response = await apiClient.get('/archive/periods');
+    return response.data;
+};
+
+export const getArchivedPeriodDetails = async ({ academic_year, semester, archived_period }) => {
+    const response = await apiClient.get('/archive/period-details', {
+        params: { academic_year, semester, archived_period },
+    });
+    return response.data;
+};
+
 export const getEnrollment = async (id) => {
     const response = await apiClient.get(`/enrollments/${id}`);
     return unwrapResource(response.data);

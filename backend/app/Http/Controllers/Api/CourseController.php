@@ -18,7 +18,7 @@ class CourseController extends Controller
 
     public function index(Request $request)
     {
-        $query = Course::with('sections', 'department');
+        $query = Course::with('department')->withCount('sections');
         
         // For head_of_department, only show courses from their department
         if ($request->user()->role?->name === 'head_of_department' && $request->user()->department_id) {

@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HidesArchived;
 use Illuminate\Database\Eloquent\Model;
 
 class WeeklySchedule extends Model
 {
-    use HasFactory;
+    use HasFactory, HidesArchived;
 
     protected $fillable = ['teacher_id', 'day', 'start_time', 'end_time', 'training_site_id', 'submitted_by'];
 

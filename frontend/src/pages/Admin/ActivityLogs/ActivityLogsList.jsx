@@ -123,7 +123,7 @@ export default function ActivityLogsList() {
               <th>الحدث</th>
               <th>الوصف</th>
               <th>IP</th>
-              <th> gdhdj التاريخ</th>
+              <th>  التاريخ</th>
             </tr>
           </thead>
           <tbody>

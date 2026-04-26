@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HidesArchived;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class TrainingLog extends Model
 {
-    use HasFactory;
+    use HasFactory, HidesArchived;
 
     protected $fillable = [
         'training_assignment_id', 'log_date', 'start_time', 'end_time',

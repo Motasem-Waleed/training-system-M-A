@@ -14,6 +14,8 @@ class NotificationResource extends JsonResource
             'type' => $this->type,
             'message' => $this->resolveMessage(),
             'data' => $this->data,
+            'notifiable_type' => $this->notifiable_type,
+            'notifiable_id' => $this->notifiable_id,
             'read_at' => $this->read_at?->toDateTimeString(),
             'user' => new UserResource($this->whenLoaded('user')),
             'created_at' => $this->created_at?->toDateTimeString(),

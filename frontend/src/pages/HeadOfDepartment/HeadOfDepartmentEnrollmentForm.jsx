@@ -127,7 +127,21 @@ export default function HeadOfDepartmentEnrollmentForm() {
       } else {
         await createEnrollment(form);
       }
-      navigate("/head-department/reports");
+      alert(id ? "تم تحديث التسجيل بنجاح" : "تم تسجيل الطالب بنجاح");
+      if (id) {
+        navigate("/head-department/reports");
+      } else {
+        // Reset form for adding another student
+        setForm({
+          user_id: "",
+          section_id: form.section_id,
+          academic_year: form.academic_year,
+          semester: form.semester,
+          status: "active",
+        });
+        setSelectedStudent(null);
+        setStudentSearch("");
+      }
     } catch (err) {
       if (err.response?.data?.errors) {
         setErrors(err.response.data.errors);

@@ -194,7 +194,7 @@ export default function HeadOfDepartmentDashboard() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .head-department-dashboard {
           padding: 24px;
           max-width: 1200px;

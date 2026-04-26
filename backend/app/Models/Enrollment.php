@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HidesArchived;
 use Illuminate\Database\Eloquent\Model;
 
 class Enrollment extends Model
 {
-    use HasFactory;
+    use HasFactory, HidesArchived;
 
     protected $fillable = ['user_id', 'section_id', 'academic_year', 'semester', 'status', 'final_grade'];
 

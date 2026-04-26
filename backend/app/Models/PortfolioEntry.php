@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Concerns\HidesArchived;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 
 class PortfolioEntry extends Model
 {
-    use HasFactory;
+    use HasFactory, HidesArchived;
 
     protected $fillable = [
         'student_portfolio_id', 'title', 'code', 'category', 'content', 'file_path',
