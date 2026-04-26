@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { getUsers, deleteUser, changeUserStatus } from "../../../services/api";
+import { getUsers, deleteUser, changeUserStatus, getRoles } from "../../../services/api";
 
 export default function UsersList() {
   const navigate = useNavigate();
   const location = useLocation();
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ role_id: "", status: "", search: "" });
+  const [sort, setSort] = useState({ sort_by: "created_at", sort_direction: "desc" });
 
   const [pagination, setPagination] = useState({
     current_page: 1,
@@ -18,6 +20,47 @@ export default function UsersList() {
   });
   const STATIC_PAGE_SIZE = 50; // Fixed page size
 
+  const roleLabels = {
+    admin: "مدير النظام",
+    student: "طالب",
+    teacher: "معلم",
+    field_supervisor: "مشرف ميداني",
+    school_manager: "مدير مدرسة",
+    psychology_center_manager: "مدير مركز نفسي",
+    adviser: "مرشد",
+    psychologist: "أخصائي نفسي",
+    academic_supervisor: "مشرف أكاديمي",
+    training_coordinator: "منسق تدريب",
+    coordinator: "منسق تدريب",
+    education_directorate: "مديرية تربية",
+    health_directorate: "وزارة الصحة",
+    head_of_department: "رئيس قسم",
+  };
+
+  const getRoleLabel = (roleName) => roleLabels[roleName] || roleName || "—";
+
+  const normalizeListResponse = (response) => {
+    const nestedData = response?.data?.data;
+    const data = Array.isArray(response?.data)
+      ? response.data
+      : Array.isArray(nestedData)
+        ? nestedData
+        : [];
+    const meta = response?.meta || (Array.isArray(response?.data) ? response : response?.data) || {};
+
+    return { data, meta };
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await getRoles({ per_page: 200 });
+      const { data } = normalizeListResponse(response);
+      setRoles(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchUsers = async (page = 1) => {
     setLoading(true);
     try {
@@ -26,12 +69,12 @@ export default function UsersList() {
       );
       const response = await getUsers({
         ...cleanFilters,
+        ...sort,
         page,
         per_page: STATIC_PAGE_SIZE,
       });
 
-      const usersArray = response.data || [];
-      const meta = response.meta || {};
+      const { data: usersArray, meta } = normalizeListResponse(response);
 
       setUsers(usersArray);
       setPagination({
@@ -51,7 +94,24 @@ export default function UsersList() {
 
   useEffect(() => {
     fetchUsers(1);
-  }, [filters, location.key]);
+  }, [filters, sort, location.key]);
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  const handleSort = (sortBy) => {
+    setSort((current) => ({
+      sort_by: sortBy,
+      sort_direction:
+        current.sort_by === sortBy && current.sort_direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const getSortIndicator = (sortBy) => {
+    if (sort.sort_by !== sortBy) return "";
+    return sort.sort_direction === "asc" ? " ▲" : " ▼";
+  };
 
   const goToPage = (page) => {
     if (page < 1 || page > pagination.last_page) return;
@@ -136,17 +196,11 @@ export default function UsersList() {
           onChange={(e) => setFilters({ ...filters, role_id: e.target.value })}
         >
           <option value="">جميع الأدوار</option>
-          <option value="1">مدير النظام</option>
-          <option value="2">طالب</option>
-          <option value="3">معلم</option>
-          <option value="4">مدير مدرسة</option>
-          <option value="5">مرشد</option>
-          <option value="6">أخصائي نفسي</option>
-          <option value="7">مشرف أكاديمي</option>
-          <option value="8">منسق تدريب</option>
-          <option value="9">مديرية تربية</option>
-          <option value="10">وزارة الصحة</option>
-          <option value="11">رئيس قسم</option>
+          {roles.map((role) => (
+            <option key={role.id} value={role.id}>
+              {getRoleLabel(role.name)}
+            </option>
+          ))}
         </select>
         <select
           id="filter-status"
@@ -169,11 +223,31 @@ export default function UsersList() {
       <table className="data-table">
         <thead>
           <tr>
-            <th>المعرف الجامعي</th>
-            <th>الاسم</th>
-            <th>البريد الإلكتروني</th>
-            <th>الدور</th>
-            <th>الحالة</th>
+            <th>
+              <button type="button" className="table-sort-button" onClick={() => handleSort("university_id")}>
+                المعرف الجامعي{getSortIndicator("university_id")}
+              </button>
+            </th>
+            <th>
+              <button type="button" className="table-sort-button" onClick={() => handleSort("name")}>
+                الاسم{getSortIndicator("name")}
+              </button>
+            </th>
+            <th>
+              <button type="button" className="table-sort-button" onClick={() => handleSort("email")}>
+                البريد الإلكتروني{getSortIndicator("email")}
+              </button>
+            </th>
+            <th>
+              <button type="button" className="table-sort-button" onClick={() => handleSort("role")}>
+                الدور{getSortIndicator("role")}
+              </button>
+            </th>
+            <th>
+              <button type="button" className="table-sort-button" onClick={() => handleSort("status")}>
+                الحالة{getSortIndicator("status")}
+              </button>
+            </th>
             <th>الإجراءات</th>
           </tr>
         </thead>
@@ -183,7 +257,7 @@ export default function UsersList() {
               <td>{user.university_id || "—"}</td>
               <td>{user.name}</td>
               <td>{user.email}</td>
-              <td>{user.role?.name || "—"}</td>
+              <td>{getRoleLabel(user.role?.name)}</td>
               <td>{getStatusBadge(user.status)}</td>
               <td>
                 <Link to={getEditPath(user)} className="btn-sm">تعديل</Link>

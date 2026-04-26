@@ -179,7 +179,7 @@ export const changeUserStatus = (id, status) => apiClient.patch(`/users/${id}/st
 export const bulkAddUsers = (users) => apiClient.post('/users/bulk-add', { users }).then(res => res.data);
 
 // ==================== Roles & Permissions ====================
-export const getRoles = () => apiClient.get('/roles').then(res => res.data);
+export const getRoles = (params = {}) => apiClient.get('/roles', { params }).then(res => res.data);
 export const createRole = (data) => apiClient.post('/roles', data).then(res => res.data);
 export const updateRole = (id, data) => apiClient.put(`/roles/${id}`, data).then(res => res.data);
 export const deleteRole = (id) => apiClient.delete(`/roles/${id}`).then(res => res.data);

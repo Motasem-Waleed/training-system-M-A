@@ -7,12 +7,14 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\ChangeUserStatusRequest;
 use App\Http\Requests\LoginRequest;
+use App\Enums\UserStatus;
 use App\Helpers\ActivityLogger;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -24,49 +26,81 @@ class UserController extends Controller
         $this->authorizeResource(User::class, 'user');
     }
 
-  public function index(Request $request)
-{
-    $users = User::query();
+    public function index(Request $request)
+    {
+        $validated = $request->validate([
+            'role_id' => 'nullable|exists:roles,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'status' => [
+                'nullable',
+                Rule::in(array_map(static fn (UserStatus $status) => $status->value, UserStatus::cases())),
+            ],
+            'search' => 'nullable|string|max:255',
+            'sort_by' => ['nullable', Rule::in(['id', 'university_id', 'name', 'email', 'role', 'status', 'created_at'])],
+            'sort_direction' => ['nullable', Rule::in(['asc', 'desc'])],
+            'per_page' => 'nullable|integer|min:1|max:200',
+            'page' => 'nullable|integer|min:1',
+        ]);
 
-    // مدير المدرسة يُسمح له بجلب المعلمين من نفس المدرسة فقط لاستخدامهم في التعيين.
-    if ($request->user()->role?->name === 'school_manager') {
-        $users->whereHas('role', function ($q) {
-            $q->where('name', 'teacher');
-        });
-        if ($request->user()->training_site_id) {
-            $users->where('training_site_id', $request->user()->training_site_id);
+        $users = User::query()->select('users.*');
+
+        // مدير المدرسة يُسمح له بجلب المعلمين من نفس المدرسة فقط لاستخدامهم في التعيين.
+        if ($request->user()->role?->name === 'school_manager') {
+            $users->whereHas('role', function ($q) {
+                $q->where('name', 'teacher');
+            });
+            if ($request->user()->training_site_id) {
+                $users->where('training_site_id', $request->user()->training_site_id);
+            }
         }
-    }
 
-    // منسق التدريب والأخصائي النفسي ورئيس القسم يُسمح لهم بجلب الطلبة فقط (قائمة مرجعية).
-    if (in_array($request->user()->role?->name, ['training_coordinator', 'coordinator', 'psychologist', 'head_of_department'], true)) {
-        $users->whereHas('role', function ($q) {
-            $q->where('name', 'student');
+        // منسق التدريب والأخصائي النفسي ورئيس القسم يُسمح لهم بجلب الطلبة فقط (قائمة مرجعية).
+        if (in_array($request->user()->role?->name, ['training_coordinator', 'coordinator', 'psychologist', 'head_of_department'], true)) {
+            $users->whereHas('role', function ($q) {
+                $q->where('name', 'student');
+            });
+            $users->where('status', 'active');
+        }
+
+        $users->when($validated['role_id'] ?? null, function ($q, $roleId) {
+            $q->where('users.role_id', $roleId);
         });
-        // Only show active student accounts
-        $users->where('status', 'active');
-    }
-    
-    $users->when($request->role_id, function ($q) use ($request) {
-        $q->where('role_id', $request->role_id);
-    });
 
-    $users->when($request->status, function ($q) use ($request) {
-        $q->where('status', $request->status);
-    });
-
-    $users->when($request->search, function ($q) use ($request) {
-        $term = $request->search;
-        $q->where(function ($qq) use ($term) {
-            $qq->where('name', 'like', "%{$term}%")
-                ->orWhere('email', 'like', "%{$term}%")
-                ->orWhere('university_id', 'like', "%{$term}%");
+        $users->when($validated['department_id'] ?? null, function ($q, $departmentId) {
+            $q->where('users.department_id', $departmentId);
         });
-    });
 
-    $perPage = min(max((int) $request->get('per_page', 15), 1), 200);
+        $users->when($validated['status'] ?? null, function ($q, $status) {
+            $q->where('users.status', $status);
+        });
 
-    return response()->json($users->with(['role', 'department'])->paginate($perPage));
+        $users->when($validated['search'] ?? null, function ($q, $search) {
+            $term = trim($search);
+            $q->where(function ($qq) use ($term) {
+                $qq->where('users.name', 'like', "%{$term}%")
+                    ->orWhere('users.email', 'like', "%{$term}%")
+                    ->orWhere('users.university_id', 'like', "%{$term}%");
+            });
+        });
+
+        $sortBy = $validated['sort_by'] ?? 'created_at';
+        $sortDirection = $validated['sort_direction'] ?? 'desc';
+
+        if ($sortBy === 'role') {
+            $users->leftJoin('roles', 'roles.id', '=', 'users.role_id')
+                ->orderBy('roles.name', $sortDirection)
+                ->orderBy('users.id');
+        } else {
+            $users->orderBy("users.{$sortBy}", $sortDirection);
+
+            if ($sortBy !== 'id') {
+                $users->orderBy('users.id');
+            }
+        }
+
+        $perPage = min(max((int) ($validated['per_page'] ?? 15), 1), 200);
+
+        return response()->json($users->with(['role', 'department'])->paginate($perPage));
     }
 
     public function store(StoreUserRequest $request)

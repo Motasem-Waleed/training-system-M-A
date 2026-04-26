@@ -166,6 +166,17 @@
   white-space: nowrap;
 }
 
+.table-sort-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  padding: 0;
+  text-align: inherit;
+}
+
 .data-table tbody tr:hover {
   background: #fbfcfe;
 }
