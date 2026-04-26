@@ -35,7 +35,6 @@ export default function CoordinatorDashboard() {
     needsEdit,
     rejectedRequests,
     sentToEducation,
-    sentToHealth,
     approvedByBody,
     rejectedByBody,
   } = useCoordinatorDashboard();
@@ -81,7 +80,6 @@ export default function CoordinatorDashboard() {
         needsEdit={needsEdit}
         openBatches={openBatches}
         sentToEducation={sentToEducation}
-        sentToHealth={sentToHealth}
         approvedByBody={approvedByBody}
         rejectedRequests={rejectedRequests}
         rejectedByBody={rejectedByBody}

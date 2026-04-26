@@ -42,7 +42,6 @@ export default function useCoordinatorDashboard() {
   const needsEdit = stats?.coordinator_needs_edit ?? 0;
   const rejectedRequests = stats?.coordinator_rejected ?? 0;
   const sentToEducation = stats?.sent_to_education ?? 0;
-  const sentToHealth = stats?.sent_to_health_ministry ?? 0;
   const approvedByBody = stats?.approved_by_governing_body ?? 0;
   const rejectedByBody = stats?.rejected_by_governing_body ?? 0;
 
@@ -59,7 +58,6 @@ export default function useCoordinatorDashboard() {
     needsEdit,
     rejectedRequests,
     sentToEducation,
-    sentToHealth,
     approvedByBody,
     rejectedByBody,
   };

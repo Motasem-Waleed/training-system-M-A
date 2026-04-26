@@ -20,12 +20,15 @@ class SectionController extends Controller
 
     public function index(Request $request)
     {
-        $query = Section::with(['course', 'supervisor', 'createdBy', 'students']);
+        $query = Section::with(['course', 'academicSupervisor', 'createdBy', 'students'])
+            ->withCount('enrollments');
+
         if ($request->has('course_id')) $query->where('course_id', $request->course_id);
         if ($request->has('semester')) $query->where('semester', $request->semester);
         if ($request->has('academic_year')) $query->where('academic_year', $request->academic_year);
         
         $sections = $query->paginate($request->per_page ?? 15);
+
         return SectionResource::collection($sections);
     }
 
@@ -45,17 +48,23 @@ class SectionController extends Controller
         );
         
         $section = Section::create($data);
-        return new SectionResource($section->load(['course', 'supervisor', 'createdBy']));
+
+        return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
 
     public function show(Section $section)
     {
-        return new SectionResource($section->load(['course', 'supervisor', 'createdBy', 'students']));
+        return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy', 'students']));
     }
 
     public function update(UpdateSectionRequest $request, Section $section)
     {
         $data = $request->validated();
+
+        if (array_key_exists('academic_supervisor_id', $data) && empty($data['academic_supervisor_id'])) {
+            $data['academic_supervisor_id'] = null;
+        }
+
         if (array_key_exists('academic_supervisor_id', $data) || array_key_exists('course_id', $data)) {
             $this->ensureAcademicSupervisorMatchesCourse(
                 $data['academic_supervisor_id'] ?? $section->academic_supervisor_id,
@@ -64,7 +73,8 @@ class SectionController extends Controller
         }
 
         $section->update($data);
-        return new SectionResource($section->load(['course', 'supervisor', 'createdBy']));
+
+        return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
 
     public function destroy(Section $section)
@@ -75,6 +85,7 @@ class SectionController extends Controller
         }
         
         $section->delete();
+
         return response()->json(['message' => 'تم حذف الشعبة']);
     }
 
@@ -126,6 +137,7 @@ class SectionController extends Controller
         }
 
         $section->students()->detach($studentId);
+
         return response()->json(['message' => 'تم إزالة الطالب من الشعبة بنجاح']);
     }
 
@@ -178,6 +190,7 @@ class SectionController extends Controller
         }
 
         $section->update(['academic_supervisor_id' => $request->supervisor_id]);
+
         return response()->json(['message' => 'تم تعيين المشرف بنجاح']);
     }
 
@@ -191,7 +204,7 @@ class SectionController extends Controller
             }])
             ->get();
         
-        return response()->json(['data' => $enrollments]);
+        return response()->json(['data' => EnrollmentResource::collection($enrollments)]);
     }
 
     private function ensureAcademicSupervisorMatchesCourse(?int $supervisorId, int $courseId): void
@@ -201,7 +214,12 @@ class SectionController extends Controller
         }
 
         $supervisor = User::with(['role', 'department'])->findOrFail($supervisorId);
-        abort_unless($supervisor->role?->name === 'academic_supervisor', 422, 'المستخدم المحدد ليس مشرفاً أكاديمياً.');
+
+        abort_unless(
+            $supervisor->role?->name === 'academic_supervisor',
+            422,
+            'المستخدم المحدد ليس مشرفاً أكاديمياً.'
+        );
 
         $courseDepartmentId = Course::where('id', $courseId)->value('department_id');
 

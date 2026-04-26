@@ -9,7 +9,7 @@ class TrainingProgram extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'training_assignment_id', 'schedule'];
+    protected $fillable = ['user_id', 'training_assignment_id', 'schedule', 'status', 'coordinator_note'];
 
     protected $casts = [
         'schedule' => 'array',

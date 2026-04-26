@@ -1,6 +1,13 @@
-import { useState } from "react";
-import { RefreshCw } from "lucide-react";
-import { sendTrainingRequestBatch } from "../../services/api";
+import { useState, useEffect } from "react";
+import {
+  FileText,
+  Loader2,
+  Eye,
+  X,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { sendTrainingRequestBatch, getTrainingRequestBatch } from "../../services/api";
 import useCoordinatorBatches from "../../hooks/useCoordinatorBatches";
 import {
   CoordinatorFilters,
@@ -23,15 +30,18 @@ export default function CoordinatorOfficialLetters() {
   } = useCoordinatorBatches();
 
   const [selectedBatchId, setSelectedBatchId] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [batchSendForm, setBatchSendForm] = useState({});
+  const [batchDetail, setBatchDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [showAllBatches, setShowAllBatches] = useState(false);
+
+  const visibleBatches = showAllBatches ? batches : batches.slice(0, 5);
+  const hasMoreBatches = batches.length > 5;
 
   const selectedBatch = selectedBatchId
     ? batches.find((b) => b.id === selectedBatchId)
     : null;
-
-  const selectedBatchRequests = selectedBatchId
-    ? getBatchRequests(selectedBatchId)
-    : [];
 
   const selectedLetter = selectedBatchId
     ? getBatchLetter(selectedBatchId)
@@ -54,36 +64,73 @@ export default function CoordinatorOfficialLetters() {
     reload();
   };
 
+  const openDrawer = async (batchId) => {
+    setSelectedBatchId(batchId);
+    setDrawerOpen(true);
+    setDetailLoading(true);
+    try {
+      const detail = await getTrainingRequestBatch(batchId);
+      setBatchDetail(detail);
+    } catch {
+      setBatchDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setTimeout(() => {
+      setSelectedBatchId(null);
+      setBatchDetail(null);
+    }, 300);
+  };
+
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [drawerOpen]);
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px" }}>
+        <Loader2 size={40} className="spin" style={{ color: "var(--primary)", marginBottom: 12 }} />
+        <p style={{ color: "var(--text-faint)", fontSize: "0.95rem" }}>جاري تحميل الكتب الرسمية...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="enrollments-list">
-      <div className="page-header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <h1>الكتب الرسمية والدفعات</h1>
-            <p>عرض وإدارة دفعات الكتب الرسمية المرسلة للجهات الحكومية.</p>
+    <div>
+      {/* Hero Section */}
+      <div className="hero-section mb-4">
+        <div className="hero-content">
+          <div className="hero-icon">
+            <FileText size={44} />
           </div>
-          <button
-            className="btn-secondary"
-            onClick={reload}
-            disabled={loading}
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <RefreshCw size={16} className={loading ? "spin" : ""} />
-            تحديث
-          </button>
+          <div style={{ flex: 1 }}>
+            <h1 className="hero-title">الكتب الرسمية والدفعات</h1>
+            <p className="hero-subtitle">
+              عرض وإدارة دفعات الكتب الرسمية المرسلة للجهات الحكومية.
+            </p>
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="section-card" style={{ marginBottom: 12 }}>
-          <p className="text-danger">{error}</p>
+        <div className="alert-custom alert-danger mb-3">
+          <p style={{ margin: 0 }}>{error}</p>
         </div>
       )}
 
+      {/* Filters */}
       <CoordinatorFilters
         filters={filters}
         setFilters={setFilters}
-        showGoverningBody
         showStatus
         showSearch
         statusOptions={Object.entries(BATCH_STATUS_LABELS).map(([value, label]) => ({
@@ -92,101 +139,197 @@ export default function CoordinatorOfficialLetters() {
         }))}
       />
 
-      {loading ? (
-        <div className="section-card">جاري التحميل...</div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 16, marginTop: 16 }}>
-          <div className="section-card">
-            <h4>قائمة الدفعات ({batches.length})</h4>
-            {batches.length === 0 ? (
-              <EmptyState title="لا توجد دفعات" description="لم تُنشأ أي دفعات كتب رسمية بعد." />
-            ) : (
-              <div className="table-wrapper">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>رقم الدفعة</th>
-                      <th>الجهة الرسمية</th>
-                      <th>المديرية</th>
-                      <th>عدد الطلبات</th>
-                      <th>الحالة</th>
-                      <th>رقم الكتاب</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {batches.map((b) => {
-                      const statusLabel = BATCH_STATUS_LABELS[b.status] || b.status;
-                      const statusColors = BATCH_STATUS_COLORS[b.status] || {
-                        bg: "#e9ecef",
-                        text: "#495057",
-                      };
-                      const isSelected = b.id === selectedBatchId;
-                      return (
-                        <tr
-                          key={b.id}
-                          onClick={() => setSelectedBatchId(b.id)}
+      {/* Batches Table */}
+      <div className="section-card">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div className="section-icon" style={{ background: "linear-gradient(135deg, var(--accent) 0%, #c49b66 100%)" }}>
+            <FileText size={20} />
+          </div>
+          <h4 style={{ margin: 0 }}>قائمة الدفعات ({batches.length})</h4>
+        </div>
+        {batches.length === 0 ? (
+          <EmptyState title="لا توجد دفعات" description="لم تُنشأ أي دفعات كتب رسمية بعد." />
+        ) : (
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>رقم الدفعة</th>
+                  <th>الجهة الرسمية</th>
+                  <th>المديرية</th>
+                  <th>عدد الطلبات</th>
+                  <th>الحالة</th>
+                  <th>رقم الكتاب</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleBatches.map((b) => {
+                  const statusLabel = BATCH_STATUS_LABELS[b.status] || b.status;
+                  const statusColors = BATCH_STATUS_COLORS[b.status] || {
+                    bg: "#e9ecef",
+                    text: "#495057",
+                  };
+                  return (
+                    <tr key={b.id}>
+                      <td style={{ fontWeight: 700 }}>#{b.id}</td>
+                      <td>{getGoverningBodyLabel(b.governing_body)}</td>
+                      <td>{b.directorate || "—"}</td>
+                      <td>{b.items_count ?? "—"}</td>
+                      <td>
+                        <span
                           style={{
-                            cursor: "pointer",
-                            background: isSelected ? "#e8f0fe" : undefined,
+                            background: statusColors.bg,
+                            color: statusColors.text,
+                            padding: "3px 10px",
+                            borderRadius: 99,
+                            fontSize: "0.78rem",
+                            fontWeight: 700,
                           }}
                         >
-                          <td>#{b.id}</td>
-                          <td>{getGoverningBodyLabel(b.governing_body)}</td>
-                          <td>{b.directorate || "—"}</td>
-                          <td>{b.items_count ?? "—"}</td>
-                          <td>
-                            <span
-                              style={{
-                                background: statusColors.bg,
-                                color: statusColors.text,
-                                padding: "3px 8px",
-                                borderRadius: 6,
-                                fontSize: "0.82rem",
-                                fontWeight: 700,
-                              }}
-                            >
-                              {statusLabel}
-                            </span>
-                          </td>
-                          <td>{b.letter_number || "—"}</td>
-                          <td>
-                            <button
-                              className="btn-sm btn-secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedBatchId(b.id);
-                              }}
-                            >
-                              عرض
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td>{b.letter_number || "—"}</td>
+                      <td>
+                        <button
+                          className="btn-primary-custom"
+                          onClick={() => openDrawer(b.id)}
+                          style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 12px", fontSize: "0.82rem", borderRadius: 8 }}
+                        >
+                          <Eye size={14} />
+                          عرض
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-
-          <div>
-            {selectedBatch ? (
-              <OfficialLetterPreview
-                batch={selectedBatch}
-                requests={selectedBatchRequests}
-                letter={selectedLetter}
-                onSend={() => handleSend(selectedBatch.id)}
-                saving={false}
-              />
+        )}
+        {hasMoreBatches && (
+          <button
+            onClick={() => setShowAllBatches(!showAllBatches)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              width: "100%",
+              padding: "12px",
+              marginTop: 12,
+              background: "transparent",
+              border: "1px dashed var(--border)",
+              borderRadius: 12,
+              color: "var(--info)",
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {showAllBatches ? (
+              <>
+                إخفاء <ChevronUp size={18} />
+              </>
             ) : (
-              <div className="section-card" style={{ textAlign: "center", padding: 40 }}>
-                <p style={{ color: "var(--text-faint)" }}>اختر دفعة لعرض تفاصيل الكتاب الرسمي</p>
-              </div>
+              <>
+                عرض الكل ({batches.length - 5} إضافي) <ChevronDown size={18} />
+              </>
             )}
-          </div>
-        </div>
+          </button>
+        )}
+      </div>
+
+      {/* Drawer Overlay */}
+      {drawerOpen && (
+        <div
+          onClick={closeDrawer}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            backdropFilter: "blur(2px)",
+            zIndex: 999,
+            animation: "fadeIn 0.2s ease",
+          }}
+        />
       )}
+
+      {/* Drawer Panel */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: "min(520px, 90vw)",
+          background: "#f5f6fa",
+          boxShadow: "4px 0 24px rgba(0,0,0,0.12)",
+          zIndex: 1000,
+          transform: drawerOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)",
+          overflowY: "auto",
+          padding: 0,
+        }}
+      >
+        {/* Drawer Header */}
+        <div style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          background: "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)",
+          color: "#fff",
+          padding: "18px 20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <FileText size={22} />
+            <h3 style={{ margin: 0, fontSize: "1.1rem" }}>
+              تفاصيل الكتاب الرسمي
+            </h3>
+          </div>
+          <button
+            onClick={closeDrawer}
+            style={{
+              background: "rgba(255,255,255,0.15)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              color: "#fff",
+              borderRadius: 10,
+              width: 34,
+              height: 34,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Drawer Content */}
+        <div style={{ padding: "20px" }}>
+          {detailLoading ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px" }}>
+              <Loader2 size={32} className="spin" style={{ color: "var(--primary)", marginBottom: 10 }} />
+              <p style={{ color: "var(--text-faint)", fontSize: "0.9rem" }}>جاري تحميل تفاصيل الدفعة...</p>
+            </div>
+          ) : selectedBatch && (
+            <OfficialLetterPreview
+              batch={batchDetail || selectedBatch}
+              requests={batchDetail?.training_requests || batchDetail?.trainingRequests || batchDetail?.requests || batchDetail?.items || getBatchRequests(selectedBatchId) || []}
+              letter={selectedLetter}
+              onSend={() => handleSend(selectedBatch.id)}
+              saving={false}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

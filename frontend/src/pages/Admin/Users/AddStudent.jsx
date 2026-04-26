@@ -78,6 +78,15 @@ export default function AddStudent() {
 
     const formToSend = { ...form, university_id: String(form.university_id || "") };
 
+    // Remove password_confirmation — not accepted by update endpoint
+    delete formToSend.password_confirmation;
+
+    // Remove empty password so backend doesn't try to hash it
+    if (!formToSend.password) delete formToSend.password;
+
+    // Remove 'major' — column doesn't exist in users table yet
+    delete formToSend.major;
+
     try {
       if (id) {
         await updateUser(id, formToSend);

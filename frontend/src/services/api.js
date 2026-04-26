@@ -158,7 +158,7 @@ export const getTrainingRequestBatches = (params = {}) =>
   apiClient.get("/training-request-batches", { params }).then((res) => res.data);
 
 export const getTrainingRequestBatch = (id) =>
-  apiClient.get(`/training-request-batches/${id}`).then((res) => res.data);
+  apiClient.get(`/training-request-batches/${id}`).then((res) => res.data?.data ?? res.data);
 
 export const createTrainingRequestBatch = (data) =>
   apiClient.post("/training-request-batches", data).then((res) => res.data);
@@ -456,6 +456,10 @@ export const getStudentTrainingProgramById = async (studentId) => {
     const response = await apiClient.get(`/students/${studentId}/training-program`);
     return response.data;
 };
+
+// ==================== Coordinator Training Programs ====================
+export const getCoordinatorTrainingPrograms = (params) => apiClient.get('/coordinator/training-programs', { params }).then(res => res.data);
+export const updateTrainingProgramStatus = (id, data) => apiClient.patch(`/coordinator/training-programs/${id}/status`, data).then(res => res.data);
 
 export const getStudentTrainingLogs = async (config = {}) => {
     const response = await apiClient.get('/student/training-logs', config);

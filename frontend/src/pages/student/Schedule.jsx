@@ -65,6 +65,8 @@ export default function Schedule() {
   const [studentInfo, setStudentInfo] = useState({ name: "—", university_id: "—", school: "—", semester: "—" });
   const [schedule, setSchedule] = useState(buildEmptySchedule);
   const [hasSavedProgram, setHasSavedProgram] = useState(false);
+  const [programStatus, setProgramStatus] = useState(null);
+  const [coordinatorNote, setCoordinatorNote] = useState("");
   const [editingEntry, setEditingEntry] = useState(null);
   const portfolioEntryIdRef = useRef(null);
 
@@ -87,6 +89,8 @@ export default function Schedule() {
         setSchedule(merged);
         setHasSavedProgram(true);
       }
+      if (res?.data?.status) setProgramStatus(res.data.status);
+      if (res?.data?.coordinator_note) setCoordinatorNote(res.data.coordinator_note);
       if (res?.is_editable !== undefined) {
         setIsEditable(res.is_editable);
       }
@@ -257,6 +261,34 @@ export default function Schedule() {
         <div className="alert-custom alert-info mb-3 no-print" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Edit3 size={18} />
           تعبئة برنامج التدريب مفتوحة — يمكنك تعديل الجدول وحفظه.
+        </div>
+      )}
+
+      {programStatus === "submitted" && hasSavedProgram && (
+        <div className="alert-custom alert-info mb-3 no-print" style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "#cce5ff", border: "1px solid #b8daff", color: "#004085", borderRadius: 8, padding: "0.75rem 1rem" }}>
+          <Clock size={18} />
+          {"تم إرسال برنامج التدريب للمنسق — بانتظار المراجعة."}
+        </div>
+      )}
+
+      {programStatus === "approved" && hasSavedProgram && (
+        <div className="alert-custom alert-success mb-3 no-print" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <CheckCircle size={18} />
+          {"تمت الموافقة على برنامج التدريب من المنسق."}
+        </div>
+      )}
+
+      {programStatus === "rejected" && hasSavedProgram && (
+        <div className="alert-custom alert-danger mb-3 no-print" style={{ display: "flex", flexDirection: "column", gap: "0.25rem", background: "#f8d7da", border: "1px solid #f5c6cb", color: "#721c24", borderRadius: 8, padding: "0.75rem 1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <AlertCircle size={18} />
+            {"تم رفض برنامج التدريب من المنسق."}
+          </div>
+          {coordinatorNote && (
+            <div style={{ marginRight: "1.6rem", fontSize: "0.85rem", opacity: 0.85 }}>
+              <strong>{"ملاحظة المنسق:"}</strong> {coordinatorNote}
+            </div>
+          )}
         </div>
       )}
 

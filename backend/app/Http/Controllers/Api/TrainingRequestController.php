@@ -238,7 +238,17 @@ class TrainingRequestController extends Controller
             return response()->json(['message' => 'تم رفض الكتاب من المديرية']);
         }
         $this->trainingRequestService->directorateApprove($trainingRequest, $request->user()->id);
-        return response()->json(['message' => 'تمت موافقة المديرية على الكتاب']);
+
+        // Auto-send to school after approval
+        $trainingRequest->refresh();
+        $letterData = [
+            'letter_number' => $request->letter_number,
+            'letter_date' => $request->letter_date,
+            'content' => $request->content,
+        ];
+        $this->trainingRequestService->sendToSchool($trainingRequest, $request->user()->id, $letterData);
+
+        return response()->json(['message' => 'تمت موافقة المديرية وإرسال الكتاب إلى المدرسة بنجاح']);
     }
 
     public function sendToSchool(SendTrainingRequestToSchoolRequest $request, TrainingRequest $trainingRequest)

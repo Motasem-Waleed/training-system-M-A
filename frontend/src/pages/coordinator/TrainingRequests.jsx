@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  RefreshCw,
   ClipboardList,
   FileText,
   Layers,
   XCircle,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import useCoordinatorDistribution from "../../hooks/useCoordinatorDistribution";
 import {
@@ -142,28 +143,6 @@ export default function CoordinatorTrainingRequests() {
               مراجعة الطلبات، اعتمادها، تجميعها في كتب رسمية حسب المديرية، وإرسالها للجهات الرسمية.
             </p>
           </div>
-          <button
-            onClick={reload}
-            disabled={loading}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "rgba(255,255,255,0.15)",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.25)",
-              color: "#fff",
-              borderRadius: 12,
-              padding: "8px 16px",
-              fontWeight: 700,
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-          >
-            <RefreshCw size={16} className={loading ? "spin" : ""} />
-            تحديث
-          </button>
         </div>
       </div>
 
@@ -243,6 +222,7 @@ export default function CoordinatorTrainingRequests() {
         {batches.length === 0 ? (
           <EmptyState title="لا توجد دفعات" description="لم تُنشأ دفعات بعد." />
         ) : (
+          <>
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
@@ -256,7 +236,7 @@ export default function CoordinatorTrainingRequests() {
                 </tr>
               </thead>
               <tbody>
-                {batches.map((b) => {
+                {batches.slice(0, 4).map((b) => {
                   const statusLabel = BATCH_STATUS_LABELS[b.status] || b.status;
                   const statusColors = BATCH_STATUS_COLORS[b.status] || { bg: "#e9ecef", text: "#495057" };
                   const defaultLetterNumber = `كتاب-${b.id}/${new Date().getFullYear()}`;
@@ -343,6 +323,15 @@ export default function CoordinatorTrainingRequests() {
               </tbody>
             </table>
           </div>
+          <div style={{ marginTop: 12, textAlign: "center" }}>
+            <Link
+              to="/coordinator/official-letters"
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.85rem", color: "var(--info)", fontWeight: 700 }}
+            >
+              عرض الكل <ArrowLeft size={14} />
+            </Link>
+          </div>
+          </>
         )}
       </div>
 

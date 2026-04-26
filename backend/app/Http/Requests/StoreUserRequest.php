@@ -26,7 +26,6 @@ class StoreUserRequest extends FormRequest
             'phone' => 'nullable|string|max:20',
             'training_site_id' => 'nullable|exists:training_sites,id',
             'directorate' => 'nullable|in:وسط,شمال,جنوب,يطا',
-            'major' => 'nullable|string|max:255',
         ];
     }
 

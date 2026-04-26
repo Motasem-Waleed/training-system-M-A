@@ -7,14 +7,6 @@ export const GOVERNING_BODIES = [
     approvalStatus: "directorate_approved",
     rejectionStatus: "directorate_rejected",
   },
-  {
-    value: "ministry_of_health",
-    label: "وزارة الصحة",
-    shortLabel: "الصحة",
-    targetStatus: "sent_to_health_ministry",
-    approvalStatus: "health_ministry_approved",
-    rejectionStatus: "health_ministry_rejected",
-  },
 ];
 
 export const DIRECTORATES = [
