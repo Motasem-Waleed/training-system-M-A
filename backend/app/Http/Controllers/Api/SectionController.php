@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSectionRequest;
 use App\Http\Requests\UpdateSectionRequest;
 use App\Http\Resources\SectionResource;
+use App\Http\Resources\EnrollmentResource;
 use App\Models\Course;
 use App\Models\Section;
 use App\Models\User;
@@ -20,8 +21,24 @@ class SectionController extends Controller
 
     public function index(Request $request)
     {
-        $query = Section::with(['course', 'academicSupervisor', 'createdBy', 'students'])
+        $query = Section::with(['course', 'academicSupervisor', 'createdBy'])
             ->withCount('enrollments');
+
+        // Restrict head_of_department to their own department
+        $user = auth()->user();
+        $role = $user?->role?->name;
+        if ($role === 'head_of_department' && $user->department_id) {
+            $courseIds = Course::where('department_id', $user->department_id)->pluck('id');
+            $query->whereIn('course_id', $courseIds);
+        }
+
+        // By default, exclude archived sections unless explicitly requested
+        if (!$request->boolean('include_archived')) {
+            $query->whereNull('archived_at');
+        }
+        if ($request->boolean('only_archived')) {
+            $query->whereNotNull('archived_at');
+        }
 
         if ($request->has('course_id')) $query->where('course_id', $request->course_id);
         if ($request->has('semester')) $query->where('semester', $request->semester);
@@ -54,7 +71,8 @@ class SectionController extends Controller
 
     public function show(Section $section)
     {
-        return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy', 'students']));
+        $section->loadCount('enrollments');
+        return new SectionResource($section->load(['course', 'academicSupervisor', 'createdBy']));
     }
 
     public function update(UpdateSectionRequest $request, Section $section)

@@ -136,6 +136,7 @@ const menus = {
     { name: "إدارة المساقات", path: "/head-department/courses" },
     { name: "إدارة الشعب", path: "/head-department/sections" },
     { name: "تسجيل الطلاب", path: "/head-department/enrollments/create" },
+    { name: "الأرشفة", path: "/head-department/archive" },
     { name: "الملف الشخصي", path: "/profile" },
   ],
 

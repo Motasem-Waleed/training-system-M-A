@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSections, deleteSection } from "../../services/api";
-import { Edit, Trash2, Plus, Users, Calendar, BookOpen, GraduationCap, Eye } from "lucide-react";
+import { Edit, Trash2, Plus, Users, Calendar, BookOpen, GraduationCap, Eye, Archive } from "lucide-react";
 
 export default function HeadOfDepartmentSectionsList() {
   const navigate = useNavigate();
@@ -71,6 +71,8 @@ export default function HeadOfDepartmentSectionsList() {
     return order[semester] || 0;
   };
 
+  const handleGoToArchive = () => navigate("/head-department/archive");
+
   const handleDelete = async (id) => {
     if (!window.confirm("هل أنت متأكد من حذف هذه الشعبة؟")) return;
     
@@ -128,10 +130,16 @@ export default function HeadOfDepartmentSectionsList() {
           <h1>إدارة الشعب</h1>
           <p>عرض وإدارة الشعب الدراسية حسب الفصل الدراسي</p>
         </div>
-        <button onClick={handleAdd} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Plus size={16} />
-          إضافة شعبة جديدة
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={handleGoToArchive} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f59e0b', color: '#fff' }} title="إدارة الأرشفة وعرض الفترات المؤرشفة">
+            <Archive size={16} />
+            الأرشفة
+          </button>
+          <button onClick={handleAdd} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Plus size={16} />
+            إضافة شعبة جديدة
+          </button>
+        </div>
       </div>
 
       {sections.length === 0 ? (

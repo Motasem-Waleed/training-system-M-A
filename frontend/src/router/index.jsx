@@ -15,6 +15,8 @@ import HeadOfDepartmentCoursesList from "../pages/HeadOfDepartment/HeadOfDepartm
 import HeadOfDepartmentSectionForm from "../pages/HeadOfDepartment/HeadOfDepartmentSectionForm";
 import HeadOfDepartmentSectionsList from "../pages/HeadOfDepartment/HeadOfDepartmentSectionsList";
 import HeadOfDepartmentSectionDetails from "../pages/HeadOfDepartment/HeadOfDepartmentSectionDetails";
+import HeadOfDepartmentArchive from "../pages/HeadOfDepartment/HeadOfDepartmentArchive";
+import HeadOfDepartmentArchiveDetails from "../pages/HeadOfDepartment/HeadOfDepartmentArchiveDetails";
 import HeadOfDepartmentEnrollmentForm from "../pages/HeadOfDepartment/HeadOfDepartmentEnrollmentForm";
 
 // Admin
@@ -295,6 +297,8 @@ export default function AppRouter() {
           <Route path="/head-department/sections/create" element={<HeadOfDepartmentSectionForm />} />
           <Route path="/head-department/sections/edit/:id" element={<HeadOfDepartmentSectionForm />} />
           <Route path="/head-department/sections/:id" element={<HeadOfDepartmentSectionDetails />} />
+          <Route path="/head-department/archive" element={<HeadOfDepartmentArchive />} />
+          <Route path="/head-department/archive/details" element={<HeadOfDepartmentArchiveDetails />} />
           <Route path="/head-department/enrollments/create" element={<HeadOfDepartmentEnrollmentForm />} />
           <Route path="/head-department/enrollments/edit/:id" element={<HeadOfDepartmentEnrollmentForm />} />
 

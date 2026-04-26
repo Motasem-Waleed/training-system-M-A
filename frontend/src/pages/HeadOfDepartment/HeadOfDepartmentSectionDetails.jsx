@@ -121,7 +121,7 @@ export default function HeadOfDepartmentSectionDetails() {
           </div>
           <div>
             <label style={{ color: "#666", fontSize: 14 }}>المشرف الأكاديمي</label>
-            <p style={{ fontWeight: 500 }}>{section.supervisor?.name || "غير محدد"}</p>
+            <p style={{ fontWeight: 500 }}>{section.academic_supervisor?.name || "غير محدد"}</p>
           </div>
           <div>
             <label style={{ color: "#666", fontSize: 14 }}>عدد المسجلين</label>
