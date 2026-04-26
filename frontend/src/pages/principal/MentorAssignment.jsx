@@ -6,6 +6,23 @@ import {
   schoolManagerApproveRequest,
 } from "../../services/api";
 import { siteLabels } from "../../utils/roles";
+import {
+  ClipboardList,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Loader2,
+  User,
+  GraduationCap,
+  Building2,
+  MapPin,
+  School,
+  AlertCircle,
+  Save,
+  X,
+  FileText,
+  Users,
+} from "lucide-react";
 
 const teacherId = (user) =>
   user?.id ?? user?.data?.id ?? null;
@@ -162,157 +179,209 @@ export default function MentorAssignment({ siteType = "school" }) {
     }
   };
 
+  const pendingCount = requests.filter(r => r.book_status === "sent_to_school").length;
+  const totalStudents = rows.length;
+  const assignedCount = rows.filter(r => r.mentorId).length;
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", padding: "3rem", color: "var(--text-soft)" }}>
+        <Loader2 size={28} className="spin" />
+        {"جاري تحميل طلبات التدريب..."}
+      </div>
+    );
+  }
+
   return (
-    <div className="mentor-assignment-page">
-      <div className="content-header">
-        <h1 className="page-title">{labels.requestTitle}</h1>
-        <p className="page-subtitle">
-          تظهر هنا الطلبات المرسلة إلى {labels.siteName} التابعة لك. راجع بيانات كل طالب، عيّن
-          {" "}{labels.mentorLabel}، ثم اعتمد الطلب أو ارفضه مع توضيح السبب.
-        </p>
+    <div>
+      {/* Hero Section */}
+      <div className="hero-section mb-4">
+        <div className="hero-content">
+          <div className="hero-icon" style={{ background: "linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%)" }}>
+            <ClipboardList size={44} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h1 className="hero-title">{labels.requestTitle}</h1>
+            <p className="hero-subtitle">
+              {"راجع بيانات كل طالب، عيّن "}{labels.mentorLabel}{"، ثم اعتمد الطلب أو ارفضه مع توضيح السبب"}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="section-card">
-        {loading ? (
-          <div className="alert-custom alert-info">جاري تحميل البيانات...</div>
-        ) : requests.length === 0 ? (
-          <div className="alert-custom alert-info">
-            لا توجد طلبات بحالة «مرسل إلى {labels.siteName}» حالياً. عند وصول كتاب من المديرية أو الجهة
-            الصحية سيظهر الطلب هنا.
-          </div>
-        ) : (
-          requests.map((req) => {
-            const site = req.training_site || req.trainingSite;
-            const period = req.training_period || req.trainingPeriod;
-            const reqRows = rowsByRequest[req.id] || [];
+      {/* Summary Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        {[
+          { title: "إجمالي الطلبات", value: requests.length, icon: FileText, color: "#3b82f6", bg: "#dbeafe" },
+          { title: "طلبات معلقة", value: pendingCount, icon: Clock, color: "#f59e0b", bg: "#fef3c7" },
+          { title: "إجمالي الطلبة", value: totalStudents, icon: Users, color: "#8b5cf6", bg: "#ede9fe" },
+          { title: "تم تعيين مرشد", value: assignedCount, icon: CheckCircle2, color: "#10b981", bg: "#d1fae5" },
+        ].map((card, i) => {
+          const Icon = card.icon;
+          return (
+            <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ width: 48, height: 48, borderRadius: "14px", background: card.bg, color: card.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>{card.title}</div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1e293b" }}>{card.value}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-            return (
-              <div
-                key={req.id}
-                className="section-card mb-3"
-                style={{ border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
-              >
-                <div className="panel-header" style={{ marginBottom: 12 }}>
-                  <div>
-                    <h3 className="panel-title" style={{ marginBottom: 6 }}>
-                      طلب تدريب #{req.id}
-                      {req.letter_number ? ` — ${req.letter_number}` : ""}
-                    </h3>
-                    <p className="panel-subtitle" style={{ margin: 0 }}>
-                      <strong>جهة التدريب:</strong> {site?.name || "—"}
-                      {site?.location ? ` — ${site.location}` : ""}
-                      <br />
-                      <strong>المديرية:</strong> {site?.directorate || "—"} —{" "}
-                      <strong>الجهة الرسمية:</strong>{" "}
-                      {req.governing_body === "ministry_of_health"
-                        ? "وزارة الصحة"
-                        : req.governing_body === "directorate_of_education"
-                          ? "التربية والتعليم"
-                          : req.governing_body || "—"}
-                      {period?.name ? (
-                        <>
-                          <br />
-                          <strong>فترة التدريب:</strong> {period.name}
-                        </>
-                      ) : null}
-                    </p>
+      {/* Messages */}
+      {savedMessage && (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.75rem 1rem", background: "#d1fae5", color: "#059669", borderRadius: 12, fontSize: "0.9rem", fontWeight: 600, marginBottom: "1rem" }}>
+          <CheckCircle2 size={18} /> {savedMessage}
+        </div>
+      )}
+      {errorMessage && (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.75rem 1rem", background: "#fee2e2", color: "#dc2626", borderRadius: 12, fontSize: "0.9rem", fontWeight: 600, marginBottom: "1rem" }}>
+          <AlertCircle size={18} /> {errorMessage}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {requests.length === 0 ? (
+        <div className="section-card" style={{ padding: "3rem", borderRadius: "16px", border: "1px solid #e2e8f0", textAlign: "center" }}>
+          <ClipboardList size={56} style={{ marginBottom: "1rem", opacity: 0.3, color: "#94a3b8" }} />
+          <h3 style={{ margin: "0 0 0.5rem", color: "#64748b", fontSize: "1.1rem" }}>{"لا توجد طلبات حاليًا"}</h3>
+          <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.9rem" }}>
+            {"عند وصول كتاب من المديرية سيظهر الطلب هنا"}
+          </p>
+        </div>
+      ) : (
+        /* Request Cards */
+        requests.map((req) => {
+          const site = req.training_site || req.trainingSite;
+          const period = req.training_period || req.trainingPeriod;
+          const reqRows = rowsByRequest[req.id] || [];
+          const isSaving = savingRequestId === req.id;
+
+          return (
+            <div key={req.id} className="section-card mb-4" style={{ padding: "1.5rem", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
+              {/* Request Header */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "1.25rem", paddingBottom: "1rem", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "10px", background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", flexShrink: 0 }}>
+                    <FileText size={22} />
                   </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <span className="badge-custom badge-warning">
-                      {req.book_status_label || req.book_status}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-success-custom btn-sm-custom"
-                      disabled={savingRequestId === req.id}
-                      onClick={() => handleRequestApprove(req.id)}
-                    >
-                      {labels.approveBtn}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-danger-custom btn-sm-custom"
-                      disabled={savingRequestId === req.id}
-                      onClick={() => handleRequestReject(req.id)}
-                    >
-                      رفض الطلب
-                    </button>
+                  <div>
+                    <h4 style={{ margin: "0 0 0.25rem", fontSize: "1.1rem", fontWeight: 700 }}>
+                      {"طلب تدريب #"}{req.id}{req.letter_number ? ` — ${req.letter_number}` : ""}
+                    </h4>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", fontSize: "0.8rem", color: "#64748b" }}>
+                      {site?.name && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <Building2 size={13} /> {site.name}
+                        </span>
+                      )}
+                      {site?.location && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <MapPin size={13} /> {site.location}
+                        </span>
+                      )}
+                      {site?.directorate && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <School size={13} /> {site.directorate}
+                        </span>
+                      )}
+                      {period?.name && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <Clock size={13} /> {period.name}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                <div className="table-wrapper">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>المساق</th>
-                        <th>حالة السجل</th>
-                        <th>{labels.mentorCol}</th>
-                        <th>ملاحظات</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reqRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: "center" }}>
-                            لا يوجد طلاب مرتبطون بهذا الطلب
-                          </td>
-                        </tr>
-                      ) : (
-                        reqRows.map((student) => (
-                          <tr key={student.studentRowId}>
-                            <td className="fw-bold">{student.studentName}</td>
-                            <td>{student.universityId}</td>
-                            <td>{student.specialization}</td>
-                            <td>
-                              <span className="badge-custom badge-info">{student.status}</span>
-                            </td>
-                            <td style={{ minWidth: 220 }}>
-                              <select
-                                value={student.mentorId}
-                                onChange={(e) =>
-                                  handleMentorChange(student.studentRowId, e.target.value)
-                                }
-                                className="form-select-custom"
-                              >
-                                <option value="">{labels.mentorSelect}</option>
-                                {teachers.map((mentor) => (
-                                  <option key={mentor.id} value={mentor.id}>
-                                    {mentor.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td style={{ minWidth: 200 }}>
-                              <textarea
-                                value={student.notes}
-                                onChange={(e) =>
-                                  handleNotesChange(student.studentRowId, e.target.value)
-                                }
-                                placeholder="ملاحظات داخلية (اختياري)"
-                                className="form-textarea-custom"
-                                rows={2}
-                              />
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", padding: "0.375rem 0.75rem", borderRadius: "9999px", fontSize: "0.8rem", fontWeight: 600, background: "#fef3c7", color: "#d97706" }}>
+                    <Clock size={14} /> {req.book_status_label || req.book_status}
+                  </span>
+                  <button type="button" onClick={() => handleRequestApprove(req.id)} disabled={isSaving}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.5rem 1rem", background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "white", border: "none", borderRadius: 8, fontSize: "0.85rem", fontWeight: 600, cursor: isSaving ? "not-allowed" : "pointer", opacity: isSaving ? 0.7 : 1 }}
+                  >
+                    {isSaving ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
+                    {labels.approveBtn}
+                  </button>
+                  <button type="button" onClick={() => handleRequestReject(req.id)} disabled={isSaving}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.5rem 1rem", background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", borderRadius: 8, fontSize: "0.85rem", fontWeight: 600, cursor: isSaving ? "not-allowed" : "pointer" }}
+                  >
+                    <XCircle size={14} /> {"رفض الطلب"}
+                  </button>
                 </div>
               </div>
-            );
-          })
-        )}
 
-        {savedMessage ? (
-          <div className="alert-custom alert-success mt-3">{savedMessage}</div>
-        ) : null}
-        {errorMessage ? (
-          <div className="alert-custom alert-danger mt-3">{errorMessage}</div>
-        ) : null}
-      </div>
+              {/* Students Table */}
+              <div style={{ borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc" }}>
+                      {["الطالب", "الرقم الجامعي", "المساق", "حالة السجل", labels.mentorCol, "ملاحظات"].map((h) => (
+                        <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 600, color: "#475569", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reqRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
+                          {"لا يوجد طلاب مرتبطون بهذا الطلب"}
+                        </td>
+                      </tr>
+                    ) : (
+                      reqRows.map((student, idx) => (
+                        <tr key={student.studentRowId} style={{ background: idx % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                          <td style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <div style={{ width: 32, height: 32, borderRadius: "8px", background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <User size={14} />
+                              </div>
+                              <span style={{ fontWeight: 600 }}>{student.studentName}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>
+                            {student.universityId}
+                          </td>
+                          <td style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", color: "#64748b" }}>
+                              <GraduationCap size={13} /> {student.specialization}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", padding: "0.25rem 0.625rem", borderRadius: "9999px", fontSize: "0.75rem", fontWeight: 600, background: "#dbeafe", color: "#2563eb" }}>
+                              {student.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", minWidth: 200 }}>
+                            <select value={student.mentorId} onChange={(e) => handleMentorChange(student.studentRowId, e.target.value)}
+                              style={{ width: "100%", padding: "0.375rem 0.5rem", borderRadius: 6, border: student.mentorId ? "1px solid #10b981" : "1px solid #e2e8f0", fontSize: "0.8rem", background: student.mentorId ? "#f0fdf4" : "#f8fafc", outline: "none" }}
+                            >
+                              <option value="">{labels.mentorSelect}</option>
+                              {teachers.map((mentor) => (
+                                <option key={mentor.id} value={mentor.id}>{mentor.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", minWidth: 180 }}>
+                            <textarea value={student.notes} onChange={(e) => handleNotesChange(student.studentRowId, e.target.value)}
+                              placeholder={"ملاحظات (اختياري)"} rows={2}
+                              style={{ width: "100%", padding: "0.375rem 0.5rem", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: "0.8rem", background: "#f8fafc", resize: "vertical", outline: "none" }}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

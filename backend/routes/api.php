@@ -38,7 +38,8 @@ use App\Http\Controllers\Api\{
     TaskSubmissionController,
     StudentAttendanceController,
     StudentEFormController,
-    HeadOfDepartmentController
+    HeadOfDepartmentController,
+    StudentEvaluationController
 };
 
 // Routes publiques
@@ -346,5 +347,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         
         // Search students
         Route::get('/search-students', [HeadOfDepartmentController::class, 'searchStudents']);
+    });
+
+    // ========== ROUTES STUDENT EVALUATIONS ==========
+    Route::prefix('student-evaluations')->group(function () {
+        Route::get('/', [StudentEvaluationController::class, 'index']);
+        Route::post('/', [StudentEvaluationController::class, 'store']);
+        Route::get('/my-site-students', [StudentEvaluationController::class, 'getMySiteStudents']);
+        Route::get('/statistics', [StudentEvaluationController::class, 'statistics']);
+        Route::get('/student/{studentId}', [StudentEvaluationController::class, 'byStudent']);
+        Route::get('/{id}', [StudentEvaluationController::class, 'show']);
+        Route::put('/{id}', [StudentEvaluationController::class, 'update']);
+        Route::delete('/{id}', [StudentEvaluationController::class, 'destroy']);
     });
 });
