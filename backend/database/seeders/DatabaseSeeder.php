@@ -28,9 +28,7 @@ class DatabaseSeeder extends Seeder
             OfficialLettersSeeder::class,
             FeatureFlagsSeeder::class,
             FieldSupervisorTemplatesSeeder::class, // قوالب المشرف الميداني
-            AcademicEvaluationTemplatesSeeder::class, // قوالب التقييم الأكاديمي حسب القسم
             FieldSupervisorSeeder::class, // مشرف ميداني تجريبي
-            AcademicSupervisorWorkspaceSeeder::class, // ربط طلاب بمشرف hebron للواجهة
         ]);
 
       
