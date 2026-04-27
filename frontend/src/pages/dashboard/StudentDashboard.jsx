@@ -83,6 +83,11 @@ export default function StudentDashboard({ forcedTrack = null }) {
     directorate: "",
     school: "",
     trainingRequestStatus: "",
+    sectionName: "",
+    courseName: "",
+    academicSupervisorName: "",
+    mentorName: "",
+    trainingSiteName: "",
   });
   const [summaryCards, setSummaryCards] = useState([
     { title: "طلب التدريب", value: "جاري التحميل...", desc: "حالة طلب التدريب الحالي", className: "warning", icon: ClipboardList, link: "/student/training-request" },
@@ -123,7 +128,8 @@ export default function StudentDashboard({ forcedTrack = null }) {
         getStudentNotifications({ signal }),
       ]);
 
-      // 1. بيانات المستخدم
+      // 1. بيانات المستخدم + الشعبة + المشرفين
+      const cs = user?.current_section || user?.data?.current_section || {};
       setStudentInfo(prev => ({
         ...prev,
         name: user?.name || user?.data?.name || "",
@@ -131,6 +137,11 @@ export default function StudentDashboard({ forcedTrack = null }) {
         specialization: getStudentSpecialization(user, effectiveTrack),
         college: getCollegeLabel(user, effectiveTrack),
         status: getUserStatusLabel(user),
+        sectionName: cs.section_name || "",
+        courseName: cs.course_name || "",
+        academicSupervisorName: cs.academic_supervisor?.name || "",
+        mentorName: cs.mentor?.name || "",
+        trainingSiteName: cs.training_site?.name || "",
       }));
 
       // 2. طلبات التدريب
@@ -149,7 +160,7 @@ export default function StudentDashboard({ forcedTrack = null }) {
       setStudentInfo(prev => ({
         ...prev,
         trainingRequestStatus: requestStatus,
-        school: schoolName,
+        school: schoolName || prev.trainingSiteName,
         directorate: directorateName,
       }));
 
@@ -342,6 +353,56 @@ export default function StudentDashboard({ forcedTrack = null }) {
           </div>
         </div>
       </div>
+
+      {/* Section & Supervisors Card — يظهر عند تسجيل الطالب في شعبة */}
+      {(studentInfo.sectionName || studentInfo.academicSupervisorName || studentInfo.mentorName) && (
+        <div className="section-card mb-4">
+          <div className="d-flex align-items-center gap-2 mb-4">
+            <div className="section-icon">
+              <BookOpen size={20} />
+            </div>
+            <h4 className="mb-0">الشعبة والمشرفون</h4>
+          </div>
+          <div className="info-grid">
+            <div className="info-card">
+              <div className="info-icon-wrapper primary">
+                <BookOpen size={18} />
+              </div>
+              <div className="info-content">
+                <span className="info-label">المساق</span>
+                <strong className="info-value">{studentInfo.courseName || "—"}</strong>
+              </div>
+            </div>
+            <div className="info-card">
+              <div className="info-icon-wrapper info">
+                <ClipboardList size={18} />
+              </div>
+              <div className="info-content">
+                <span className="info-label">الشعبة</span>
+                <strong className="info-value">{studentInfo.sectionName || "—"}</strong>
+              </div>
+            </div>
+            <div className="info-card">
+              <div className="info-icon-wrapper accent">
+                <User size={18} />
+              </div>
+              <div className="info-content">
+                <span className="info-label">المشرف الأكاديمي</span>
+                <strong className="info-value">{studentInfo.academicSupervisorName || "لم يُعيَّن بعد"}</strong>
+              </div>
+            </div>
+            <div className="info-card">
+              <div className="info-icon-wrapper success">
+                <School size={18} />
+              </div>
+              <div className="info-content">
+                <span className="info-label">{effectiveTrack === "psychology" ? "الأخصائي المرشد" : "المعلم المرشد"}</span>
+                <strong className="info-value">{studentInfo.mentorName || "لم يُعيَّن بعد"}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="dashboard-grid mb-4">

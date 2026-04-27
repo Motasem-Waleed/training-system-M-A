@@ -20,7 +20,8 @@ class DashboardController extends Controller
             'active_trainings' => TrainingAssignment::where('status', 'ongoing')->count(),
             'completed_trainings' => TrainingAssignment::where('status', 'completed')->count(),
             'total_sites' => TrainingSite::count(),
-            'pending_evaluations' => Evaluation::whereNull('total_score')->count(),
+            // Exclude archived evaluations from pending count
+            'pending_evaluations' => Evaluation::whereNull('total_score')->whereNull('archived_at')->count(),
         ];
         
         // إحصائيات حسب المستخدم

@@ -379,6 +379,7 @@ class StudentAttendanceController extends Controller
         if ($studentAttendance->training_request_student_id) {
             $assignment = TrainingAssignment::query()
                 ->where('training_request_student_id', $studentAttendance->training_request_student_id)
+                ->whereHas('enrollment.section', fn ($q) => $q->whereNull('archived_at'))
                 ->latest('id')
                 ->first();
         }
@@ -386,6 +387,7 @@ class StudentAttendanceController extends Controller
         if (! $assignment) {
             $assignment = TrainingAssignment::query()
                 ->whereHas('enrollment', fn ($query) => $query->where('user_id', $studentAttendance->user_id))
+                ->whereHas('enrollment.section', fn ($q) => $q->whereNull('archived_at'))
                 ->latest('id')
                 ->first();
         }

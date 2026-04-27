@@ -18,7 +18,7 @@ export default function AddCounselor() {
     password: "",
     password_confirmation: "",
     training_site_id: "",
-    role_id: 5,          // مرشد (تم التعديل من 6 إلى 5)
+    role_id: 7,          // adviser (المرشد التربوي) - NOT school_manager
     status: "active",
   });
   const [file, setFile] = useState(null);
@@ -52,7 +52,7 @@ export default function AddCounselor() {
             password: "",
             password_confirmation: "",
             training_site_id: userData.training_site_id || "",
-            role_id: userData.role_id || 5,
+            role_id: userData.role_id || 7,
             status: userData.status || "active",
           });
         } catch (err) { console.error(err); }
@@ -126,7 +126,7 @@ export default function AddCounselor() {
             password: row["كلمة المرور"] || row["password"] || "12345678",
             password_confirmation: row["كلمة المرور"] || row["password"] || "12345678",
             training_site_id: trainingSiteId,
-            role_id: 5,
+            role_id: 7, // adviser (المرشد التربوي)
             status: "active",
           };
         });
@@ -203,7 +203,7 @@ export default function AddCounselor() {
         setStatusMessage({ type: "success", text: "تمت إضافة المرشد بنجاح" });
         setForm({
           name: "", email: "", phone: "", password: "", password_confirmation: "",
-          training_site_id: "", role_id: 5, status: "active",
+          training_site_id: "", role_id: 7, status: "active",
         });
         setTimeout(() => navigate("/admin/users"), 1500);
       }

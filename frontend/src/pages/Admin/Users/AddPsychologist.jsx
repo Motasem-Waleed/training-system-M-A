@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getUser, createUser, updateUser, getDepartments } from "../../../services/api";
+import { getUser, createUser, updateUser, getTrainingSites } from "../../../services/api";
 import * as XLSX from "xlsx";
 
 export default function AddPsychologist() {
@@ -10,15 +10,15 @@ export default function AddPsychologist() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
-  const [departments, setDepartments] = useState([]);
+  const [trainingSites, setTrainingSites] = useState([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     password: "",
     password_confirmation: "",
-    department_id: "",
-    role_id: 6,
+    training_site_id: "",
+    role_id: 8, // psychologist (أخصائي نفسي) - NOT psychology_center_manager (مدير مركز)
     status: "active",
   });
   const [file, setFile] = useState(null);
@@ -27,11 +27,18 @@ export default function AddPsychologist() {
   const isEditMode = !!id;
 
   useEffect(() => {
-    const fetchDepartments = async () => {
-      try { const res = await getDepartments(); const data = res?.data || res; setDepartments(Array.isArray(data) ? data : []); }
-      catch (err) { console.error("فشل جلب الأقسام", err); }
+    const fetchSites = async () => {
+      try {
+        const res = await getTrainingSites();
+        const sitesData = res?.data || res;
+        // Filter only health centers (not schools)
+        const healthCenters = Array.isArray(sitesData)
+          ? sitesData.filter(s => s.site_type === 'health_center' || s.site_type === 'clinic')
+          : [];
+        setTrainingSites(healthCenters);
+      } catch (err) { console.error("فشل جلب أماكن التدريب", err); }
     };
-    fetchDepartments();
+    fetchSites();
   }, []);
 
   useEffect(() => {
@@ -45,8 +52,8 @@ export default function AddPsychologist() {
             phone: userData.phone || "",
             password: "",
             password_confirmation: "",
-            department_id: userData.department_id || "",
-            role_id: userData.role_id || 6,
+            training_site_id: userData.training_site_id || "",
+            role_id: userData.role_id || 8, // psychologist
             status: userData.status || "active",
           });
         } catch (err) { console.error(err); }
@@ -100,35 +107,17 @@ export default function AddPsychologist() {
           return clean;
         });
 
-        const departmentMap = {};
-        departments.forEach(dept => {
-          const normalized = dept.name.trim();
-          departmentMap[normalized] = dept.id;
-          departmentMap[normalized.toLowerCase()] = dept.id;
-        });
-        
-        // Add Arabic to English mapping
-        const arabicToEnglish = {
-          "علم النفس": "psychology",
-          "التربية": "usool_tarbiah", 
-          "أصول التربية": "usool_tarbiah",
-          "الإدارة": "administration",
-          "إدارة": "administration"
-        };
-        
-        // Add Arabic mappings to departmentMap
-        Object.keys(arabicToEnglish).forEach(arabicName => {
-          const englishName = arabicToEnglish[arabicName];
-          if (departmentMap[englishName]) {
-            departmentMap[arabicName] = departmentMap[englishName];
-            departmentMap[arabicName.toLowerCase()] = departmentMap[englishName];
-          }
+        const siteMap = {};
+        trainingSites.forEach(site => {
+          const normalized = site.name.trim();
+          siteMap[normalized] = site.id;
+          siteMap[normalized.toLowerCase()] = site.id;
         });
 
         const psychologists = cleanRows.map(row => {
-          let deptName = (row["القسم"] || row["department"] || "").trim();
-          let departmentId = departmentMap[deptName];
-          if (!departmentId) departmentId = departmentMap[deptName.toLowerCase()];
+          let siteName = (row["مكان العمل"] || row["المركز"] || row["site"] || "").trim();
+          let trainingSiteId = siteMap[siteName];
+          if (!trainingSiteId) trainingSiteId = siteMap[siteName.toLowerCase()];
 
           return {
             name: row["الاسم الكامل"] || row["name"] || "",
@@ -136,8 +125,8 @@ export default function AddPsychologist() {
             phone: row["رقم الهاتف"] || row["phone"] || "",
             password: row["كلمة المرور"] || row["password"] || "12345678",
             password_confirmation: row["كلمة المرور"] || row["password"] || "12345678",
-            department_id: departmentId,
-            role_id: 6,
+            training_site_id: trainingSiteId,
+            role_id: 8, // psychologist (أخصائي نفسي)
             status: "active",
           };
         });
@@ -205,16 +194,17 @@ export default function AddPsychologist() {
     setStatusMessage({ type: "", text: "" });
 
     try {
+      const formToSend = { ...form, training_site_id: form.training_site_id ? Number(form.training_site_id) : null };
       if (id) {
-        await updateUser(id, form);
+        await updateUser(id, formToSend);
         setStatusMessage({ type: "success", text: "تم تحديث الأخصائي النفسي بنجاح" });
         setTimeout(() => navigate("/admin/users"), 1500);
       } else {
-        await createUser(form);
+        await createUser(formToSend);
         setStatusMessage({ type: "success", text: "تمت إضافة الأخصائي النفسي بنجاح" });
         setForm({
           name: "", email: "", phone: "", password: "", password_confirmation: "",
-          department_id: "", role_id: 6, status: "active",
+          training_site_id: "", role_id: 8, status: "active",
         });
         setTimeout(() => navigate("/admin/users"), 1500);
       }
@@ -258,14 +248,14 @@ export default function AddPsychologist() {
             {errors.phone && <span className="error">{errors.phone[0]}</span>}
           </div>
           <div className="form-group">
-            <label>القسم</label>
-            <select name="department_id" value={form.department_id} onChange={handleChange}>
-              <option value="">اختر القسم</option>
-              {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
+            <label>مكان العمل (المركز الصحي)</label>
+            <select name="training_site_id" value={form.training_site_id} onChange={handleChange}>
+              <option value="">اختر المركز الصحي</option>
+              {trainingSites.map(site => (
+                <option key={site.id} value={site.id}>{site.name}</option>
               ))}
             </select>
-            {errors.department_id && <span className="error">{errors.department_id[0]}</span>}
+            {errors.training_site_id && <span className="error">{errors.training_site_id[0]}</span>}
           </div>
           <div className="form-group">
             <label>كلمة المرور (اتركها فارغة إذا لم ترد التغيير)</label>
@@ -329,14 +319,14 @@ export default function AddPsychologist() {
             {errors.phone && <span className="error">{errors.phone[0]}</span>}
           </div>
           <div className="form-group">
-            <label>القسم</label>
-            <select name="department_id" value={form.department_id} onChange={handleChange}>
-              <option value="">اختر القسم</option>
-              {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
+            <label>مكان العمل (المركز الصحي)</label>
+            <select name="training_site_id" value={form.training_site_id} onChange={handleChange}>
+              <option value="">اختر المركز الصحي</option>
+              {trainingSites.map(site => (
+                <option key={site.id} value={site.id}>{site.name}</option>
               ))}
             </select>
-            {errors.department_id && <span className="error">{errors.department_id[0]}</span>}
+            {errors.training_site_id && <span className="error">{errors.training_site_id[0]}</span>}
           </div>
           <div className="form-group">
             <label>كلمة المرور *</label>
@@ -361,7 +351,7 @@ export default function AddPsychologist() {
             <li><strong>الاسم الكامل</strong> (مطلوب)</li>
             <li><strong>البريد الإلكتروني</strong> (مطلوب)</li>
             <li><strong>رقم الهاتف</strong> (اختياري)</li>
-            <li><strong>القسم</strong> (اختياري)</li>
+            <li><strong>مكان العمل (المركز الصحي)</strong> (اختياري)</li>
             <li><strong>كلمة المرور</strong> (اختياري، افتراضي 12345678)</li>
           </ul>
           <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />

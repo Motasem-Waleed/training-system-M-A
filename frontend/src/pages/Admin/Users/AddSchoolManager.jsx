@@ -18,7 +18,7 @@ export default function AddSchoolManager() {
     password: "",
     password_confirmation: "",
     training_site_id: "",
-    role_id: 4,
+    role_id: 5, // school_manager (مدير المدرسة) - NOT field_supervisor (المشرف الميداني)
     status: "active",
   });
   const [file, setFile] = useState(null);
@@ -39,7 +39,7 @@ export default function AddSchoolManager() {
       const fetchUser = async () => {
         try {
           const userData = await getUser(id);
-          setForm({ name: userData.name || "", email: userData.email || "", password: "", password_confirmation: "", phone: userData.phone || "", training_site_id: userData.training_site_id || "", role_id: userData.role_id || 4, status: userData.status || "active" });
+          setForm({ name: userData.name || "", email: userData.email || "", password: "", password_confirmation: "", phone: userData.phone || "", training_site_id: userData.training_site_id || "", role_id: userData.role_id || 5, status: userData.status || "active" });
         } catch (err) { console.error(err); }
       };
       fetchUser();
@@ -110,7 +110,7 @@ export default function AddSchoolManager() {
             password: row["كلمة المرور"] || row["password"] || "12345678",
             password_confirmation: row["كلمة المرور"] || row["password"] || "12345678",
             training_site_id: trainingSiteId,
-            role_id: 4,
+            role_id: 5, // school_manager (مدير المدرسة)
             status: "active",
           };
         });
@@ -191,7 +191,7 @@ export default function AddSchoolManager() {
         setStatusMessage({ type: "success", text: "تمت إضافة مدير المدرسة بنجاح" });
         setForm({
           name: "", email: "", phone: "", password: "", password_confirmation: "",
-          training_site_id: "", role_id: 4, status: "active",
+          training_site_id: "", role_id: 5, status: "active",
         });
         setTimeout(() => navigate("/admin/users"), 1500);
       }

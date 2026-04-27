@@ -18,7 +18,7 @@ export default function AddAcademicSupervisor() {
     password: "",
     password_confirmation: "",
     department_id: "",
-    role_id: 3,        // مشرف أكاديمي
+    role_id: 9,        // academic_supervisor (المشرف الأكاديمي) - NOT teacher
     status: "active",
   });
   const [file, setFile] = useState(null);
@@ -51,7 +51,7 @@ export default function AddAcademicSupervisor() {
             password: "",
             password_confirmation: "",
             department_id: userData.department_id || "",
-            role_id: userData.role_id || 3,
+            role_id: userData.role_id || 9,
             status: userData.status || "active",
           });
         } catch (err) {
@@ -144,7 +144,7 @@ export default function AddAcademicSupervisor() {
             password: row["كلمة المرور"] || row["password"] || "12345678",
             password_confirmation: row["كلمة المرور"] || row["password"] || "12345678",
             department_id: departmentId,
-            role_id: 3,
+            role_id: 9, // academic_supervisor (المشرف الأكاديمي)
             status: "active",
           };
         });
@@ -243,7 +243,7 @@ export default function AddAcademicSupervisor() {
         setStatusMessage({ type: "success", text: "تمت إضافة المشرف الأكاديمي بنجاح" });
         setForm({
           name: "", email: "", phone: "", password: "", password_confirmation: "",
-          department_id: "", role_id: 3, status: "active",
+          department_id: "", role_id: 9, status: "active",
         });
         setTimeout(() => navigate("/admin/users"), 1500);
       }

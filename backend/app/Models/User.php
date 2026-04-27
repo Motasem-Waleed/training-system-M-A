@@ -165,10 +165,14 @@ public function enrollments()
 
     /**
      * آخر تسجيل شعبة للطالب مع العلاقات اللازمة.
+     * يتجاهل التسجيلات في الشعب المؤرشفة.
      */
     public function currentEnrollment(): ?Enrollment
     {
         return $this->enrollments()
+            ->whereHas('section', function ($q) {
+                $q->whereNull('archived_at');
+            })
             ->with(['section.course'])
             ->latest('id')
             ->first();
@@ -199,10 +203,20 @@ public function enrollments()
         return null;
     }
 
-    /** أحدث تعيين تدريبي مرتبط بتسجيل الطالب (للجدول، السجل، المهام). */
+    /**
+     * أحدث تعيين تدريبي مرتبط بتسجيل الطالب (للجدول، السجل، المهام).
+     * يتجاهل التعيينات في الشعب المؤرشفة.
+     */
     public function currentTrainingAssignment(): ?TrainingAssignment
     {
-        $enrollment = $this->enrollments()->latest('id')->first();
+        // Get latest enrollment in non-archived section
+        $enrollment = $this->enrollments()
+            ->whereHas('section', function ($q) {
+                $q->whereNull('archived_at');
+            })
+            ->latest('id')
+            ->first();
+
         if (! $enrollment) {
             return null;
         }

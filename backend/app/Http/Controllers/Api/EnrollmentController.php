@@ -31,15 +31,19 @@ class EnrollmentController extends Controller
     public function store(StoreEnrollmentRequest $request)
     {
         $data = $request->validated();
-        
-        // Check if student is already enrolled in any section during this period
+
+        // Check if student is already enrolled in any ACTIVE section during this period
+        // Exclude: dropped, and sections that are archived
         $existingEnrollment = Enrollment::where('user_id', $data['user_id'])
             ->where('academic_year', $data['academic_year'])
             ->where('semester', $data['semester'])
             ->where('status', '!=', 'dropped')
-            ->with('section.course')
+            ->whereHas('section', function ($q) {
+                $q->whereNull('archived_at'); // Exclude archived sections
+            })
+            ->with(['section.course'])
             ->first();
-        
+
         if ($existingEnrollment) {
             $courseName = $existingEnrollment->section?->course?->name ?? 'غير معروف';
             $sectionName = $existingEnrollment->section?->name ?? 'غير معروف';

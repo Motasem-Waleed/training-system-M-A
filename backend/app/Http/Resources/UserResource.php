@@ -40,11 +40,35 @@ class UserResource extends JsonResource
                 $this->role?->name === 'student',
                 function () {
                     $enrollment = $this->currentEnrollment();
+                    if ($enrollment) {
+                        $enrollment->loadMissing(['section.course', 'section.academicSupervisor']);
+                    }
+                    $assignment = $this->currentTrainingAssignment();
+                    if ($assignment) {
+                        $assignment->loadMissing(['teacher', 'trainingSite']);
+                    }
+
                     return [
                         'section_id' => data_get($enrollment, 'section.id'),
                         'section_name' => data_get($enrollment, 'section.name'),
                         'course_code' => data_get($enrollment, 'section.course.code'),
                         'course_name' => data_get($enrollment, 'section.course.name'),
+                        'academic_supervisor' => data_get($enrollment, 'section.academicSupervisor') ? [
+                            'id' => data_get($enrollment, 'section.academicSupervisor.id'),
+                            'name' => data_get($enrollment, 'section.academicSupervisor.name'),
+                            'email' => data_get($enrollment, 'section.academicSupervisor.email'),
+                            'phone' => data_get($enrollment, 'section.academicSupervisor.phone'),
+                        ] : null,
+                        'mentor' => data_get($assignment, 'teacher') ? [
+                            'id' => data_get($assignment, 'teacher.id'),
+                            'name' => data_get($assignment, 'teacher.name'),
+                            'email' => data_get($assignment, 'teacher.email'),
+                            'phone' => data_get($assignment, 'teacher.phone'),
+                        ] : null,
+                        'training_site' => data_get($assignment, 'trainingSite') ? [
+                            'id' => data_get($assignment, 'trainingSite.id'),
+                            'name' => data_get($assignment, 'trainingSite.name'),
+                        ] : null,
                         'track' => $this->resolveStudentTrack(),
                     ];
                 }
