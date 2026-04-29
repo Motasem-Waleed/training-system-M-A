@@ -32,7 +32,7 @@ class UpdateAcademicTaskRequest extends FormRequest
             'title' => 'sometimes|string|max:255',
             'description' => 'sometimes|nullable|string',
             'instructions' => 'sometimes|nullable|string',
-            'due_date' => 'sometimes|date',
+            'due_date' => 'sometimes|nullable|date',
             'task_type' => 'sometimes|in:general,weekly_report,daily_log,portfolio_item,lesson_critique,teaching_artifact,visit_preparation,reflection,counseling_plan,individual_session,group_guidance,case_study,behavior_plan,form_submission',
             'attachments' => 'sometimes|array',
             'attachments.*' => 'string',

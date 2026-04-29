@@ -114,7 +114,7 @@ export default function TasksTab({ studentId }) {
   };
 
   const buildCreatePayload = () => {
-    const due = form.due_date;
+    const due = form.due_date || null;
     const scope = form.assignment_scope;
     if (scope === "section") {
       const sid = form.section_id ? Number(form.section_id) : null;
@@ -183,7 +183,7 @@ export default function TasksTab({ studentId }) {
           title: form.title.trim(),
           description: form.description || null,
           instructions: form.instructions || null,
-          due_date: form.due_date,
+          due_date: form.due_date || null,
           task_type: form.task_type,
           grading_weight: form.grading_weight === "" ? null : Number(form.grading_weight),
         });
@@ -361,13 +361,12 @@ export default function TasksTab({ studentId }) {
                 />
               </div>
               <div>
-                <label className="form-label-custom">تاريخ التسليم *</label>
+                <label className="form-label-custom">تاريخ التسليم (اختياري)</label>
                 <input
                   type="date"
                   className="form-input-custom"
                   value={form.due_date}
                   onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-                  required
                 />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>

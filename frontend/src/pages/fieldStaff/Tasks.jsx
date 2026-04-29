@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import {
+  apiClient,
   getTasks,
   createTask,
   updateTask,
@@ -9,20 +10,17 @@ import {
   getTrainingAssignments,
   gradeTaskSubmission,
   itemsFromPagedResponse,
+  unwrapSupervisorList,
 } from "../../services/api";
+import { readStoredUser } from "../../utils/session";
+import { normalizeRole, ROLES } from "../../utils/roles";
 import {
-  ClipboardList,
-  Upload,
-  Send,
   CheckCircle2,
-  XCircle,
   AlertCircle,
   Clock,
-  FileText,
   User,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
   Loader2,
   Download,
   MessageSquare,
@@ -37,13 +35,41 @@ const STATUS_MAP = {
   overdue: { label: "متأخر", cls: "badge-danger" },
 };
 
-const emptyForm = { title: "", description: "", training_assignment_id: "", due_date: "", status: "pending" };
+const TASK_TYPES = [
+  { value: "general", label: "عام / واجب" },
+  { value: "weekly_report", label: "تقرير أسبوعي" },
+  { value: "daily_log", label: "سجل يومي" },
+  { value: "portfolio_item", label: "عنصر ملف الإنجاز" },
+  { value: "lesson_critique", label: "نقد درس" },
+  { value: "teaching_artifact", label: "نتاج/أثر تدريسي" },
+  { value: "visit_preparation", label: "تحضير زيارة" },
+  { value: "reflection", label: "تأمل مهني" },
+  { value: "form_submission", label: "تسليم نموذج" },
+];
+
+const emptyForm = {
+  title: "",
+  description: "",
+  instructions: "",
+  training_assignment_id: "",
+  due_date: "",
+  status: "pending",
+  assignment_scope: "student",
+  section_id: "",
+  task_type: "general",
+  grading_weight: "",
+};
 
 export default function FieldStaffTasks() {
+  const savedUser = readStoredUser();
+  const isAcademicSupervisor = normalizeRole(savedUser?.role?.name || savedUser?.role) === ROLES.SUPERVISOR;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [items, setItems] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [supervisedStudents, setSupervisedStudents] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState(() => new Set());
 
   // Modal / form
   const [showModal, setShowModal] = useState(false);
@@ -52,21 +78,46 @@ export default function FieldStaffTasks() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [expandedTaskId, setExpandedTaskId] = useState(null);
-  const [gradingSubmissionId, setGradingSubmissionId] = useState(null);
   const [gradingForm, setGradingForm] = useState({ grade: "", feedback: "" });
   const [gradingSaving, setGradingSaving] = useState(false);
   const [gradingError, setGradingError] = useState("");
+
+  const toggleStudent = (id) => {
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const [taskRes, assignRes] = await Promise.all([
+      const [taskRes, assignRes, studentsRes, sectionsRes] = await Promise.all([
         getTasks({ per_page: 200, with_submissions: 1 }),
         getTrainingAssignments({ per_page: 200 }),
+        isAcademicSupervisor
+          ? apiClient.get("/supervisor/students", { params: { per_page: 200 } }).then((res) => res.data)
+          : Promise.resolve(null),
+        isAcademicSupervisor
+          ? apiClient.get("/supervisor/sections", { params: { per_page: 100 } }).then((res) => res.data)
+          : Promise.resolve(null),
       ]);
       setItems(itemsFromPagedResponse(taskRes));
       setAssignments(itemsFromPagedResponse(assignRes));
+      if (isAcademicSupervisor) {
+        const students = unwrapSupervisorList(studentsRes);
+        setSupervisedStudents(students);
+        setSections(unwrapSupervisorList(sectionsRes));
+        if (!selectedStudentIds.size && students[0]) {
+          const firstId = Number(students[0].student_id ?? students[0].id);
+          if (Number.isFinite(firstId)) {
+            setSelectedStudentIds(new Set([firstId]));
+          }
+        }
+      }
     } catch (e) {
       setError(e?.response?.data?.message || "فشل تحميل المهام");
     } finally {
@@ -83,7 +134,6 @@ export default function FieldStaffTasks() {
         feedback: gradingForm.feedback || null,
         status: "graded",
       });
-      setGradingSubmissionId(null);
       setGradingForm({ grade: "", feedback: "" });
       await load();
     } catch (e) {
@@ -98,6 +148,9 @@ export default function FieldStaffTasks() {
   function openCreate() {
     setEditingId(null);
     setForm(emptyForm);
+    const firstStudent = supervisedStudents[0];
+    const firstId = firstStudent ? Number(firstStudent.student_id ?? firstStudent.id) : null;
+    setSelectedStudentIds(Number.isFinite(firstId) ? new Set([firstId]) : new Set());
     setFormError("");
     setShowModal(true);
   }
@@ -107,9 +160,14 @@ export default function FieldStaffTasks() {
     setForm({
       title: t.title || "",
       description: t.description || "",
-      training_assignment_id: t.training_assignment_id || "",
+      instructions: t.instructions || "",
+      training_assignment_id: t.training_assignment_id || t.training_assignment?.id || "",
       due_date: t.due_date || "",
       status: t.status || "pending",
+      assignment_scope: "student",
+      section_id: "",
+      task_type: t.task_type || "general",
+      grading_weight: t.grading_weight != null ? String(t.grading_weight) : "",
     });
     setFormError("");
     setShowModal(true);
@@ -119,7 +177,36 @@ export default function FieldStaffTasks() {
     setShowModal(false);
     setEditingId(null);
     setForm(emptyForm);
+    setSelectedStudentIds(new Set());
     setFormError("");
+  }
+
+  function buildSupervisorCreatePayload() {
+    const base = {
+      title: form.title.trim(),
+      description: form.description || null,
+      instructions: form.instructions || null,
+      due_date: form.due_date || null,
+      task_type: form.task_type || "general",
+      grading_weight: form.grading_weight === "" ? null : Number(form.grading_weight),
+      status: "pending",
+    };
+
+    if (form.assignment_scope === "section") {
+      const sectionId = form.section_id ? Number(form.section_id) : null;
+      if (!sectionId) throw new Error("اختر الشعبة");
+      return { ...base, target_type: "section", target_ids: [sectionId] };
+    }
+
+    const ids = [...selectedStudentIds].map(Number).filter(Number.isFinite);
+    if (form.assignment_scope === "multiple_students") {
+      if (!ids.length) throw new Error("اختر طالباً واحداً على الأقل");
+      return { ...base, target_type: "group", target_ids: ids };
+    }
+
+    const studentId = ids[0];
+    if (!studentId) throw new Error("اختر الطالب");
+    return { ...base, target_type: "student", target_ids: [studentId] };
   }
 
   async function handleSubmit(e) {
@@ -128,9 +215,28 @@ export default function FieldStaffTasks() {
     setFormError("");
     try {
       if (editingId) {
-        await updateTask(editingId, form);
+        const payload = isAcademicSupervisor
+          ? {
+              title: form.title.trim(),
+              description: form.description || null,
+              instructions: form.instructions || null,
+              due_date: form.due_date || null,
+              task_type: form.task_type || "general",
+              grading_weight: form.grading_weight === "" ? null : Number(form.grading_weight),
+              status: form.status,
+            }
+          : form;
+        if (isAcademicSupervisor) {
+          await apiClient.put(`/supervisor/tasks/${editingId}`, payload);
+        } else {
+          await updateTask(editingId, payload);
+        }
       } else {
-        await createTask(form);
+        if (isAcademicSupervisor) {
+          await apiClient.post("/supervisor/tasks", buildSupervisorCreatePayload());
+        } else {
+          await createTask(form);
+        }
       }
       closeModal();
       await load();
@@ -415,36 +521,170 @@ export default function FieldStaffTasks() {
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">تعيين التدريب (الطالب) *</label>
-                  <select
-                    className="form-control-custom"
-                    value={form.training_assignment_id}
-                    onChange={(e) => setForm({ ...form, training_assignment_id: e.target.value })}
-                    required
-                  >
-                    <option value="">— اختر التعيين —</option>
-                    {assignments.map((a) => {
-                      const stu = a.enrollment?.user;
-                      return (
-                        <option key={a.id} value={a.id}>
-                          {stu?.name || "طالب"} — {a.training_site?.name || "جهة"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
+                {!editingId && isAcademicSupervisor ? (
+                  <div className="form-group">
+                    <label className="form-label">نطاق المهمة *</label>
+                    <select
+                      className="form-control-custom"
+                      value={form.assignment_scope}
+                      onChange={(e) => setForm({ ...form, assignment_scope: e.target.value })}
+                    >
+                      <option value="student">طالب واحد</option>
+                      <option value="multiple_students">عدة طلبة</option>
+                      <option value="section">شعبة كاملة</option>
+                    </select>
+
+                    {form.assignment_scope === "student" && (
+                      <div className="mt-2">
+                        <label className="form-label">الطالب *</label>
+                        <select
+                          className="form-control-custom"
+                          value={[...selectedStudentIds][0] || ""}
+                          onChange={(e) => setSelectedStudentIds(new Set(e.target.value ? [Number(e.target.value)] : []))}
+                          required
+                        >
+                          <option value="">— اختر الطالب —</option>
+                          {supervisedStudents.map((row) => {
+                            const id = Number(row.student_id ?? row.id);
+                            return (
+                              <option key={id} value={id}>
+                                {row.name} — {row.university_id || "بدون رقم"}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    )}
+
+                    {form.assignment_scope === "multiple_students" && (
+                      <div className="mt-2">
+                        <label className="form-label">اختر الطلبة *</label>
+                        <div
+                          className="section-card"
+                          style={{ maxHeight: 210, overflowY: "auto", padding: 12, borderRadius: 12 }}
+                        >
+                          {supervisedStudents.length === 0 ? (
+                            <span className="text-muted">لا توجد قائمة طلبة متاحة.</span>
+                          ) : (
+                            supervisedStudents.map((row) => {
+                              const id = Number(row.student_id ?? row.id);
+                              return (
+                                <label
+                                  key={id}
+                                  className="d-flex align-items-center gap-2 py-1"
+                                  style={{ cursor: "pointer" }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedStudentIds.has(id)}
+                                    onChange={() => toggleStudent(id)}
+                                  />
+                                  <span>{row.name} — {row.university_id || "بدون رقم"}</span>
+                                </label>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {form.assignment_scope === "section" && (
+                      <div className="mt-2">
+                        <label className="form-label">الشعبة *</label>
+                        <select
+                          className="form-control-custom"
+                          value={form.section_id}
+                          onChange={(e) => setForm({ ...form, section_id: e.target.value })}
+                          required
+                        >
+                          <option value="">— اختر الشعبة —</option>
+                          {sections.map((sec) => (
+                            <option key={sec.id} value={sec.id}>
+                              {sec.section_name || sec.name} {sec.course ? `— ${sec.course}` : ""} ({sec.students_count ?? 0} طالب)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                ) : !isAcademicSupervisor ? (
+                  <div className="form-group">
+                    <label className="form-label">الطالب / تعيين التدريب *</label>
+                    <select
+                      className="form-control-custom"
+                      value={form.training_assignment_id}
+                      onChange={(e) => setForm({ ...form, training_assignment_id: e.target.value })}
+                      required
+                    >
+                      <option value="">— اختر الطالب —</option>
+                      {assignments.map((a) => {
+                        const stu = a.enrollment?.user;
+                        return (
+                          <option key={a.id} value={a.id}>
+                            {stu?.name || "طالب"} — {a.training_site?.name || "جهة"}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                ) : null}
 
                 <div className="form-group">
-                  <label className="form-label">تاريخ التسليم *</label>
+                  <label className="form-label">
+                    تاريخ التسليم {isAcademicSupervisor ? "(اختياري)" : "*"}
+                  </label>
                   <input
                     type="date"
                     className="form-control-custom"
                     value={form.due_date}
                     onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                    required
+                    required={!isAcademicSupervisor}
                   />
                 </div>
+
+                {isAcademicSupervisor && (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">تعليمات للطالب</label>
+                      <textarea
+                        className="form-control-custom"
+                        rows={2}
+                        value={form.instructions}
+                        onChange={(e) => setForm({ ...form, instructions: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">نوع المهمة</label>
+                        <select
+                          className="form-control-custom"
+                          value={form.task_type}
+                          onChange={(e) => setForm({ ...form, task_type: e.target.value })}
+                        >
+                          {TASK_TYPES.map((type) => (
+                            <option key={type.value} value={type.value}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">وزن التقييم (اختياري)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          className="form-control-custom"
+                          value={form.grading_weight}
+                          onChange={(e) => setForm({ ...form, grading_weight: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {editingId && (
                   <div className="form-group">

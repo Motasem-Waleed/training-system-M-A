@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getUser, createUser, updateUser, getTrainingSites } from "../../../services/api";
+import { getUser, createUser, updateUser, getTrainingSites, getRoles } from "../../../services/api";
 import * as XLSX from "xlsx";
 
 export default function AddSchoolManager() {
@@ -11,6 +11,7 @@ export default function AddSchoolManager() {
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
   const [trainingSites, setTrainingSites] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -18,17 +19,23 @@ export default function AddSchoolManager() {
     password: "",
     password_confirmation: "",
     training_site_id: "",
-    role_id: 5, // school_manager (مدير المدرسة) - NOT field_supervisor (المشرف الميداني)
+    role_id: "",
     status: "active",
   });
   const [file, setFile] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState({ success: [], errors: [] });
   const isEditMode = !!id;
+  const schoolManagerRoleId = roles.find((role) => role.name === "school_manager")?.id;
 
   useEffect(() => {
     const fetchSites = async () => {
-      try { const res = await getTrainingSites(); const data = res?.data || res; setTrainingSites(Array.isArray(data) ? data : []); }
+      try {
+        const [sitesRes, rolesRes] = await Promise.all([getTrainingSites({ per_page: 200 }), getRoles({ per_page: 200 })]);
+        const data = Array.isArray(sitesRes?.data) ? sitesRes.data : sitesRes?.data?.data || sitesRes;
+        setTrainingSites(Array.isArray(data) ? data : []);
+        setRoles(Array.isArray(rolesRes?.data) ? rolesRes.data : rolesRes?.data?.data || []);
+      }
       catch (err) { console.error("فشل جلب أماكن التدريب", err); }
     };
     fetchSites();
@@ -39,7 +46,7 @@ export default function AddSchoolManager() {
       const fetchUser = async () => {
         try {
           const userData = await getUser(id);
-          setForm({ name: userData.name || "", email: userData.email || "", password: "", password_confirmation: "", phone: userData.phone || "", training_site_id: userData.training_site_id || "", role_id: userData.role_id || 5, status: userData.status || "active" });
+          setForm({ name: userData.name || "", email: userData.email || "", password: "", password_confirmation: "", phone: userData.phone || "", training_site_id: userData.training_site_id || "", role_id: userData.role_id || "", status: userData.status || "active" });
         } catch (err) { console.error(err); }
       };
       fetchUser();
@@ -61,6 +68,10 @@ export default function AddSchoolManager() {
   const processExcel = async () => {
     if (!file) {
       alert("الرجاء اختيار ملف Excel أولاً");
+      return;
+    }
+    if (!schoolManagerRoleId) {
+      alert("تعذر تحديد دور مدير المدرسة من قاعدة البيانات");
       return;
     }
     setBulkLoading(true);
@@ -110,7 +121,7 @@ export default function AddSchoolManager() {
             password: row["كلمة المرور"] || row["password"] || "12345678",
             password_confirmation: row["كلمة المرور"] || row["password"] || "12345678",
             training_site_id: trainingSiteId,
-            role_id: 5, // school_manager (مدير المدرسة)
+            role_id: schoolManagerRoleId,
             status: "active",
           };
         });
@@ -179,7 +190,13 @@ export default function AddSchoolManager() {
     setErrors({});
     setStatusMessage({ type: "", text: "" });
 
-    const formToSend = { ...form, training_site_id: form.training_site_id ? Number(form.training_site_id) : null };
+    if (!schoolManagerRoleId) {
+      setStatusMessage({ type: "error", text: "تعذر تحديد دور مدير المدرسة من قاعدة البيانات" });
+      setLoading(false);
+      return;
+    }
+
+    const formToSend = { ...form, role_id: schoolManagerRoleId, training_site_id: form.training_site_id ? Number(form.training_site_id) : null };
 
     try {
       if (id) {
@@ -191,7 +208,7 @@ export default function AddSchoolManager() {
         setStatusMessage({ type: "success", text: "تمت إضافة مدير المدرسة بنجاح" });
         setForm({
           name: "", email: "", phone: "", password: "", password_confirmation: "",
-          training_site_id: "", role_id: 5, status: "active",
+          training_site_id: "", role_id: "", status: "active",
         });
         setTimeout(() => navigate("/admin/users"), 1500);
       }

@@ -9,6 +9,7 @@ export const ROLES = {
   HEALTH_DIRECTORATE: "health_directorate",
   EDUCATION_DIRECTORATE: "education_directorate",
   FIELD_SUPERVISOR: "field_supervisor",
+  ADVISER: "adviser",
   PSYCHOLOGIST: "psychologist",
   STUDENT: "student",
   HEAD_OF_DEPARTMENT: "head_of_department",
@@ -27,6 +28,7 @@ export const ROLE_LABELS = {
   [ROLES.SUPERVISOR]: "المشرف الأكاديمي",
   [ROLES.MENTOR]: "المعلم المرشد",
   [ROLES.FIELD_SUPERVISOR]: "المشرف الميداني",
+  [ROLES.ADVISER]: "المرشد التربوي",
   [ROLES.PSYCHOLOGIST]: "الأخصائي النفسي",
   [ROLES.PRINCIPAL]: "مدير جهة التدريب",
   [ROLES.PSYCHOLOGY_CENTER_MANAGER]: "مدير المركز النفسي",
@@ -41,6 +43,7 @@ const DASHBOARD_PATHS = {
   [ROLES.COORDINATOR]: "/coordinator/dashboard",
   [ROLES.FIELD_SUPERVISOR]: "/field-staff/dashboard",
   [ROLES.MENTOR]: "/field-staff/dashboard",
+  [ROLES.ADVISER]: "/field-staff/dashboard",
   [ROLES.SUPERVISOR]: "/supervisor/workspace",
   [ROLES.PSYCHOLOGIST]: "/field-staff/dashboard",
   [ROLES.PRINCIPAL]: "/principal/dashboard",
@@ -73,6 +76,8 @@ export function getFieldStaffRoleKey(role) {
   switch (normalizedRole) {
     case ROLES.MENTOR:
       return "mentor";
+    case ROLES.ADVISER:
+      return "adviser";
     case ROLES.SUPERVISOR:
       return "supervisor";
     case ROLES.PSYCHOLOGIST:

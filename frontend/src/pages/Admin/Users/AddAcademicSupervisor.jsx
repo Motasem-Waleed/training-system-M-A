@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getUser, createUser, updateUser, getDepartments } from "../../../services/api";
+import { getUser, createUser, updateUser, getDepartments, getRoles } from "../../../services/api";
 import * as XLSX from "xlsx";
 
 export default function AddAcademicSupervisor() {
@@ -11,6 +11,7 @@ export default function AddAcademicSupervisor() {
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
   const [departments, setDepartments] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -18,20 +19,25 @@ export default function AddAcademicSupervisor() {
     password: "",
     password_confirmation: "",
     department_id: "",
-    role_id: 9,        // academic_supervisor (المشرف الأكاديمي) - NOT teacher
+    role_id: "",
     status: "active",
   });
   const [file, setFile] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState({ success: [], errors: [] });
   const isEditMode = !!id;
+  const academicSupervisorRoleId = roles.find((role) => role.name === "academic_supervisor")?.id;
 
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const res = await getDepartments();
-        const departmentsData = res?.data || res;
+        const [departmentsRes, rolesRes] = await Promise.all([
+          getDepartments({ per_page: 200 }),
+          getRoles({ per_page: 200 }),
+        ]);
+        const departmentsData = Array.isArray(departmentsRes?.data) ? departmentsRes.data : departmentsRes?.data?.data || departmentsRes;
         setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+        setRoles(Array.isArray(rolesRes?.data) ? rolesRes.data : rolesRes?.data?.data || []);
       } catch (err) {
         console.error("فشل جلب الأقسام", err);
       }
@@ -51,7 +57,7 @@ export default function AddAcademicSupervisor() {
             password: "",
             password_confirmation: "",
             department_id: userData.department_id || "",
-            role_id: userData.role_id || 9,
+            role_id: userData.role_id || "",
             status: userData.status || "active",
           });
         } catch (err) {
@@ -77,6 +83,10 @@ export default function AddAcademicSupervisor() {
   const processExcel = async () => {
     if (!file) {
       alert("الرجاء اختيار ملف Excel أولاً");
+      return;
+    }
+    if (!academicSupervisorRoleId) {
+      alert("تعذر تحديد دور المشرف الأكاديمي من قاعدة البيانات");
       return;
     }
     setBulkLoading(true);
@@ -144,7 +154,7 @@ export default function AddAcademicSupervisor() {
             password: row["كلمة المرور"] || row["password"] || "12345678",
             password_confirmation: row["كلمة المرور"] || row["password"] || "12345678",
             department_id: departmentId,
-            role_id: 9, // academic_supervisor (المشرف الأكاديمي)
+            role_id: academicSupervisorRoleId,
             status: "active",
           };
         });
@@ -234,16 +244,22 @@ export default function AddAcademicSupervisor() {
     setStatusMessage({ type: "", text: "" });
 
     try {
+      if (!academicSupervisorRoleId) {
+        setStatusMessage({ type: "error", text: "تعذر تحديد دور المشرف الأكاديمي من قاعدة البيانات" });
+        return;
+      }
+      const payload = { ...form, role_id: academicSupervisorRoleId };
+
       if (id) {
-        await updateUser(id, form);
+        await updateUser(id, payload);
         setStatusMessage({ type: "success", text: "تم تحديث المشرف الأكاديمي بنجاح" });
         setTimeout(() => navigate("/admin/users"), 1500);
       } else {
-        await createUser(form);
+        await createUser(payload);
         setStatusMessage({ type: "success", text: "تمت إضافة المشرف الأكاديمي بنجاح" });
         setForm({
           name: "", email: "", phone: "", password: "", password_confirmation: "",
-          department_id: "", role_id: 9, status: "active",
+          department_id: "", role_id: "", status: "active",
         });
         setTimeout(() => navigate("/admin/users"), 1500);
       }

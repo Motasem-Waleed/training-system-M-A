@@ -192,11 +192,29 @@ public function enrollments()
         $courseName = strtolower((string) data_get($enrollment, 'section.course.name', ''));
         $departmentName = strtolower((string) data_get($this, 'department.name', ''));
 
-        if (str_contains($courseCode, 'psyc') || str_contains($courseName, 'نفسي') || str_contains($departmentName, 'psych')) {
+        if (
+            str_contains($courseCode, 'psyc') ||
+            str_contains($courseName, 'نفسي') ||
+            str_contains($courseName, 'نفس') ||
+            str_contains($departmentName, 'psych') ||
+            str_contains($departmentName, 'نفس')
+        ) {
             return 'psychology';
         }
 
-        if (str_contains($courseCode, 'educ') || str_contains($courseName, 'تربية') || str_contains($departmentName, 'usool') || str_contains($departmentName, 'tarb')) {
+        if (
+            str_contains($courseCode, 'educ') ||
+            str_contains($courseName, 'تربية') ||
+            str_contains($courseName, 'تربيه') ||
+            str_contains($courseName, 'اصول') ||
+            str_contains($courseName, 'أصول') ||
+            str_contains($departmentName, 'usool') ||
+            str_contains($departmentName, 'tarb') ||
+            str_contains($departmentName, 'تربية') ||
+            str_contains($departmentName, 'تربيه') ||
+            str_contains($departmentName, 'اصول') ||
+            str_contains($departmentName, 'أصول')
+        ) {
             return 'education';
         }
 

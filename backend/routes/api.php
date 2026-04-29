@@ -27,6 +27,8 @@ use App\Http\Controllers\Api\{
     SupervisorVisitController,
     SupervisorWorkspaceController,
     FieldSupervisorController,
+    FormInstanceController,
+    FormTemplateController,
     BackupController,
     ActivityLogController,
     TrainingPeriodController,
@@ -142,6 +144,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('evaluation-templates/{evaluation_template}/items', [EvaluationTemplateController::class, 'addItem']);
     Route::put('evaluation-items/{item}', [EvaluationTemplateController::class, 'updateItem']);
     Route::delete('evaluation-items/{item}', [EvaluationTemplateController::class, 'deleteItem']);
+
+    // Dynamic form templates and assigned forms
+    Route::post('form-templates/{form_template}/duplicate', [FormTemplateController::class, 'duplicate']);
+    Route::apiResource('form-templates', FormTemplateController::class);
+    Route::get('form-instances', [FormInstanceController::class, 'index']);
+    Route::get('form-instances/{formInstance}', [FormInstanceController::class, 'show']);
+    Route::put('form-instances/{formInstance}', [FormInstanceController::class, 'update']);
+    Route::post('form-instances/{formInstance}/submit', [FormInstanceController::class, 'submit']);
+    Route::post('form-instances/{formInstance}/review', [FormInstanceController::class, 'review']);
 
     // Portfolios
     Route::apiResource('student-portfolios', StudentPortfolioController::class);
@@ -275,6 +286,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // ========== ROUTES ÉTUDIANTS ==========
     Route::prefix('student')->group(function () {
+        Route::get('/dashboard-summary', [DashboardController::class, 'studentSummary']);
         Route::get('/training-requests', [TrainingRequestController::class, 'studentIndex']);
         Route::post('/training-requests', [TrainingRequestController::class, 'studentStore'])
             ->middleware('feature:training_requests.create');

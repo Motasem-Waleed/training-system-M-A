@@ -21,8 +21,8 @@ function buildFieldStaffMenu(roleKey) {
     { name: "الملاحظات", path: "/field-staff/notes" },
   ];
 
-  // المهام والسجلات اليومية والتقييم النهائي: للمعلم والمشرف الأكاديمي والمشرف الميداني
-  if (roleKey === "mentor" || roleKey === "supervisor" || roleKey === "field_supervisor") {
+  // المهام والسجلات اليومية والتقييم النهائي: للكادر الميداني والمشرف الأكاديمي
+  if (roleKey === "mentor" || roleKey === "adviser" || roleKey === "supervisor" || roleKey === "field_supervisor") {
     menu.push(
       { name: "المهام", path: "/field-staff/tasks" },
       { name: "السجلات اليومية", path: "/field-staff/daily-reports" },
@@ -105,6 +105,7 @@ const menus = {
 
   // الكادر الميداني الموحد — يُبنى ديناميكياً حسب الدور
   mentor: buildFieldStaffMenu("mentor"),
+  adviser: buildFieldStaffMenu("adviser"),
   psychologist: buildFieldStaffMenu("psychologist"),
   supervisor: buildFieldStaffMenu("supervisor"),
   school_manager: [

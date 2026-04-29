@@ -68,7 +68,7 @@ class TaskController extends Controller
                 $q->where('user_id', $request->user()->id);
             });
 
-        } elseif ($request->user()->role?->name === 'teacher') {
+        } elseif (in_array($request->user()->role?->name, ['teacher', 'academic_supervisor'], true)) {
             $query->where('assigned_by', $request->user()->id);
         }
 

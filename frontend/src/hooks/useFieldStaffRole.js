@@ -8,13 +8,14 @@ import { readStoredUser } from "../utils/session";
  *
  * الأدوار الخلفية (backend role names):
  *   teacher             → mentor
+ *   adviser             → adviser
  *   academic_supervisor → supervisor
  *   psychologist        → psychologist
  *   school_manager      → principal
  *   field_supervisor    → field_supervisor (مع نوع فرعي: mentor_teacher | school_counselor | psychologist)
  *
  * يوفّر:
- *  - roleKey       : المفتاح الموحّد (mentor | supervisor | psychologist | principal | field_supervisor)
+ *  - roleKey       : المفتاح الموحّد (mentor | adviser | supervisor | psychologist | principal | field_supervisor)
  *  - rawRole       : اسم الدور الأصلي من قاعدة البيانات
  *  - label         : التسمية العربية
  *  - isMentor / isSupervisor / isPsychologist / isPrincipal / isFieldSupervisor : اختصارات
@@ -62,6 +63,11 @@ const FIELD_STAFF_MAP = {
     label: "المعلم المرشد (المشرف الميداني)",
     targetRole: ROLES.MENTOR,
   },
+  [ROLES.ADVISER]: {
+    roleKey: "adviser",
+    label: "المرشد التربوي (المشرف الميداني)",
+    targetRole: ROLES.ADVISER,
+  },
   [ROLES.SUPERVISOR]: {
     roleKey: "supervisor",
     label: "المشرف الأكاديمي",
@@ -101,6 +107,7 @@ export default function useFieldStaffRole() {
         targetRole: rawRole,
         basePath: "",
         isMentor: false,
+        isAdviser: false,
         isSupervisor: false,
         isPsychologist: false,
         isPrincipal: false,
@@ -129,6 +136,7 @@ export default function useFieldStaffRole() {
       targetRole: mapped.targetRole,
       basePath: "/field-staff",
       isMentor: mapped.roleKey === "mentor",
+      isAdviser: mapped.roleKey === "adviser",
       isSupervisor: mapped.roleKey === "supervisor",
       isPsychologist: mapped.roleKey === "psychologist",
       isPrincipal: mapped.roleKey === "principal",

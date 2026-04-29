@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getUser, createUser, updateUser, getTrainingSites } from "../../../services/api";
+import { getUser, createUser, updateUser, getTrainingSites, getRoles } from "../../../services/api";
 import * as XLSX from "xlsx";
 
 export default function AddTeacher() {
@@ -11,21 +11,24 @@ export default function AddTeacher() {
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
   const [trainingSites, setTrainingSites] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [form, setForm] = useState({
     name: "", email: "", password: "", password_confirmation: "",
-    major: "", phone: "", training_site_id: "", role_id: 3, status: "active",
+    major: "", phone: "", training_site_id: "", role_id: "", status: "active",
   });
   const [file, setFile] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState({ success: [], errors: [] });
   const isEditMode = !!id;
+  const teacherRoleId = roles.find((role) => role.name === "teacher")?.id;
 
   useEffect(() => {
     const fetchSites = async () => {
       try {
-        const res = await getTrainingSites();
-        const sitesData = res?.data || res;
+        const [sitesRes, rolesRes] = await Promise.all([getTrainingSites({ per_page: 200 }), getRoles({ per_page: 200 })]);
+        const sitesData = Array.isArray(sitesRes?.data) ? sitesRes.data : sitesRes?.data?.data || sitesRes;
         setTrainingSites(Array.isArray(sitesData) ? sitesData : []);
+        setRoles(Array.isArray(rolesRes?.data) ? rolesRes.data : rolesRes?.data?.data || []);
       } catch (err) { console.error("فشل جلب أماكن التدريب", err); }
     };
     fetchSites();
@@ -39,7 +42,7 @@ export default function AddTeacher() {
           setForm({
             name: userData.name || "", email: userData.email || "", password: "", password_confirmation: "",
             major: userData.major || "", phone: userData.phone || "",
-            training_site_id: userData.training_site_id || "", role_id: userData.role_id || 3, status: userData.status || "active",
+            training_site_id: userData.training_site_id || "", role_id: userData.role_id || "", status: userData.status || "active",
           });
         } catch (err) { console.error(err); }
       };
@@ -56,10 +59,15 @@ export default function AddTeacher() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true); setErrors({}); setStatusMessage({ type: "", text: "" });
-    const formToSend = { ...form, training_site_id: form.training_site_id ? Number(form.training_site_id) : null };
+    if (!teacherRoleId) {
+      setStatusMessage({ type: "error", text: "تعذر تحديد دور المعلم المرشد من قاعدة البيانات" });
+      setLoading(false);
+      return;
+    }
+    const formToSend = { ...form, role_id: teacherRoleId, training_site_id: form.training_site_id ? Number(form.training_site_id) : null };
     try {
       if (id) { await updateUser(id, formToSend); setStatusMessage({ type: "success", text: "تم تحديث المعلم بنجاح" }); }
-      else { await createUser(formToSend); setStatusMessage({ type: "success", text: "تمت إضافة المعلم بنجاح" }); setForm({ name: "", email: "", password: "", password_confirmation: "", major: "", phone: "", training_site_id: "", role_id: 3, status: "active" }); }
+      else { await createUser(formToSend); setStatusMessage({ type: "success", text: "تمت إضافة المعلم بنجاح" }); setForm({ name: "", email: "", password: "", password_confirmation: "", major: "", phone: "", training_site_id: "", role_id: "", status: "active" }); }
       setTimeout(() => navigate("/admin/users"), 1500);
     } catch (err) {
       if (err.response?.data?.errors) { setErrors(err.response.data.errors); setStatusMessage({ type: "error", text: `فشل الحفظ: ${Object.values(err.response.data.errors).flat().join(", ")}` }); }
@@ -71,6 +79,7 @@ export default function AddTeacher() {
 
   const processExcel = async () => {
     if (!file) { alert("الرجاء اختيار ملف Excel أولاً"); return; }
+    if (!teacherRoleId) { alert("تعذر تحديد دور المعلم المرشد من قاعدة البيانات"); return; }
     setBulkLoading(true); setBulkResults({ success: [], errors: [] }); setStatusMessage({ type: "", text: "" });
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -101,7 +110,7 @@ export default function AddTeacher() {
         const teachers = rows.map(row => {
           const clean = {}; Object.keys(row).forEach(k => { clean[k.trim()] = row[k]; });
           const siteName = (clean["مكان التدريب"] || clean["المدرسة"] || clean["school"] || "").trim();
-          return { name: clean["الاسم الكامل"] || clean["الاسم"] || clean["name"] || "", email: clean["البريد الإلكتروني"] || clean["email"] || "", password: clean["كلمة المرور"] || "12345678", password_confirmation: clean["كلمة المرور"] || "12345678", major: clean["التخصص"] || clean["major"] || "", phone: clean["الهاتف"] || clean["phone"] || "", training_site_id: siteMap[siteName] || siteMap[siteName.toLowerCase()] || "", role_id: 3, status: "active" };
+          return { name: clean["الاسم الكامل"] || clean["الاسم"] || clean["name"] || "", email: clean["البريد الإلكتروني"] || clean["email"] || "", password: clean["كلمة المرور"] || "12345678", password_confirmation: clean["كلمة المرور"] || "12345678", major: clean["التخصص"] || clean["major"] || "", phone: clean["الهاتف"] || clean["phone"] || "", training_site_id: siteMap[siteName] || siteMap[siteName.toLowerCase()] || "", role_id: teacherRoleId, status: "active" };
         });
         const valid = [], invalid = [];
         teachers.forEach((t, i) => { const m = []; if (!t.name) m.push("الاسم"); if (!t.email) m.push("البريد"); m.length === 0 ? valid.push(t) : invalid.push({ row: i + 2, email: t.email, missing: m }); });
@@ -150,7 +159,7 @@ export default function AddTeacher() {
       <div className="form-group"><label>الاسم الكامل *</label><input type="text" id="name" name="name" value={form.name} onChange={handleChange} required />{errors.name && <span className="error">{errors.name[0]}</span>}</div>
       <div className="form-group"><label>البريد الإلكتروني *</label><input type="email" id="email" name="email" value={form.email} onChange={handleChange} required />{errors.email && <span className="error">{errors.email[0]}</span>}</div>
       <div className="form-group"><label>التخصص *</label><input type="text" id="major" name="major" value={form.major} onChange={handleChange} required />{errors.major && <span className="error">{errors.major[0]}</span>}</div>
-      <div className="form-group"><label>مكان التدريب</label><select id="training_site_id" name="training_site_id" value={form.training_site_id} onChange={handleChange}><option value="">اختر مكان التدريب</option>{trainingSites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{errors.training_site_id && <span className="error">{errors.training_site_id[0]}</span>}</div>
+      <div className="form-group"><label>مكان التدريب *</label><select id="training_site_id" name="training_site_id" value={form.training_site_id} onChange={handleChange} required><option value="">اختر مكان التدريب</option>{trainingSites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{errors.training_site_id && <span className="error">{errors.training_site_id[0]}</span>}</div>
       <div className="form-group"><label>الهاتف</label><input type="text" id="phone" name="phone" value={form.phone} onChange={handleChange} />{errors.phone && <span className="error">{errors.phone[0]}</span>}</div>
       <div className="form-group"><label>كلمة المرور {!isEditMode && "*"}</label><input type="password" id="password" name="password" value={form.password} onChange={handleChange} {...(!isEditMode && { required: true })} />{errors.password && <span className="error">{errors.password[0]}</span>}</div>
       <div className="form-group"><label>تأكيد كلمة المرور {!isEditMode && "*"}</label><input type="password" id="password_confirmation" name="password_confirmation" value={form.password_confirmation} onChange={handleChange} {...(!isEditMode && { required: true })} /></div>

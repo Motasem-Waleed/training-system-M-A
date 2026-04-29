@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getUser, createUser, updateUser, getTrainingSites } from "../../../services/api";
+import { getUser, createUser, updateUser, getTrainingSites, getRoles } from "../../../services/api";
 import * as XLSX from "xlsx";
 
 export default function AddCounselor() {
@@ -11,6 +11,7 @@ export default function AddCounselor() {
   const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
   const [trainingSites, setTrainingSites] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -18,21 +19,23 @@ export default function AddCounselor() {
     password: "",
     password_confirmation: "",
     training_site_id: "",
-    role_id: 7,          // adviser (المرشد التربوي) - NOT school_manager
+    role_id: "",
     status: "active",
   });
   const [file, setFile] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState({ success: [], errors: [] });
   const isEditMode = !!id;
+  const adviserRoleId = roles.find((role) => role.name === "adviser")?.id;
 
   // جلب أماكن التدريب
   useEffect(() => {
     const fetchSites = async () => {
       try {
-        const res = await getTrainingSites();
-        const sitesData = res?.data || res;
+        const [sitesRes, rolesRes] = await Promise.all([getTrainingSites({ per_page: 200 }), getRoles({ per_page: 200 })]);
+        const sitesData = Array.isArray(sitesRes?.data) ? sitesRes.data : sitesRes?.data?.data || sitesRes;
         setTrainingSites(Array.isArray(sitesData) ? sitesData : []);
+        setRoles(Array.isArray(rolesRes?.data) ? rolesRes.data : rolesRes?.data?.data || []);
       } catch (err) {
         console.error("فشل جلب أماكن التدريب", err);
       }
@@ -52,7 +55,7 @@ export default function AddCounselor() {
             password: "",
             password_confirmation: "",
             training_site_id: userData.training_site_id || "",
-            role_id: userData.role_id || 7,
+            role_id: userData.role_id || "",
             status: userData.status || "active",
           });
         } catch (err) { console.error(err); }
@@ -76,6 +79,10 @@ export default function AddCounselor() {
   const processExcel = async () => {
     if (!file) {
       alert("الرجاء اختيار ملف Excel أولاً");
+      return;
+    }
+    if (!adviserRoleId) {
+      alert("تعذر تحديد دور المرشد التربوي من قاعدة البيانات");
       return;
     }
     setBulkLoading(true);
@@ -126,7 +133,7 @@ export default function AddCounselor() {
             password: row["كلمة المرور"] || row["password"] || "12345678",
             password_confirmation: row["كلمة المرور"] || row["password"] || "12345678",
             training_site_id: trainingSiteId,
-            role_id: 7, // adviser (المرشد التربوي)
+            role_id: adviserRoleId,
             status: "active",
           };
         });
@@ -194,16 +201,22 @@ export default function AddCounselor() {
     setStatusMessage({ type: "", text: "" });
 
     try {
+      if (!adviserRoleId) {
+        setStatusMessage({ type: "error", text: "تعذر تحديد دور المرشد التربوي من قاعدة البيانات" });
+        return;
+      }
+      const payload = { ...form, role_id: adviserRoleId };
+
       if (id) {
-        await updateUser(id, form);
+        await updateUser(id, payload);
         setStatusMessage({ type: "success", text: "تم تحديث المرشد بنجاح" });
         setTimeout(() => navigate("/admin/users"), 1500);
       } else {
-        await createUser(form);
+        await createUser(payload);
         setStatusMessage({ type: "success", text: "تمت إضافة المرشد بنجاح" });
         setForm({
           name: "", email: "", phone: "", password: "", password_confirmation: "",
-          training_site_id: "", role_id: 7, status: "active",
+          training_site_id: "", role_id: "", status: "active",
         });
         setTimeout(() => navigate("/admin/users"), 1500);
       }

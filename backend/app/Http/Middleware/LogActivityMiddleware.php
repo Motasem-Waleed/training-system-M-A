@@ -44,7 +44,9 @@ class LogActivityMiddleware
         }
 
         $durationMs = (microtime(true) - $start) * 1000;
-        ActivityLogger::logHttpRequest($request, $response, $durationMs);
+        if ($this->shouldLogSuccessfulRequest($request, $response, $durationMs)) {
+            ActivityLogger::logHttpRequest($request, $response, $durationMs);
+        }
 
         return $response;
     }
@@ -60,5 +62,21 @@ class LogActivityMiddleware
         }
 
         return false;
+    }
+
+    private function shouldLogSuccessfulRequest(Request $request, Response $response, float $durationMs): bool
+    {
+        $status = $response->getStatusCode();
+
+        if ($status >= 400) {
+            return true;
+        }
+
+        if (in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            return true;
+        }
+
+        // Dashboard and polling reads are very frequent; logging each one adds DB writes and SQLite locks.
+        return $durationMs >= 2000;
     }
 }

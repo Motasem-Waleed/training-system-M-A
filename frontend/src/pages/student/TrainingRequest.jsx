@@ -213,6 +213,10 @@ export default function TrainingRequest() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (Object.keys(validationErrors).length > 0) {
+      setError(Object.values(validationErrors).join("، "));
+      return;
+    }
     if (hasSubmittedRequest && !submitTargetRequestId) {
       setError("الطلب الحالي لا يمكن تعديله في هذه المرحلة.");
       return;
@@ -233,6 +237,7 @@ export default function TrainingRequest() {
       const payload = {
         training_site_id: Number(formData.training_site_id),
         training_period_id: activePeriod?.id ? Number(activePeriod.id) : null,
+        governing_body: filters.governing_body,
         directorate: filters.directorate || null,
         start_date: activePeriod?.start_date || fallbackStart,
         end_date: activePeriod?.end_date || fallbackEnd,
@@ -488,7 +493,10 @@ export default function TrainingRequest() {
           <div className="row g-3">
             <div className="col-md-4">
               <div className="form-field">
-                <label className="form-label-custom d-flex align-items-center gap-1">
+                <label
+                  htmlFor="training-request-governing-body"
+                  className="form-label-custom d-flex align-items-center gap-1"
+                >
                   <Building2 size={14} />
                   الجهة الرسمية
                 </label>
@@ -503,7 +511,10 @@ export default function TrainingRequest() {
 
             <div className="col-md-4">
               <div className="form-field">
-                <label className="form-label-custom d-flex align-items-center gap-1">
+                <label
+                  htmlFor="training-request-directorate"
+                  className="form-label-custom d-flex align-items-center gap-1"
+                >
                   <MapPin size={14} />
                   المديرية
                 </label>
@@ -529,7 +540,10 @@ export default function TrainingRequest() {
 
             <div className="col-md-4">
               <div className="form-field">
-                <label className="form-label-custom d-flex align-items-center gap-1">
+                <label
+                  htmlFor="training-request-site-search"
+                  className="form-label-custom d-flex align-items-center gap-1"
+                >
                   <School size={14} />
                   {isEducationFlow ? "المدرسة" : "جهة التدريب"}
                 </label>
@@ -636,7 +650,10 @@ export default function TrainingRequest() {
 
             <div className="col-12">
               <div className="form-field">
-                <label className="form-label-custom d-flex align-items-center gap-1">
+                <label
+                  htmlFor="training-request-notes"
+                  className="form-label-custom d-flex align-items-center gap-1"
+                >
                   <FileText size={14} />
                   ملاحظات (اختياري)
                 </label>
@@ -669,7 +686,7 @@ export default function TrainingRequest() {
             <button
               type="submit"
               className="btn-primary-custom d-inline-flex align-items-center gap-2"
-              disabled={saving || Object.keys(validationErrors).length > 0 || (hasSubmittedRequest && !submitTargetRequestId)}
+              disabled={saving || (hasSubmittedRequest && !submitTargetRequestId)}
             >
               {saving && <Loader2 size={16} className="animate-spin me-1" />}
               {!saving && submitTargetRequestId && <Edit3 size={16} className="me-1" />}

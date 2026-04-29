@@ -233,6 +233,21 @@
   gap: 14px;
 }
 
+.summary-grid .stat-card {
+  min-height: 132px;
+}
+
+.summary-grid .stat-value {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 1rem;
+  line-height: 1.55;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .chart-placeholder,
 .report-placeholder {
   min-height: 210px;
@@ -479,9 +494,9 @@
   background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
   box-shadow: var(--shadow-sm);
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   transition: var(--transition);
 }
 
@@ -517,7 +532,7 @@
 .stat-card-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   flex-shrink: 0;
 }
 
@@ -580,8 +595,10 @@
   font-size: 1.25rem;
   font-weight: 800;
   color: var(--secondary);
-  line-height: 1.2;
+  line-height: 1.45;
   margin-bottom: 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .stat-title-modern {
@@ -594,9 +611,9 @@
 }
 
 .stat-meta-modern {
-  margin-top: 10px;
   font-size: 0.8rem;
   color: var(--text-faint);
+  line-height: 1.5;
 }
 
 /* Activity List Improvements */

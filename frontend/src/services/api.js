@@ -246,10 +246,29 @@ export const deleteActivityLog = (id) => apiClient.delete(`/activity-logs/${id}`
 export const trackPageVisit = (data) => apiClient.post('/activity-logs/page-visit', data).then(res => res.data);
 
 // ==================== Feature Flags ====================
+const featureFlagCache = new Map();
+const FEATURE_FLAG_CACHE_TTL_MS = 60_000;
+
 export const getFeatureFlags = () => apiClient.get('/feature-flags').then(res => res.data);
 export const updateFeatureFlag = (id, isOpen) => apiClient.patch(`/feature-flags/${id}`, { is_open: isOpen }).then(res => res.data);
-export const checkFeatureFlag = (name) =>
-  apiClient.get(`/feature-flags/check/${encodeURIComponent(name)}`).then((res) => res.data);
+export const checkFeatureFlag = (name) => {
+  const cached = featureFlagCache.get(name);
+  const now = Date.now();
+  if (cached && now - cached.time < FEATURE_FLAG_CACHE_TTL_MS) {
+    return cached.promise;
+  }
+
+  const promise = apiClient
+    .get(`/feature-flags/check/${encodeURIComponent(name)}`)
+    .then((res) => res.data)
+    .catch((error) => {
+      featureFlagCache.delete(name);
+      throw error;
+    });
+
+  featureFlagCache.set(name, { time: now, promise });
+  return promise;
+};
 
 // ==================== Evaluation Templates ====================
 export const getEvaluationTemplates = (params = {}) => apiClient.get('/evaluation-templates', { params }).then(res => res.data);
@@ -447,6 +466,11 @@ export const getAnnouncement = async (id) => {
 };
 
 // ==================== Student specific ====================
+export const getStudentDashboardSummary = async (config = {}) => {
+  const response = await apiClient.get('/student/dashboard-summary', config);
+  return response.data;
+};
+
 export const getStudentTrainingRequests = async (config = {}) => {
   const response = await apiClient.get('/student/training-requests', config);
   return response.data;
@@ -472,8 +496,8 @@ export const getStudentSchedule = async () => {
     return response.data;
 };
 
-export const getStudentTrainingProgram = async () => {
-    const response = await apiClient.get('/student/training-program');
+export const getStudentTrainingProgram = async (config = {}) => {
+    const response = await apiClient.get('/student/training-program', config);
     return response.data;
 };
 
@@ -630,8 +654,26 @@ export const deleteAttendance = async (id) => {
 export const getNotifications = (params = {}) =>
   apiClient.get("/notifications", { params }).then((res) => res.data);
 
-export const getUnreadNotificationsCount = () =>
-  apiClient.get("/notifications/unread-count").then((res) => res.data);
+let unreadCountCache = null;
+const UNREAD_COUNT_CACHE_TTL_MS = 5_000;
+
+export const getUnreadNotificationsCount = () => {
+  const now = Date.now();
+  if (unreadCountCache && now - unreadCountCache.time < UNREAD_COUNT_CACHE_TTL_MS) {
+    return unreadCountCache.promise;
+  }
+
+  const promise = apiClient
+    .get("/notifications/unread-count")
+    .then((res) => res.data)
+    .catch((error) => {
+      unreadCountCache = null;
+      throw error;
+    });
+
+  unreadCountCache = { time: now, promise };
+  return promise;
+};
 
 export const markSystemNotificationAsRead = (id) =>
   apiClient.patch(`/notifications/${id}/read`).then((res) => res.data);

@@ -45,7 +45,7 @@ class FieldSupervisorController extends Controller
         $user = $request->user();
         
         return TrainingAssignment::where('teacher_id', $user->id)
-            ->where('status', 'ongoing')
+            ->whereIn('status', ['assigned', 'ongoing'])
             ->with('enrollment')
             ->get()
             ->pluck('enrollment.user_id')
@@ -61,7 +61,7 @@ class FieldSupervisorController extends Controller
     private function getStudentAssignments(Request $request, ?int $studentId = null)
     {
         $query = TrainingAssignment::where('teacher_id', $request->user()->id)
-            ->where('status', 'ongoing')
+            ->whereIn('status', ['assigned', 'ongoing'])
             ->with(['enrollment.user', 'enrollment.section.course', 'trainingSite']);
 
         if ($studentId) {

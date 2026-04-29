@@ -208,10 +208,29 @@ class TrainingRequestService
     {
         DB::transaction(function () use ($trainingRequest, $schoolManagerId, $studentsData) {
             $activeTrainingPeriodId = $this->requireActiveTrainingPeriodId();
+            $manager = User::with('role')->findOrFail($schoolManagerId);
+            $allowedRoles = $manager->role?->name === 'psychology_center_manager'
+                ? ['psychologist']
+                : ['teacher', 'adviser'];
 
             foreach ($studentsData as $studentData) {
                 $studentRequest = TrainingRequestStudent::findOrFail($studentData['id']);
                 $enrollmentId = $this->requireEnrollmentId($studentRequest);
+                $fieldSupervisor = User::with('role')->findOrFail($studentData['assigned_teacher_id']);
+
+                abort_unless(
+                    in_array($fieldSupervisor->role?->name, $allowedRoles, true),
+                    422,
+                    'المستخدم المحدد ليس من نوع المشرف الميداني المناسب لجهة التدريب.'
+                );
+
+                if ($manager->training_site_id) {
+                    abort_unless(
+                        (int) $fieldSupervisor->training_site_id === (int) $manager->training_site_id,
+                        422,
+                        'المشرف الميداني المحدد غير مرتبط بجهة التدريب الخاصة بك.'
+                    );
+                }
 
                 $studentRequest->update([
                     'status' => TrainingRequestStudentStatus::APPROVED->value,

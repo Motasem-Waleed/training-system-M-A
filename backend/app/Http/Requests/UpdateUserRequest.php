@@ -34,6 +34,7 @@ class UpdateUserRequest extends FormRequest
             'department_id' => 'sometimes|nullable|exists:departments,id',
             'training_site_id' => 'sometimes|nullable|exists:training_sites,id',
             'phone' => 'sometimes|nullable|string|max:20',
+            'major' => 'sometimes|nullable|string|max:255',
             'directorate' => 'sometimes|nullable|in:وسط,شمال,جنوب,يطا',
         ];
     }

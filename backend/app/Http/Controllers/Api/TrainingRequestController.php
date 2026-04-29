@@ -675,11 +675,13 @@ class TrainingRequestController extends Controller
             abort(403, 'هذه الخدمة متاحة فقط لمدير جهة التدريب.');
         }
 
-        // للمركز النفسي: نبحث عن أخصائيين نفسيين بدلاً من معلمين
-        $targetRole = $user->role?->name === 'psychology_center_manager' ? 'psychologist' : 'teacher';
+        // المدرسة يمكنها تعيين المعلم المرشد أو المرشد التربوي، والمركز النفسي يعيّن الأخصائي النفسي.
+        $targetRoles = $user->role?->name === 'psychology_center_manager'
+            ? ['psychologist']
+            : ['teacher', 'adviser'];
 
         $teachers = User::where('status', 'active')
-            ->whereHas('role', fn($q) => $q->where('name', $targetRole))
+            ->whereHas('role', fn($q) => $q->whereIn('name', $targetRoles))
             ->when($user->training_site_id, fn ($q) => $q->where('training_site_id', $user->training_site_id))
             ->when($request->filled('search'), function ($q) use ($request) {
                 $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->search) . '%';

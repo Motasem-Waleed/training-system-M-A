@@ -22,7 +22,7 @@ class TrainingAssignmentController extends Controller
         
         if ($request->user()->role?->name === 'student') {
             $query->whereHas('enrollment', fn ($q) => $q->where('user_id', $request->user()->id));
-        } elseif ($request->user()->role?->name === 'teacher') {
+        } elseif (in_array($request->user()->role?->name, ['teacher', 'adviser', 'psychologist', 'field_supervisor'], true)) {
             $query->where('teacher_id', $request->user()->id);
         } elseif ($request->user()->role?->name === 'academic_supervisor') {
             $query->where('academic_supervisor_id', $request->user()->id);

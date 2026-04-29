@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
 
 export default function FieldStaffDashboard() {
-  const { label, isMentor, isPsychologist, isSupervisor, isPrincipal, isFieldSupervisor, supervisorSubtype, subtypeLabel, terms } = useFieldStaffRole();
+  const { label, isMentor, isAdviser, isPsychologist, isSupervisor, isPrincipal, isFieldSupervisor, supervisorSubtype, terms } = useFieldStaffRole();
   const [stats, setStats] = useState({ students: 0, evals: 0, attendance: 0, notes: 0, tasks: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +48,7 @@ export default function FieldStaffDashboard() {
     { title: "الملاحظات", value: stats.notes, color: "#fd7e14" },
   ];
 
-  if (isMentor || isSupervisor || isFieldSupervisor) {
+  if (isMentor || isAdviser || isSupervisor || isFieldSupervisor) {
     cards.push({ title: "المهام", value: stats.tasks, color: "#dc3545" });
   }
 
@@ -80,6 +80,13 @@ export default function FieldStaffDashboard() {
             <li>راجع السجلات اليومية المقدمة من الطلبة وقم بقبولها أو رفضها.</li>
             <li>استخدم نماذج التقييم الخاصة بك (المعلم المرشد) لتقييم أداء الطلبة.</li>
             <li>أضف ملاحظات سريعة على ملفات الطلبة لمتابعة تقدمهم.</li>
+          </ul>
+        )}
+        {isAdviser && (
+          <ul style={{ paddingRight: 20 }}>
+            <li>راجع السجلات الإرشادية المقدمة من الطلبة وقم بقبولها أو إعادتها.</li>
+            <li>استخدم نماذج تقييم المرشد التربوي لمتابعة أداء الطلبة في النشاط الإرشادي.</li>
+            <li>أضف ملاحظات تربوية مرتبطة بالحالات والتوصيات.</li>
           </ul>
         )}
         {isPsychologist && (

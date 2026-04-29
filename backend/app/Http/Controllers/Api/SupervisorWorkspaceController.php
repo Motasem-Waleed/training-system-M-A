@@ -1015,7 +1015,7 @@ class SupervisorWorkspaceController extends Controller
     {
         $task = Task::findOrFail($taskId);
         abort_unless((int) $task->assigned_by === (int) $request->user()->id, 403, 'Unauthorized task update.');
-        if (now()->gt($task->due_date) || $task->submissions()->exists()) {
+        if (($task->due_date && now()->gt($task->due_date)) || $task->submissions()->exists()) {
             return $this->errorResponse('Task can no longer be edited.');
         }
 

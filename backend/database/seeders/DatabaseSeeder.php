@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             OfficialLettersSeeder::class,
             FeatureFlagsSeeder::class,
             FieldSupervisorTemplatesSeeder::class, // قوالب المشرف الميداني
+            FormTemplateSeeder::class, // قوالب النماذج العامة
             FieldSupervisorSeeder::class, // مشرف ميداني تجريبي
         ]);
 

@@ -23,11 +23,11 @@ export default function UsersList() {
   const roleLabels = {
     admin: "مدير النظام",
     student: "طالب",
-    teacher: "معلم",
+    teacher: "المعلم المرشد",
     field_supervisor: "مشرف ميداني",
     school_manager: "مدير مدرسة",
     psychology_center_manager: "مدير مركز نفسي",
-    adviser: "مرشد",
+    adviser: "المرشد التربوي",
     psychologist: "أخصائي نفسي",
     academic_supervisor: "مشرف أكاديمي",
     training_coordinator: "منسق تدريب",

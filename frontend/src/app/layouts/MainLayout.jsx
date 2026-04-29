@@ -4,6 +4,9 @@ import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { trackPageVisit } from "../../services/api";
 
+const trackedPageVisits = new Map();
+const PAGE_VISIT_DEDUP_MS = 10_000;
+
 export default function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
@@ -18,6 +21,12 @@ export default function MainLayout() {
       return;
     }
     lastTrackedPathRef.current = currentPath;
+    const now = Date.now();
+    const lastTrackedAt = trackedPageVisits.get(currentPath) || 0;
+    if (now - lastTrackedAt < PAGE_VISIT_DEDUP_MS) {
+      return;
+    }
+    trackedPageVisits.set(currentPath, now);
 
     trackPageVisit({
       path: currentPath,

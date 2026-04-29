@@ -1,13 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Navigate, Link } from "react-router-dom";
 import {
-  getCurrentUser,
-  getStudentTrainingRequests,
-  getStudentTasks,
-  getStudentPortfolio,
-  getStudentTrainingProgram,
-  getStudentNotifications,
-  itemsFromPagedResponse,
+  getStudentDashboardSummary,
 } from "../../services/api";
 import { getStudentDashboardPath, getStudentTrack } from "../../utils/studentSection";
 import { readStoredUser } from "../../utils/session";
@@ -32,17 +26,36 @@ import {
 } from "lucide-react";
 
 const getStudentSpecialization = (user, track) => {
-  const departmentName = String(user?.department?.name || user?.data?.department?.name || "").toLowerCase();
+  const normalizeText = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[أإآ]/g, "ا")
+      .replace(/ى/g, "ي")
+      .replace(/ة/g, "ه")
+      .trim();
+  const department = user?.department || user?.data?.department;
+  const departmentName = normalizeText(department?.name);
+  const courseName = user?.current_section?.course_name || user?.data?.current_section?.course_name;
+  const specialization = user?.specialization || user?.data?.specialization || user?.major || user?.data?.major;
 
-  if (departmentName.includes("psych")) {
+  if (specialization) {
+    return specialization;
+  }
+
+  if (departmentName.includes("psych") || departmentName.includes("نفس") || track === "psychology") {
     return "علم النفس";
   }
 
-  if (departmentName.includes("usool") || track === "education") {
+  if (
+    departmentName.includes("usool") ||
+    departmentName.includes("اصول") ||
+    departmentName.includes("تربي") ||
+    track === "education"
+  ) {
     return "أصول التربية";
   }
 
-  return user?.department?.name || user?.data?.department?.name || "—";
+  return department?.name || courseName || "—";
 };
 
 const getCollegeLabel = (user, track) => {
@@ -118,15 +131,8 @@ export default function StudentDashboard({ forcedTrack = null }) {
 
     setLoading(true);
     try {
-      // جلب جميع البيانات بالتوازي (أسرع)
-      const [user, requestsRes, tasksRes, portfolioRes, programRes, notifRes] = await Promise.all([
-        getCurrentUser({ signal }),
-        getStudentTrainingRequests({ signal }),
-        getStudentTasks({ signal }),
-        getStudentPortfolio({ signal }),
-        getStudentTrainingProgram(),
-        getStudentNotifications({ signal }),
-      ]);
+      const summary = await getStudentDashboardSummary({ signal });
+      const user = summary?.user || {};
 
       // 1. بيانات المستخدم + الشعبة + المشرفين
       const cs = user?.current_section || user?.data?.current_section || {};
@@ -145,7 +151,7 @@ export default function StudentDashboard({ forcedTrack = null }) {
       }));
 
       // 2. طلبات التدريب
-      const trainingRequest = itemsFromPagedResponse(requestsRes)[0] || null;
+      const trainingRequest = summary?.training_request || null;
       let requestStatus = "لم يتم التقديم بعد";
       let schoolName = "";
       let directorateName = "";
@@ -169,18 +175,16 @@ export default function StudentDashboard({ forcedTrack = null }) {
         prev.map(card => {
           if (card.title === "طلب التدريب") return { ...card, value: requestStatus };
           if (card.title === "التكليفات") {
-            const tasks = itemsFromPagedResponse(tasksRes);
-            const pendingTasks = tasks.filter((task) => isTaskPending(task.status)).length;
+            const pendingTasks = summary?.tasks?.pending_count ?? 0;
             return { ...card, value: `${pendingTasks} تكليف متبقي` };
           }
           if (card.title === "ملف الإنجاز") {
-            const portfolioData = portfolioRes?.data || portfolioRes || {};
-            const entriesCount = portfolioData.entries?.length || 0;
+            const entriesCount = summary?.portfolio?.entries_count || 0;
             return { ...card, value: `${entriesCount} ملفات` };
           }
           if (card.title === "برنامج التدريب") {
-            const hasProgram = !!programRes?.data?.schedule;
-            const isEditable = programRes?.is_editable;
+            const hasProgram = !!summary?.training_program?.data?.schedule;
+            const isEditable = summary?.training_program?.is_editable;
             if (!hasProgram) return { ...card, value: "لم يُعبَّأ بعد", desc: "الجدول الأسبوعي للحصص التدريبية" };
             return { ...card, value: isEditable ? "مفتوح للتعديل" : "معبأ ✓", desc: "الجدول الأسبوعي للحصص التدريبية" };
           }
@@ -189,8 +193,8 @@ export default function StudentDashboard({ forcedTrack = null }) {
       );
 
       // 4. آخر الإشعارات
-      const notifications = itemsFromPagedResponse(notifRes);
-      const tasks = itemsFromPagedResponse(tasksRes);
+      const notifications = Array.isArray(summary?.notifications) ? summary.notifications : [];
+      const tasks = Array.isArray(summary?.tasks?.latest) ? summary.tasks.latest : [];
       const typeLabels = {
         training_request_approved: { title: "موافقة على طلب التدريب", color: "#10b981", bg: "#ecfdf5", dot: "#10b981" },
         training_request_coordinator_review: { title: "مراجعة منسق", color: "#f59e0b", bg: "#fffbeb", dot: "#f59e0b" },

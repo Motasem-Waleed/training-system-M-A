@@ -9,10 +9,6 @@ class TrainingAssignmentPolicy
 {
     public function viewAny(User $user): bool
     {
-        if ($user->role?->name === 'psychologist') {
-            return false;
-        }
-
         return true;
     }
 
